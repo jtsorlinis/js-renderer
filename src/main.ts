@@ -65,7 +65,6 @@ const triangle = (p0: Vector2, p1: Vector2, p2: Vector2, colour: Colour) => {
       const bcScreen = barycentric(p0, p1, p2, new Vector2(x, y));
       if (bcScreen.x < 0 || bcScreen.y < 0 || bcScreen.z < 0) continue;
       setPixel(new Vector2(x, y), colour.r, colour.g, colour.b);
-      // ctx.putImageData(backBuffer, 0, 0);
     }
   }
 };
