@@ -19,7 +19,7 @@ const scale = new Vector3(300, 300, 300);
 const image = new ImageData(canvas.width, canvas.height);
 const zBuffer = new Float32Array(canvas.width * canvas.height);
 
-let rot = new Vector3(0, 1, 0);
+let rot = new Vector3(0, 0, 0);
 const lightDir = new Vector3(0, 0, 1);
 
 const draw = () => {
@@ -56,7 +56,9 @@ const draw = () => {
 };
 
 const update = (dt: number) => {
-  // rot.y += dt / 5;
+  rot.y += dt / 5;
+  // rot.x += dt / 5;
+  // rot.z += dt / 5;
 };
 
 let prevTime = 0;
