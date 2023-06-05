@@ -1,3 +1,5 @@
+import { Vector2 } from ".";
+
 export class Vector3 {
   x: number;
   y: number;
@@ -23,5 +25,42 @@ export class Vector3 {
 
   public truncate() {
     return new Vector3(~~this.x, ~~this.y, ~~this.z);
+  }
+
+  public scale(s: number) {
+    return new Vector3(this.x * s, this.y * s, this.z * s);
+  }
+
+  public lengthSq() {
+    return this.x * this.x + this.y * this.y + this.z * this.z;
+  }
+
+  public length() {
+    return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+  }
+
+  public normalize() {
+    const l = this.length();
+    return new Vector3(this.x / l, this.y / l, this.z / l);
+  }
+
+  public translate(v: Vector3) {
+    return new Vector3(this.x + v.x, this.y + v.y, this.z + v.z);
+  }
+
+  public dot(v: Vector3) {
+    return this.x * v.x + this.y * v.y + this.z * v.z;
+  }
+
+  public xy() {
+    return new Vector2(this.x, this.y);
+  }
+
+  public add(v: Vector3) {
+    return new Vector3(this.x + v.x, this.y + v.y, this.z + v.z);
+  }
+
+  public subtract(v: Vector3) {
+    return new Vector3(this.x - v.x, this.y - v.y, this.z - v.z);
   }
 }

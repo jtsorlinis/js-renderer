@@ -11,6 +11,10 @@ export class Vector2 {
     return new Vector2(this.x + v.x, this.y + v.y);
   }
 
+  public addScalar(s: number) {
+    return new Vector2(this.x + s, this.y + s);
+  }
+
   public subtract(v: Vector2) {
     return new Vector2(this.x - v.x, this.y - v.y);
   }
@@ -25,5 +29,13 @@ export class Vector2 {
 
   public truncate() {
     return new Vector2(~~this.x, ~~this.y);
+  }
+
+  public scale(s: number) {
+    return new Vector2(this.x * s, this.y * s);
+  }
+
+  public translate(v: Vector2) {
+    return new Vector2(this.x + v.x, this.y + v.y);
   }
 }
