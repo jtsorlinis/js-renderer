@@ -19,8 +19,8 @@ export const clear = (image: ImageData, zBuffer: Float32Array) => {
 };
 
 export const line = (
-  start: Vector2,
-  end: Vector2,
+  start: Vector3,
+  end: Vector3,
   colour: Colour,
   image: ImageData
 ) => {
@@ -33,7 +33,7 @@ export const line = (
   let err = dx - dy;
 
   while (true) {
-    setPixel(s, colour, image);
+    setPixel(s.xy(), colour, image);
 
     if (s.x === e.x && s.y === e.y) break;
     const e2 = 2 * err;
