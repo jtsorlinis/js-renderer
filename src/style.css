@@ -1,3 +1,9 @@
 :root {
   font-family: "Courier New", Courier, monospace;
 }
+
+canvas {
+  object-fit: contain;
+  max-width: 100%;
+  height: 90vh;
+}
