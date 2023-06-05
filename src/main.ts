@@ -1,6 +1,12 @@
 import "./style.css";
 import { Vector3 } from "./maths";
-import { Colour, clear, line, toScreenSpace, triangle } from "./drawing";
+import {
+  Colour,
+  clear,
+  line,
+  toScreenSpace as toSS,
+  triangle,
+} from "./drawing";
 import { loadHead } from "./models/objLoader";
 import { Matrix4 } from "./maths/Matrix4";
 
@@ -49,16 +55,17 @@ const draw = () => {
     // line(v1, v2, new Colour(255, 255, 255), image);
     // line(v2, v3, new Colour(255, 255, 255), image);
     // line(v3, v1, new Colour(255, 255, 255), image);
+
+    // Draw filled
     const edge1 = v3.subtract(v1);
     const edge2 = v2.subtract(v1);
     const n = edge1.cross(edge2).normalize();
     const intensity = n.dot(lightDir);
 
-    // Draw filled
     triangle(
-      toScreenSpace(v1, image),
-      toScreenSpace(v2, image),
-      toScreenSpace(v3, image),
+      toSS(v1, image),
+      toSS(v2, image),
+      toSS(v3, image),
       zBuffer,
       new Colour(intensity * 255, intensity * 255, intensity * 255),
       image
