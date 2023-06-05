@@ -23,8 +23,8 @@ export const line = (
   colour: Colour,
   image: ImageData
 ) => {
-  let s = start.clone();
-  let e = end.clone();
+  let s = start.truncate();
+  let e = end.truncate();
   const dx = Math.abs(e.x - s.x);
   const dy = Math.abs(e.y - s.y);
   const sx = s.x < e.x ? 1 : -1;
@@ -65,10 +65,10 @@ export const triangle = (
   colour: Colour,
   image: ImageData
 ) => {
-  let minX = Math.min(p0.x, p1.x, p2.x);
-  let minY = Math.min(p0.y, p1.y, p2.y);
-  let maxX = Math.max(p0.x, p1.x, p2.x);
-  let maxY = Math.max(p0.y, p1.y, p2.y);
+  let minX = ~~Math.min(p0.x, p1.x, p2.x);
+  let minY = ~~Math.min(p0.y, p1.y, p2.y);
+  let maxX = ~~Math.max(p0.x, p1.x, p2.x);
+  let maxY = ~~Math.max(p0.y, p1.y, p2.y);
   for (let y = minY; y < maxY; y++) {
     for (let x = minX; x < maxX; x++) {
       const bcScreen = barycentric(p0, p1, p2, new Vector2(x, y));

@@ -1,6 +1,6 @@
 import "./style.css";
 import { Vector2 } from "./maths";
-import { Colour, clear, triangle } from "./drawing";
+import { Colour, clear, line, triangle } from "./drawing";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
@@ -11,7 +11,7 @@ if (!ctx) {
 
 let image = new ImageData(canvas.width, canvas.height);
 
-const update = () => {};
+const update = (dt: number) => {};
 
 const draw = () => {
   clear(image);
@@ -29,6 +29,12 @@ const draw = () => {
     new Colour(0, 255, 0),
     image
   );
+  line(
+    new Vector2(0, 0),
+    new Vector2(300, 100),
+    new Colour(255, 255, 255),
+    image
+  );
   ctx.putImageData(image, 0, 0);
 };
 
@@ -38,7 +44,7 @@ const loop = () => {
   const dt = (now - prevTime) / 1000;
   fpsText.innerHTML = dt.toFixed(3);
   prevTime = now;
-  update();
+  update(dt);
   draw();
   requestAnimationFrame(loop);
 };

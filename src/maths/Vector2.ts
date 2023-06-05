@@ -22,4 +22,8 @@ export class Vector2 {
   public clone() {
     return new Vector2(this.x, this.y);
   }
+
+  public truncate() {
+    return new Vector2(~~this.x, ~~this.y);
+  }
 }

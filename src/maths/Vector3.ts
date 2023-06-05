@@ -20,4 +20,8 @@ export class Vector3 {
   public clone() {
     return new Vector3(this.x, this.y, this.z);
   }
+
+  public truncate() {
+    return new Vector3(~~this.x, ~~this.y, ~~this.z);
+  }
 }
