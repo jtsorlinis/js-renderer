@@ -58,6 +58,27 @@ export class Matrix4 {
       .multiply(Matrix4.Scale(s));
   }
 
+  public static LookAt(eye: Vector3, target: Vector3, up: Vector3) {
+    const z = target.subtract(eye).normalize();
+    const x = up.cross(z).normalize();
+    const y = z.cross(x).normalize();
+
+    const m = Matrix4.Identity();
+    m.m[0] = x.x;
+    m.m[1] = x.y;
+    m.m[2] = x.z;
+    m.m[4] = y.x;
+    m.m[5] = y.y;
+    m.m[6] = y.z;
+    m.m[8] = z.x;
+    m.m[9] = z.y;
+    m.m[10] = z.z;
+    m.m[12] = -x.dot(eye);
+    m.m[13] = -y.dot(eye);
+    m.m[14] = -z.dot(eye);
+    return m;
+  }
+
   public multiplyVector(v: Vector3) {
     const result = new Vector3();
     result.x = this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12];
