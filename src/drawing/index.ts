@@ -88,3 +88,11 @@ export const triangle = (
     }
   }
 };
+
+export const toScreenSpace = (v: Vector3, image: ImageData) => {
+  return new Vector3(
+    v.x * 250 + image.width * 0.5,
+    v.y * 250 + image.height * 0.5,
+    v.z
+  );
+};
