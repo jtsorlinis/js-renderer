@@ -63,4 +63,26 @@ export class Vector3 {
   public subtract(v: Vector3) {
     return new Vector3(this.x - v.x, this.y - v.y, this.z - v.z);
   }
+
+  public rotate(rot: Vector3) {
+    const rz = new Vector3(
+      this.x * Math.cos(rot.z) - this.y * Math.sin(rot.z),
+      this.y * Math.cos(rot.z) + this.x * Math.sin(rot.z),
+      this.z
+    );
+
+    const ry = new Vector3(
+      rz.x * Math.cos(rot.y) + rz.z * Math.sin(rot.y),
+      rz.y,
+      rz.z * Math.cos(rot.y) - rz.x * Math.sin(rot.y)
+    );
+
+    const rx = new Vector3(
+      ry.x,
+      ry.y * Math.cos(rot.x) - ry.z * Math.sin(rot.x),
+      ry.z * Math.cos(rot.x) + ry.y * Math.sin(rot.x)
+    );
+
+    return rx;
+  }
 }
