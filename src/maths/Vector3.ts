@@ -5,6 +5,18 @@ export class Vector3 {
   y: number;
   z: number;
 
+  static get Zero() {
+    return new Vector3(0, 0, 0);
+  }
+
+  static get One() {
+    return new Vector3(1, 1, 1);
+  }
+
+  static get Up() {
+    return new Vector3(0, 1, 0);
+  }
+
   constructor(x?: number, y?: number, z?: number) {
     this.x = x ?? 0;
     this.y = y ?? 0;
