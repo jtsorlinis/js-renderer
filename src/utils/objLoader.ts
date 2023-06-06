@@ -1,11 +1,10 @@
 import { Vector3 } from "../maths";
-import model from "./head_model.obj?raw";
 
-export const loadHead = () => {
+export const loadObj = (file: string) => {
   const vertices: Vector3[] = [];
   const faces: Vector3[] = [];
 
-  const lines = model.split("\n");
+  const lines = file.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const split = lines[i].split(" ");
     if (split[0] == "v") {

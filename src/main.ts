@@ -1,8 +1,9 @@
 import "./style.css";
 import { Vector3 } from "./maths";
 import { Colour, clear, line, triangle } from "./drawing";
-import { loadHead } from "./models/objLoader";
+import { loadObj } from "./utils/objLoader";
 import { Matrix4 } from "./maths/Matrix4";
+import headObj from "./models/head.obj?raw";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
@@ -20,7 +21,7 @@ let drawWireframe = wireframeCb.checked;
 let isOrtho = orthographicCb.checked;
 
 // Head model
-const headModel = loadHead();
+const headModel = loadObj(headObj);
 let headRot = new Vector3(0, 3.141, 0);
 
 const update = (dt: number) => {
