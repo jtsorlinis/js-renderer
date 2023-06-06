@@ -36,13 +36,14 @@ const camPos = new Vector3(0, 0, -2.5);
 const draw = () => {
   clear(image, zBuffer);
 
-  const modelMat = Matrix4.TRS(Vector3.Zero, headRot, Vector3.One);
   const viewMat = Matrix4.LookAt(camPos, Vector3.Zero, Vector3.Up);
   const projMat = isOrtho
     ? Matrix4.Ortho(1.5, image)
     : Matrix4.Perspective(60, image);
+  const vp = viewMat.multiply(projMat);
 
-  const mvp = modelMat.multiply(viewMat).multiply(projMat);
+  const modelMat = Matrix4.TRS(Vector3.Zero, headRot, Vector3.One);
+  const mvp = modelMat.multiply(vp);
 
   for (let i = 0; i < headModel.faces.length; i++) {
     const face = headModel.faces[i];
