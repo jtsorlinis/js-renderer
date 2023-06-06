@@ -49,14 +49,16 @@ export const line = (
 };
 
 const barycentric = (p1: Vector3, p2: Vector3, p3: Vector3, P: Vector3) => {
-  const v1 = new Vector3(p3.x - p1.x, p2.x - p1.x, p1.x - P.x);
-  const v2 = new Vector3(p3.y - p1.y, p2.y - p1.y, p1.y - P.y);
-  const u = v1.cross(v2);
+  const v0 = p2.subtract(p1);
+  const v1 = p3.subtract(p1);
+  const v2 = P.subtract(p1);
 
-  // Check for degenerate triangle
-  if (Math.abs(u.z) < 0.01) return new Vector3(-1, 1, 1);
+  const denom = v0.x * v1.y - v1.x * v0.y;
+  const v = (v2.x * v1.y - v1.x * v2.y) / denom;
+  const w = (v0.x * v2.y - v2.x * v0.y) / denom;
+  const u = 1 - v - w;
 
-  return new Vector3(1 - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
+  return new Vector3(u, v, w);
 };
 
 export const triangle = (
@@ -76,10 +78,7 @@ export const triangle = (
     for (P.x = minX; P.x <= maxX; P.x++) {
       const bcScreen = barycentric(p0, p1, p2, P);
       if (bcScreen.x < 0 || bcScreen.y < 0 || bcScreen.z < 0) continue;
-      P.z = 0;
-      P.z += p0.z * bcScreen.x;
-      P.z += p1.z * bcScreen.y;
-      P.z += p2.z * bcScreen.z;
+      P.z = p0.z * bcScreen.x + p1.z * bcScreen.y + p2.z * bcScreen.z;
       const index = P.x + P.y * image.width;
       if (P.z < zBuffer[index]) {
         zBuffer[index] = P.z;
@@ -92,7 +91,7 @@ export const triangle = (
 export const toScreenSpace = (v: Vector3, image: ImageData) => {
   return new Vector3(
     v.x * 250 + image.width * 0.5,
-    v.y * 250 + image.height * 0.5,
+    image.height - (v.y * 250 + image.height * 0.5),
     v.z
   );
 };
