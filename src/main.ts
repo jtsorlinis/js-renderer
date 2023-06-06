@@ -33,18 +33,16 @@ const update = (dt: number) => {
 };
 
 const lightDir = new Vector3(0, 0, 1);
+const camPos = new Vector3(0, 0, -10);
 
 const draw = () => {
   clear(image, zBuffer);
 
   const modelMat = Matrix4.TRS(Vector3.Zero, headRot, Vector3.One);
-  const viewMat = Matrix4.LookAt(
-    new Vector3(0, 0, -10),
-    Vector3.Zero,
-    Vector3.Up
-  );
+  const viewMat = Matrix4.LookAt(camPos, Vector3.Zero, Vector3.Up);
+  const projMat = Matrix4.Ortho(1.5, image);
 
-  const mv = modelMat.multiply(viewMat);
+  const mvp = modelMat.multiply(viewMat).multiply(projMat);
 
   for (let i = 0; i < headModel.faces.length; i++) {
     const face = headModel.faces[i];
@@ -59,19 +57,16 @@ const draw = () => {
     const w2 = modelMat.multiplyVector(m2);
     const w3 = modelMat.multiplyVector(m3);
 
-    const v1 = mv.multiplyVector(m1);
-    const v2 = mv.multiplyVector(m2);
-    const v3 = mv.multiplyVector(m3);
-
-    const ssv1 = toSS(v1, image);
-    const ssv2 = toSS(v2, image);
-    const ssv3 = toSS(v3, image);
+    // Screen space
+    const v1 = mvp.multiplyVector(m1);
+    const v2 = mvp.multiplyVector(m2);
+    const v3 = mvp.multiplyVector(m3);
 
     if (drawWireframe) {
       // Draw wireframe
-      line(ssv1, ssv2, new Colour(255, 255, 255), image);
-      line(ssv2, ssv3, new Colour(255, 255, 255), image);
-      line(ssv3, ssv1, new Colour(255, 255, 255), image);
+      line(v1, v2, new Colour(255, 255, 255), image);
+      line(v2, v3, new Colour(255, 255, 255), image);
+      line(v3, v1, new Colour(255, 255, 255), image);
     } else {
       // Draw filled
       const edge1 = w3.subtract(w1);
@@ -79,7 +74,7 @@ const draw = () => {
       const n = edge1.cross(edge2).normalize();
       const intensity = n.dot(lightDir);
       const col = new Colour(intensity * 255, intensity * 255, intensity * 255);
-      triangle(ssv1, ssv2, ssv3, zBuffer, col, image);
+      triangle(v1, v2, v3, zBuffer, col, image);
     }
   }
   ctx.putImageData(image, 0, 0);
