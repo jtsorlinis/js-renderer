@@ -23,6 +23,7 @@ export class Matrix4 {
     return m;
   }
 
+  // ZXY rotation order
   public static RotateEuler(r: Vector3) {
     const m = Matrix4.Identity();
     const cx = Math.cos(r.x);
@@ -32,15 +33,18 @@ export class Matrix4 {
     const cz = Math.cos(r.z);
     const sz = Math.sin(r.z);
 
-    m.m[0] = cy * cz;
-    m.m[1] = sx * sy * cz - cx * sz;
-    m.m[2] = cx * sy * cz + sx * sz;
-    m.m[4] = cy * sz;
-    m.m[5] = sx * sy * sz + cx * cz;
-    m.m[6] = cx * sy * sz - sx * cz;
-    m.m[8] = -sy;
-    m.m[9] = sx * cy;
+    m.m[0] = cz * cy - sz * sx * sy;
+    m.m[1] = -sz * cx;
+    m.m[2] = cz * sy + sz * sx * cy;
+
+    m.m[4] = sz * cy + cz * sx * sy;
+    m.m[5] = cx * cz;
+    m.m[6] = sz * sy - cz * sx * cy;
+
+    m.m[8] = -cx * sy;
+    m.m[9] = sx;
     m.m[10] = cx * cy;
+
     return m;
   }
 
