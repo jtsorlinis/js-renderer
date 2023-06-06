@@ -1,12 +1,6 @@
 import "./style.css";
 import { Vector3 } from "./maths";
-import {
-  Colour,
-  clear,
-  line,
-  toScreenSpace as toSS,
-  triangle,
-} from "./drawing";
+import { Colour, clear, line, triangle } from "./drawing";
 import { loadHead } from "./models/objLoader";
 import { Matrix4 } from "./maths/Matrix4";
 
