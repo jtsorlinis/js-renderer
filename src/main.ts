@@ -15,6 +15,7 @@ if (!ctx) {
 const image = new ImageData(canvas.width, canvas.height);
 const zBuffer = new Float32Array(canvas.width * canvas.height);
 const drawWireframe = false;
+const isOrtho = false;
 
 // Head model
 const headModel = loadHead();
@@ -27,14 +28,16 @@ const update = (dt: number) => {
 };
 
 const lightDir = new Vector3(0, 0, 1);
-const camPos = new Vector3(0, 0, -10);
+const camPos = new Vector3(0, 0, -2.5);
 
 const draw = () => {
   clear(image, zBuffer);
 
   const modelMat = Matrix4.TRS(Vector3.Zero, headRot, Vector3.One);
   const viewMat = Matrix4.LookAt(camPos, Vector3.Zero, Vector3.Up);
-  const projMat = Matrix4.Ortho(1.5, image);
+  const projMat = isOrtho
+    ? Matrix4.Ortho(1.5, image)
+    : Matrix4.Perspective(60, image);
 
   const mvp = modelMat.multiply(viewMat).multiply(projMat);
 

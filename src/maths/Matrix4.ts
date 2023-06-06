@@ -93,6 +93,29 @@ export class Matrix4 {
     return orthoMat;
   }
 
+  static Perspective(fov: number, image: ImageData, near = 0.1, far = 1000) {
+    const perspectiveMat = Matrix4.Identity();
+    const aspect = image.width / image.height;
+    const fovRad = fov * (Math.PI / 180);
+    const tanHalfFovy = Math.tan(fovRad / 2);
+
+    perspectiveMat.m[0] = 1 / (aspect * tanHalfFovy);
+    perspectiveMat.m[5] = 1 / tanHalfFovy;
+    perspectiveMat.m[10] = -(far + near) / (far - near);
+    perspectiveMat.m[11] = 1;
+    perspectiveMat.m[14] = -(2 * far * near) / (far - near);
+    perspectiveMat.m[15] = 0;
+
+    // Transform from clip space to screen space
+    const screenSpaceMat = Matrix4.Identity();
+    screenSpaceMat.m[0] = image.width / 2;
+    screenSpaceMat.m[5] = -image.height / 2;
+    screenSpaceMat.m[12] = image.width / 2;
+    screenSpaceMat.m[13] = image.height / 2;
+
+    return perspectiveMat.multiply(screenSpaceMat);
+  }
+
   public multiplyVector(v: Vector3) {
     const result = new Vector3();
     result.x = this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12];
