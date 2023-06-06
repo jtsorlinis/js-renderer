@@ -6,6 +6,8 @@ import { Matrix4 } from "./maths/Matrix4";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
+const wireframeCb = document.getElementById("wireframeCb") as HTMLInputElement;
+const orthographicCb = document.getElementById("orthoCb") as HTMLInputElement;
 const ctx = canvas.getContext("2d");
 if (!ctx) {
   throw new Error("Could not get canvas context");
@@ -14,8 +16,8 @@ if (!ctx) {
 // Setup canvas and zBuffer
 const image = new ImageData(canvas.width, canvas.height);
 const zBuffer = new Float32Array(canvas.width * canvas.height);
-const drawWireframe = false;
-const isOrtho = false;
+let drawWireframe = wireframeCb.checked;
+let isOrtho = orthographicCb.checked;
 
 // Head model
 const headModel = loadHead();
@@ -75,6 +77,14 @@ const draw = () => {
     }
   }
   ctx.putImageData(image, 0, 0);
+};
+
+orthographicCb.onchange = () => {
+  isOrtho = orthographicCb.checked;
+};
+
+wireframeCb.onchange = () => {
+  drawWireframe = wireframeCb.checked;
 };
 
 let prevTime = 0;
