@@ -83,6 +83,16 @@ export class Matrix4 {
     return m;
   }
 
+  static Ortho(orthoSize: any, image: ImageData) {
+    const orthoMat = Matrix4.Identity();
+    const aspect = image.width / image.height;
+    orthoMat.m[0] = image.width / (orthoSize * aspect * 2);
+    orthoMat.m[5] = -image.height / (orthoSize * 2);
+    orthoMat.m[12] = image.width / 2;
+    orthoMat.m[13] = image.height / 2;
+    return orthoMat;
+  }
+
   public multiplyVector(v: Vector3) {
     const result = new Vector3();
     result.x = this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12];
