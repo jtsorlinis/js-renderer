@@ -17,6 +17,7 @@ if (!ctx) {
 // Setup canvas and zBuffer
 const image = new ImageData(canvas.width, canvas.height);
 const zBuffer = new Float32Array(canvas.width * canvas.height);
+const viewportTransform = Matrix4.Viewport(image);
 let drawWireframe = wireframeCb.checked;
 let isOrtho = orthographicCb.checked;
 
@@ -58,10 +59,15 @@ const draw = () => {
     const w2 = modelMat.multiplyVector(m2);
     const w3 = modelMat.multiplyVector(m3);
 
+    // Clip space
+    const c1 = mvp.multiplyVector(m1);
+    const c2 = mvp.multiplyVector(m2);
+    const c3 = mvp.multiplyVector(m3);
+
     // Screen space
-    const v1 = mvp.multiplyVector(m1);
-    const v2 = mvp.multiplyVector(m2);
-    const v3 = mvp.multiplyVector(m3);
+    const v1 = viewportTransform.multiplyVector(c1);
+    const v2 = viewportTransform.multiplyVector(c2);
+    const v3 = viewportTransform.multiplyVector(c3);
 
     if (drawWireframe) {
       // Draw wireframe
