@@ -92,7 +92,7 @@ export class Matrix4 {
     return viewportMat;
   }
 
-  static Ortho(orthoSize: any, image: ImageData, near = 0.1, far = 1000) {
+  static Ortho(orthoSize: any, image: ImageData) {
     const orthoMat = Matrix4.Identity();
     const aspect = image.width / image.height;
     orthoMat.m[0] = 1 / (orthoSize * aspect);
