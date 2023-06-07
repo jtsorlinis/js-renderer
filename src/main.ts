@@ -95,6 +95,13 @@ wireframeCb.onchange = () => {
   drawWireframe = wireframeCb.checked;
 };
 
+canvas.onmousemove = (e) => {
+  if (e.buttons === 1) {
+    headRot.y += e.movementX / 250;
+    headRot.x -= e.movementY / 250;
+  }
+};
+
 let prevTime = 0;
 const loop = () => {
   const now = performance.now();
