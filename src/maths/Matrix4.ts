@@ -83,13 +83,20 @@ export class Matrix4 {
     return m;
   }
 
-  static Ortho(orthoSize: any, image: ImageData) {
+  static Viewport(image: ImageData) {
+    const viewportMat = Matrix4.Identity();
+    viewportMat.m[0] = image.width / 2;
+    viewportMat.m[5] = -image.height / 2;
+    viewportMat.m[12] = image.width / 2;
+    viewportMat.m[13] = image.height / 2;
+    return viewportMat;
+  }
+
+  static Ortho(orthoSize: any, image: ImageData, near = 0.1, far = 1000) {
     const orthoMat = Matrix4.Identity();
     const aspect = image.width / image.height;
-    orthoMat.m[0] = image.width / (orthoSize * aspect * 2);
-    orthoMat.m[5] = -image.height / (orthoSize * 2);
-    orthoMat.m[12] = image.width / 2;
-    orthoMat.m[13] = image.height / 2;
+    orthoMat.m[0] = 1 / (orthoSize * aspect);
+    orthoMat.m[5] = 1 / orthoSize;
     return orthoMat;
   }
 
@@ -101,19 +108,12 @@ export class Matrix4 {
 
     perspectiveMat.m[0] = 1 / (aspect * tanHalfFovy);
     perspectiveMat.m[5] = 1 / tanHalfFovy;
-    perspectiveMat.m[10] = -(far + near) / (far - near);
+    perspectiveMat.m[10] = (far + near) / (far - near);
     perspectiveMat.m[11] = 1;
     perspectiveMat.m[14] = -(2 * far * near) / (far - near);
     perspectiveMat.m[15] = 0;
 
-    // Transform from clip space to screen space
-    const screenSpaceMat = Matrix4.Identity();
-    screenSpaceMat.m[0] = image.width / 2;
-    screenSpaceMat.m[5] = -image.height / 2;
-    screenSpaceMat.m[12] = image.width / 2;
-    screenSpaceMat.m[13] = image.height / 2;
-
-    return perspectiveMat.multiply(screenSpaceMat);
+    return perspectiveMat;
   }
 
   public multiplyVector(v: Vector3) {
