@@ -33,13 +33,14 @@ const update = (dt: number) => {
 
 const lightDir = new Vector3(0, 0, 1);
 const camPos = new Vector3(0, 0, -2.5);
+let orthoSize = 1.5;
 
 const draw = () => {
   clear(image, zBuffer);
 
   const viewMat = Matrix4.LookAt(camPos, Vector3.Zero, Vector3.Up);
   const projMat = isOrtho
-    ? Matrix4.Ortho(1.5, image)
+    ? Matrix4.Ortho(orthoSize, image)
     : Matrix4.Perspective(60, image);
   const vp = viewMat.multiply(projMat);
 
@@ -69,6 +70,18 @@ const draw = () => {
     const v2 = viewportTransform.multiplyVector(c2);
     const v3 = viewportTransform.multiplyVector(c3);
 
+    // backface culling
+    const ab = v2.subtract(v1);
+    const ac = v3.subtract(v1);
+    const n = ab.x * ac.y - ac.x * ab.y;
+    if (n < 0) continue;
+
+    // clip near and far planes only for perspective
+    if (!isOrtho) {
+      if (v1.z < -1 || v2.z < -1 || v3.z < -1) continue;
+      if (v1.z > 1 || v2.z > 1 || v3.z > 1) continue;
+    }
+
     if (drawWireframe) {
       // Draw wireframe
       line(v1, v2, new Colour(255, 255, 255), image);
@@ -89,6 +102,7 @@ const draw = () => {
 
 orthographicCb.onchange = () => {
   isOrtho = orthographicCb.checked;
+  camPos.z = -2.5;
 };
 
 wireframeCb.onchange = () => {
@@ -99,6 +113,14 @@ canvas.onmousemove = (e) => {
   if (e.buttons === 1) {
     headRot.y += e.movementX / 250;
     headRot.x -= e.movementY / 250;
+  }
+};
+
+canvas.onwheel = (e) => {
+  if (isOrtho) {
+    orthoSize += e.deltaY / 100;
+  } else {
+    camPos.z -= e.deltaY / 100;
   }
 };
 
