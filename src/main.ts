@@ -1,8 +1,7 @@
 import "./style.css";
-import { Vector3 } from "./maths";
-import { Colour, clear, line, viewportTransform, triangle } from "./drawing";
+import { Matrix4, Vector3 } from "./maths";
+import { clear, line, viewportTransform, triangle } from "./drawing";
 import { loadObj } from "./utils/objLoader";
-import { Matrix4 } from "./maths/Matrix4";
 import headObj from "./models/head.obj?raw";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -37,7 +36,8 @@ let orthoSize = 1.5;
 const draw = () => {
   clear(image, zBuffer);
 
-  const viewMat = Matrix4.LookAt(camPos, Vector3.Zero, Vector3.Up);
+  const camForward = camPos.add(Vector3.Forward);
+  const viewMat = Matrix4.LookAt(camPos, camForward, Vector3.Up);
   const projMat = isOrtho
     ? Matrix4.Ortho(orthoSize, image)
     : Matrix4.Perspective(60, image);
@@ -81,16 +81,18 @@ const draw = () => {
 
     if (drawWireframe) {
       // Draw wireframe
-      line(v1, v2, new Colour(255, 255, 255), image);
-      line(v2, v3, new Colour(255, 255, 255), image);
-      line(v3, v1, new Colour(255, 255, 255), image);
+      line(v1, v2, new Vector3(1, 1, 1).toRGB(), image);
+      line(v2, v3, new Vector3(1, 1, 1).toRGB(), image);
+      line(v3, v1, new Vector3(1, 1, 1).toRGB(), image);
     } else {
-      // Draw filled
-      const edge1 = w3.subtract(w1);
-      const edge2 = w2.subtract(w1);
-      const n = edge1.cross(edge2).normalize();
+      // Super basic lighting
+      const ab = w3.subtract(w1);
+      const ac = w2.subtract(w1);
+      const n = ab.cross(ac).normalize();
       const intensity = n.dot(lightDir);
-      const col = new Colour(intensity * 255, intensity * 255, intensity * 255);
+      const col = new Vector3(intensity, intensity, intensity).toRGB();
+
+      // Draw filled
       triangle(v1, v2, v3, zBuffer, col, image);
     }
   }
