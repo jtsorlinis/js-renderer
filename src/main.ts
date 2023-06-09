@@ -21,7 +21,7 @@ let isOrtho = orthographicCb.checked;
 
 // Head model
 const headModel = loadObj(headObj);
-let headRot = new Vector3(0, 3.141, 0);
+let headRot = new Vector3(0, 0, 0);
 
 const update = (dt: number) => {
   headRot.y += dt / 5;
