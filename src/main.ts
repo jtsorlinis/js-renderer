@@ -1,6 +1,6 @@
 import "./style.css";
 import { Vector3 } from "./maths";
-import { Colour, clear, line, triangle } from "./drawing";
+import { Colour, clear, line, viewportTransform, triangle } from "./drawing";
 import { loadObj } from "./utils/objLoader";
 import { Matrix4 } from "./maths/Matrix4";
 import headObj from "./models/head.obj?raw";
@@ -17,7 +17,6 @@ if (!ctx) {
 // Setup canvas and zBuffer
 const image = new ImageData(canvas.width, canvas.height);
 const zBuffer = new Float32Array(canvas.width * canvas.height);
-const viewportTransform = Matrix4.Viewport(image);
 let drawWireframe = wireframeCb.checked;
 let isOrtho = orthographicCb.checked;
 
@@ -51,24 +50,24 @@ const draw = () => {
     const face = headModel.faces[i];
 
     // Model space
-    const m1 = headModel.vertices[face.x];
-    const m2 = headModel.vertices[face.y];
-    const m3 = headModel.vertices[face.z];
+    const m1 = headModel.vertices[face.x].toVec4();
+    const m2 = headModel.vertices[face.y].toVec4();
+    const m3 = headModel.vertices[face.z].toVec4();
 
     // World space
-    const w1 = modelMat.multiplyVector(m1);
-    const w2 = modelMat.multiplyVector(m2);
-    const w3 = modelMat.multiplyVector(m3);
+    const w1 = modelMat.multiplyVector(m1).xyz;
+    const w2 = modelMat.multiplyVector(m2).xyz;
+    const w3 = modelMat.multiplyVector(m3).xyz;
 
-    // Clip space
-    const c1 = mvp.multiplyVector(m1);
-    const c2 = mvp.multiplyVector(m2);
-    const c3 = mvp.multiplyVector(m3);
+    // Clip space with perspective division by w
+    const c1 = mvp.multiplyVector(m1).divideByW();
+    const c2 = mvp.multiplyVector(m2).divideByW();
+    const c3 = mvp.multiplyVector(m3).divideByW();
 
-    // Screen space
-    const v1 = viewportTransform.multiplyVector(c1);
-    const v2 = viewportTransform.multiplyVector(c2);
-    const v3 = viewportTransform.multiplyVector(c3);
+    // Screen space (From [-1, 1] to [0, width/height]])
+    const v1 = viewportTransform(c1, image);
+    const v2 = viewportTransform(c2, image);
+    const v3 = viewportTransform(c3, image);
 
     // backface culling
     const ab = v2.subtract(v1);

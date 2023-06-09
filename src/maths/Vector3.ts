@@ -1,4 +1,4 @@
-import { Vector2 } from ".";
+import { Vector2, Vector4 } from ".";
 
 export class Vector3 {
   x: number;
@@ -64,8 +64,12 @@ export class Vector3 {
     return this.x * v.x + this.y * v.y + this.z * v.z;
   }
 
-  public xy() {
+  public get xy() {
     return new Vector2(this.x, this.y);
+  }
+
+  public toVec4() {
+    return new Vector4(this.x, this.y, this.z);
   }
 
   public add(v: Vector3) {

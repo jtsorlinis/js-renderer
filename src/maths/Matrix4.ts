@@ -1,4 +1,4 @@
-import { Vector3 } from ".";
+import { Vector3, Vector4 } from ".";
 
 export class Matrix4 {
   m: Float32Array;
@@ -83,15 +83,6 @@ export class Matrix4 {
     return m;
   }
 
-  static Viewport(image: ImageData) {
-    const viewportMat = Matrix4.Identity();
-    viewportMat.m[0] = image.width / 2;
-    viewportMat.m[5] = -image.height / 2;
-    viewportMat.m[12] = image.width / 2;
-    viewportMat.m[13] = image.height / 2;
-    return viewportMat;
-  }
-
   static Ortho(orthoSize: any, image: ImageData) {
     const orthoMat = Matrix4.Identity();
     const aspect = image.width / image.height;
@@ -116,18 +107,15 @@ export class Matrix4 {
     return perspectiveMat;
   }
 
-  public multiplyVector(v: Vector3) {
-    const result = new Vector3();
+  public multiplyVector(v: Vector4) {
+    const result = new Vector4();
     result.x = this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12];
     result.y = this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z + this.m[13];
     result.z =
       this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z + this.m[14];
-    const w = this.m[3] * v.x + this.m[7] * v.y + this.m[11] * v.z + this.m[15];
-    if (w != 0) {
-      result.x /= w;
-      result.y /= w;
-      result.z /= w;
-    }
+    result.w =
+      this.m[3] * v.x + this.m[7] * v.y + this.m[11] * v.z + this.m[15];
+
     return result;
   }
 
