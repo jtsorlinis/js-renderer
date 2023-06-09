@@ -83,11 +83,13 @@ export class Matrix4 {
     return m;
   }
 
-  static Ortho(orthoSize: any, image: ImageData) {
+  static Ortho(orthoSize: any, image: ImageData, near = 0.1, far = 1000) {
     const orthoMat = Matrix4.Identity();
     const aspect = image.width / image.height;
     orthoMat.m[0] = 1 / (orthoSize * aspect);
     orthoMat.m[5] = 1 / orthoSize;
+    orthoMat.m[10] = 2 / (far - near);
+    orthoMat.m[14] = -(far + near) / (far - near);
     return orthoMat;
   }
 
