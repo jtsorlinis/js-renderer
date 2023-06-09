@@ -81,9 +81,9 @@ const draw = () => {
 
     if (drawWireframe) {
       // Draw wireframe
-      line(v1, v2, new Vector3(1, 1, 1).toRGB(), image);
-      line(v2, v3, new Vector3(1, 1, 1).toRGB(), image);
-      line(v3, v1, new Vector3(1, 1, 1).toRGB(), image);
+      line(v1, v2, Vector3.One.toRGB(), image);
+      line(v2, v3, Vector3.One.toRGB(), image);
+      line(v3, v1, Vector3.One.toRGB(), image);
     } else {
       // Super basic lighting
       const ab = w3.subtract(w1);
