@@ -46,13 +46,16 @@ const draw = () => {
   const modelMat = Matrix4.TRS(Vector3.Zero, headRot, Vector3.One);
   const mvp = modelMat.multiply(vp);
 
-  for (let i = 0; i < headModel.faces.length; i++) {
-    const face = headModel.faces[i];
+  for (let i = 0; i < headModel.triangles.length; i += 3) {
+    // Get indices
+    const index1 = headModel.triangles[i];
+    const index2 = headModel.triangles[i + 1];
+    const index3 = headModel.triangles[i + 2];
 
     // Model space
-    const m1 = headModel.vertices[face.x].toVec4();
-    const m2 = headModel.vertices[face.y].toVec4();
-    const m3 = headModel.vertices[face.z].toVec4();
+    const m1 = headModel.vertices[index1].toVec4();
+    const m2 = headModel.vertices[index2].toVec4();
+    const m3 = headModel.vertices[index3].toVec4();
 
     // World space
     const w1 = modelMat.multiplyVector(m1).xyz;
