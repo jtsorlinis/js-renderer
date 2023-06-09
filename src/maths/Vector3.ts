@@ -17,6 +17,10 @@ export class Vector3 {
     return new Vector3(0, 1, 0);
   }
 
+  static get Forward() {
+    return new Vector3(0, 0, 1);
+  }
+
   constructor(x?: number, y?: number, z?: number) {
     this.x = x ?? 0;
     this.y = y ?? 0;
@@ -80,25 +84,7 @@ export class Vector3 {
     return new Vector3(this.x - v.x, this.y - v.y, this.z - v.z);
   }
 
-  public rotate(rot: Vector3) {
-    const rz = new Vector3(
-      this.x * Math.cos(rot.z) - this.y * Math.sin(rot.z),
-      this.y * Math.cos(rot.z) + this.x * Math.sin(rot.z),
-      this.z
-    );
-
-    const ry = new Vector3(
-      rz.x * Math.cos(rot.y) + rz.z * Math.sin(rot.y),
-      rz.y,
-      rz.z * Math.cos(rot.y) - rz.x * Math.sin(rot.y)
-    );
-
-    const rx = new Vector3(
-      ry.x,
-      ry.y * Math.cos(rot.x) - ry.z * Math.sin(rot.x),
-      ry.z * Math.cos(rot.x) + ry.y * Math.sin(rot.x)
-    );
-
-    return rx;
+  public toRGB() {
+    return new Vector3(this.x * 255, this.y * 255, this.z * 255);
   }
 }
