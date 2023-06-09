@@ -30,6 +30,8 @@ const update = (dt: number) => {
 };
 
 const lightDir = new Vector3(0, 0, 1);
+const lightCol = new Vector3(1, 1, 1);
+
 const camPos = new Vector3(0, 0, -2.5);
 let orthoSize = 1.5;
 
@@ -95,7 +97,7 @@ const draw = () => {
       const ac = w2.subtract(w1);
       const n = ab.cross(ac).normalize();
       const intensity = n.dot(lightDir);
-      const col = new Vector3(intensity, intensity, intensity).toRGB();
+      const col = lightCol.scale(intensity).toRGB();
 
       // Draw filled
       triangle(v1, v2, v3, zBuffer, col, image);
