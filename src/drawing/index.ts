@@ -33,7 +33,7 @@ export const line = (
   let err = dx - dy;
 
   while (true) {
-    setPixel(s.xy(), colour, image);
+    setPixel(s.xy, colour, image);
 
     if (s.x === e.x && s.y === e.y) break;
     const e2 = 2 * err;
@@ -82,8 +82,14 @@ export const triangle = (
       const index = P.x + P.y * image.width;
       if (P.z < zBuffer[index]) {
         zBuffer[index] = P.z;
-        setPixel(P.xy(), colour, image);
+        setPixel(P.xy, colour, image);
       }
     }
   }
+};
+
+export const viewportTransform = (v: Vector3, image: ImageData) => {
+  const x = (v.x * image.width) / 2 + image.width / 2;
+  const y = (-v.y * image.height) / 2 + image.height / 2;
+  return new Vector3(x, y, v.z);
 };
