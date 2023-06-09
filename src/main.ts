@@ -70,10 +70,12 @@ const draw = () => {
     const v3 = viewportTransform(c3, image);
 
     // backface culling
-    const ab = v2.subtract(v1);
-    const ac = v3.subtract(v1);
-    const n = ab.x * ac.y - ac.x * ab.y;
-    if (n < 0) continue;
+    if (!drawWireframe) {
+      const ab = v2.subtract(v1);
+      const ac = v3.subtract(v1);
+      const n = ab.x * ac.y - ac.x * ab.y;
+      if (n < 0) continue;
+    }
 
     // clip near and far planes
     if (v1.z < -1 || v2.z < -1 || v3.z < -1) continue;
