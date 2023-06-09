@@ -80,6 +80,10 @@ export class Vector3 {
     return new Vector3(this.x + v.x, this.y + v.y, this.z + v.z);
   }
 
+  public addScalar(s: number) {
+    return new Vector3(this.x + s, this.y + s, this.z + s);
+  }
+
   public subtract(v: Vector3) {
     return new Vector3(this.x - v.x, this.y - v.y, this.z - v.z);
   }
