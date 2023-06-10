@@ -33,6 +33,18 @@ const lightCol = new Vector3(1, 1, 1);
 const camPos = new Vector3(0, 0, -2.5);
 let orthoSize = 1.5;
 
+const vertShader = (v: Vector4, n: Vector4, mvp: Matrix4, rotMat: Matrix4) => {
+  // Vertex transformation
+  const pos = mvp.multiplyVector(v).divideByW();
+
+  // Vertex lighting
+  const rotatedNormal = rotMat.multiplyVector(n);
+  const intensity = -rotatedNormal.xyz.dot(lightDir);
+  const col = lightCol.scale(intensity).toRGB();
+
+  return { pos, col };
+};
+
 const draw = () => {
   clear(image, zBuffer);
 
@@ -46,18 +58,6 @@ const draw = () => {
   const rotMat = Matrix4.RotateEuler(modelRotation);
   const mvp = modelMat.multiply(viewMat.multiply(projMat));
 
-  const vertShader = (v: Vector4, n: Vector4) => {
-    // Vertex transformation
-    const pos = mvp.multiplyVector(v).divideByW();
-
-    // Vertex lighting
-    const rotatedNormal = rotMat.multiplyVector(n);
-    const intensity = -rotatedNormal.xyz.dot(lightDir);
-    const col = lightCol.scale(intensity).toRGB();
-
-    return { pos, col };
-  };
-
   for (let i = 0; i < model.vertices.length; i += 3) {
     const vert0 = model.vertices[i].toVec4();
     const vert1 = model.vertices[i + 1].toVec4();
@@ -67,9 +67,9 @@ const draw = () => {
     const norm1 = model.normals[i + 1].toVec4();
     const norm2 = model.normals[i + 2].toVec4();
 
-    const p0 = vertShader(vert0, norm0);
-    const p1 = vertShader(vert1, norm1);
-    const p2 = vertShader(vert2, norm2);
+    const p0 = vertShader(vert0, norm0, mvp, rotMat);
+    const p1 = vertShader(vert1, norm1, mvp, rotMat);
+    const p2 = vertShader(vert2, norm2, mvp, rotMat);
 
     if (drawWireframe) {
       // Draw wireframe
