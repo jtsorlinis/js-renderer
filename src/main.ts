@@ -1,6 +1,6 @@
 import "./style.css";
 import { Matrix4, Vector3, Vector4 } from "./maths";
-import { clear, line, viewportTransform, triangle } from "./drawing";
+import { clear, line, triangle } from "./drawing";
 import { loadObj } from "./utils/objLoader";
 import obj from "./models/head.obj?raw";
 
@@ -35,7 +35,7 @@ let orthoSize = 1.5;
 
 const vertShader = (v: Vector4, n: Vector4, mvp: Matrix4, rotMat: Matrix4) => {
   // Vertex transformation
-  const pos = mvp.multiplyVector(v).divideByW();
+  const pos = mvp.multiplyAndPerpsectiveDivide(v);
 
   // Vertex lighting
   const rotatedNormal = rotMat.multiplyVector(n);

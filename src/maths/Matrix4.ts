@@ -121,6 +121,22 @@ export class Matrix4 {
     return result;
   }
 
+  // Perspective division is normally automatically done by the GPU, but we need to do it manually
+  public multiplyAndPerpsectiveDivide(v: Vector4) {
+    const result = new Vector3();
+    result.x = this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12];
+    result.y = this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z + this.m[13];
+    result.z =
+      this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z + this.m[14];
+    const w = this.m[3] * v.x + this.m[7] * v.y + this.m[11] * v.z + this.m[15];
+
+    result.x /= w;
+    result.y /= w;
+    result.z /= w;
+
+    return result;
+  }
+
   // prettier-ignore
   public multiply(m: Matrix4) {
     const result = new Matrix4();

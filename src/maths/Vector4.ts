@@ -17,10 +17,6 @@ export class Vector4 {
     this.w = w ?? 0;
   }
 
-  public divideByW() {
-    return new Vector3(this.x / this.w, this.y / this.w, this.z / this.w);
-  }
-
   public get xyz() {
     return new Vector3(this.x, this.y, this.z);
   }
