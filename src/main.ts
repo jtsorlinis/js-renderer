@@ -113,6 +113,7 @@ canvas.onmousemove = (e) => {
 canvas.onwheel = (e) => {
   if (isOrtho) {
     orthoSize += e.deltaY / 100;
+    orthoSize = Math.max(0.01, orthoSize);
   } else {
     camPos.z -= e.deltaY / 100;
   }
