@@ -7,6 +7,17 @@ export const line = (
   colour: Vector3,
   image: ImageData
 ) => {
+  // Clip near and far planes
+  if (start.z < -1 || end.z < -1) return;
+  if (start.z > 1 || end.z > 1) return;
+
+  // Don't draw if line is completely off screen
+  if (start.x < 0 && end.x < 0) return;
+  if (start.y < 0 && end.y < 0) return;
+  if (start.x > image.width && end.x > image.width) return;
+  if (start.y > image.height && end.y > image.height) return;
+
+  // Round to nearest pixel
   let s = start.truncate();
   let e = end.truncate();
 
