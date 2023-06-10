@@ -43,28 +43,18 @@ const draw = () => {
   const projMat = isOrtho
     ? Matrix4.Ortho(orthoSize, image)
     : Matrix4.Perspective(60, image);
-  const vp = viewMat.multiply(projMat);
 
   const modelMat = Matrix4.TRS(Vector3.Zero, headRot, Vector3.One);
-  const mvp = modelMat.multiply(vp);
+  const rotMat = Matrix4.RotateEuler(headRot);
+  const mvp = modelMat.multiply(viewMat.multiply(projMat));
 
-  for (let i = 0; i < headModel.triangles.length; i += 3) {
-    // Get indices
-    const index1 = headModel.triangles[i];
-    const index2 = headModel.triangles[i + 1];
-    const index3 = headModel.triangles[i + 2];
-
+  for (let i = 0; i < headModel.vertices.length; i += 3) {
     // Model space
-    const m1 = headModel.vertices[index1].toVec4();
-    const m2 = headModel.vertices[index2].toVec4();
-    const m3 = headModel.vertices[index3].toVec4();
+    const m1 = headModel.vertices[i].toVec4();
+    const m2 = headModel.vertices[i + 1].toVec4();
+    const m3 = headModel.vertices[i + 2].toVec4();
 
-    // World space
-    const w1 = modelMat.multiplyVector(m1).xyz;
-    const w2 = modelMat.multiplyVector(m2).xyz;
-    const w3 = modelMat.multiplyVector(m3).xyz;
-
-    // Clip space with perspective division by w
+    // Clip space and perspective divide
     const c1 = mvp.multiplyVector(m1).divideByW();
     const c2 = mvp.multiplyVector(m2).divideByW();
     const c3 = mvp.multiplyVector(m3).divideByW();
@@ -80,15 +70,25 @@ const draw = () => {
       line(v2, v3, Vector3.One.toRGB(), image);
       line(v3, v1, Vector3.One.toRGB(), image);
     } else {
-      // Super basic lighting
-      const ab = w3.subtract(w1);
-      const ac = w2.subtract(w1);
-      const n = ab.cross(ac).normalize();
-      const intensity = n.dot(lightDir);
-      const col = lightCol.scale(intensity).toRGB();
+      // Vertex lighting
+      const n = headModel.normals[i].toVec4();
+      const n2 = headModel.normals[i + 1].toVec4();
+      const n3 = headModel.normals[i + 2].toVec4();
+
+      // rotate normals
+      const n1Rot = rotMat.multiplyVector(n);
+      const n2Rot = rotMat.multiplyVector(n2);
+      const n3Rot = rotMat.multiplyVector(n3);
+
+      const intensity1 = -n1Rot.xyz.dot(lightDir);
+      const intensity2 = -n2Rot.xyz.dot(lightDir);
+      const intensity3 = -n3Rot.xyz.dot(lightDir);
+      const col1 = lightCol.scale(intensity1).toRGB();
+      const col2 = lightCol.scale(intensity2).toRGB();
+      const col3 = lightCol.scale(intensity3).toRGB();
 
       // Draw filled
-      triangle(v1, v2, v3, col, col, col, zBuffer, image);
+      triangle(v1, v2, v3, col1, col2, col3, zBuffer, image);
     }
   }
   ctx.putImageData(image, 0, 0);
