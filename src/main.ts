@@ -1,8 +1,8 @@
 import "./style.css";
-import { Matrix4, Vector3 } from "./maths";
+import { Matrix4, Vector3, Vector4 } from "./maths";
 import { clear, line, viewportTransform, triangle } from "./drawing";
 import { loadObj } from "./utils/objLoader";
-import headObj from "./models/head.obj?raw";
+import obj from "./models/head.obj?raw";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
@@ -19,14 +19,12 @@ const zBuffer = new Float32Array(canvas.width * canvas.height);
 let drawWireframe = wireframeCb.checked;
 let isOrtho = orthographicCb.checked;
 
-// Head model
-const headModel = loadObj(headObj);
-let headRot = new Vector3(0, 0, 0);
+// Model
+const model = loadObj(obj);
+let modelRotation = new Vector3(0, 0, 0);
 
 const update = (dt: number) => {
-  headRot.y += dt / 5;
-  // headRot.x += dt / 5;
-  // headRot.z += dt / 5;
+  modelRotation.y += dt / 5;
 };
 
 const lightDir = new Vector3(0, 0, 1);
@@ -44,51 +42,43 @@ const draw = () => {
     ? Matrix4.Ortho(orthoSize, image)
     : Matrix4.Perspective(60, image);
 
-  const modelMat = Matrix4.TRS(Vector3.Zero, headRot, Vector3.One);
-  const rotMat = Matrix4.RotateEuler(headRot);
+  const modelMat = Matrix4.TRS(Vector3.Zero, modelRotation, Vector3.One);
+  const rotMat = Matrix4.RotateEuler(modelRotation);
   const mvp = modelMat.multiply(viewMat.multiply(projMat));
 
-  for (let i = 0; i < headModel.vertices.length; i += 3) {
-    // Model space
-    const m1 = headModel.vertices[i].toVec4();
-    const m2 = headModel.vertices[i + 1].toVec4();
-    const m3 = headModel.vertices[i + 2].toVec4();
+  const vertShader = (v: Vector4, n: Vector4) => {
+    // Vertex transformation
+    const pos = mvp.multiplyVector(v).divideByW();
 
-    // Clip space and perspective divide
-    const c1 = mvp.multiplyVector(m1).divideByW();
-    const c2 = mvp.multiplyVector(m2).divideByW();
-    const c3 = mvp.multiplyVector(m3).divideByW();
+    // Vertex lighting
+    const rotatedNormal = rotMat.multiplyVector(n);
+    const intensity = -rotatedNormal.xyz.dot(lightDir);
+    const col = lightCol.scale(intensity).toRGB();
 
-    // Screen space (From [-1, 1] to [0, width/height]])
-    const v1 = viewportTransform(c1, image);
-    const v2 = viewportTransform(c2, image);
-    const v3 = viewportTransform(c3, image);
+    return { pos, col };
+  };
+
+  for (let i = 0; i < model.vertices.length; i += 3) {
+    const vert0 = model.vertices[i].toVec4();
+    const vert1 = model.vertices[i + 1].toVec4();
+    const vert2 = model.vertices[i + 2].toVec4();
+
+    const norm0 = model.normals[i].toVec4();
+    const norm1 = model.normals[i + 1].toVec4();
+    const norm2 = model.normals[i + 2].toVec4();
+
+    const p0 = vertShader(vert0, norm0);
+    const p1 = vertShader(vert1, norm1);
+    const p2 = vertShader(vert2, norm2);
 
     if (drawWireframe) {
       // Draw wireframe
-      line(v1, v2, Vector3.One.toRGB(), image);
-      line(v2, v3, Vector3.One.toRGB(), image);
-      line(v3, v1, Vector3.One.toRGB(), image);
+      line(p0.pos, p1.pos, Vector3.One.toRGB(), image);
+      line(p1.pos, p2.pos, Vector3.One.toRGB(), image);
+      line(p2.pos, p0.pos, Vector3.One.toRGB(), image);
     } else {
-      // Vertex lighting
-      const n = headModel.normals[i].toVec4();
-      const n2 = headModel.normals[i + 1].toVec4();
-      const n3 = headModel.normals[i + 2].toVec4();
-
-      // rotate normals
-      const n1Rot = rotMat.multiplyVector(n);
-      const n2Rot = rotMat.multiplyVector(n2);
-      const n3Rot = rotMat.multiplyVector(n3);
-
-      const intensity1 = -n1Rot.xyz.dot(lightDir);
-      const intensity2 = -n2Rot.xyz.dot(lightDir);
-      const intensity3 = -n3Rot.xyz.dot(lightDir);
-      const col1 = lightCol.scale(intensity1).toRGB();
-      const col2 = lightCol.scale(intensity2).toRGB();
-      const col3 = lightCol.scale(intensity3).toRGB();
-
       // Draw filled
-      triangle(v1, v2, v3, col1, col2, col3, zBuffer, image);
+      triangle(p0.pos, p1.pos, p2.pos, p0.col, p1.col, p2.col, zBuffer, image);
     }
   }
   ctx.putImageData(image, 0, 0);
@@ -105,8 +95,8 @@ wireframeCb.onchange = () => {
 
 canvas.onmousemove = (e) => {
   if (e.buttons === 1) {
-    headRot.y += e.movementX / 250;
-    headRot.x -= e.movementY / 250;
+    modelRotation.y += e.movementX / 250;
+    modelRotation.x -= e.movementY / 250;
   }
 };
 

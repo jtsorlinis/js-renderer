@@ -1,4 +1,4 @@
-import { setPixel } from ".";
+import { setPixel, viewportTransform } from ".";
 import { Vector3 } from "../maths";
 
 export const line = (
@@ -10,6 +10,10 @@ export const line = (
   // Clip near and far planes
   if (start.z < -1 || end.z < -1) return;
   if (start.z > 1 || end.z > 1) return;
+
+  // Viewport transform
+  start = viewportTransform(start, image);
+  end = viewportTransform(end, image);
 
   // Don't draw if line is completely off screen
   if (start.x < 0 && end.x < 0) return;
@@ -76,10 +80,15 @@ export const triangle = (
   if (p0.z > 1 || p1.z > 1 || p2.z > 1) return;
 
   // Backface culling
-  const ab = p1.subtract(p0);
-  const ac = p2.subtract(p0);
+  const ab = p2.subtract(p0);
+  const ac = p1.subtract(p0);
   const n = ab.x * ac.y - ac.x * ab.y;
   if (n < 0) return;
+
+  // Viewport transform
+  p0 = viewportTransform(p0, image);
+  p1 = viewportTransform(p1, image);
+  p2 = viewportTransform(p2, image);
 
   let minX = ~~Math.max(0, Math.min(p0.x, p1.x, p2.x));
   let minY = ~~Math.max(0, Math.min(p0.y, p1.y, p2.y));
