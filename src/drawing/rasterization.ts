@@ -35,40 +35,60 @@ export const line = (
 };
 
 const barycentric = (p1: Vector3, p2: Vector3, p3: Vector3, P: Vector3) => {
-  const v0 = p2.subtract(p1);
-  const v1 = p3.subtract(p1);
-  const v2 = P.subtract(p1);
+  const v0x = p2.x - p1.x;
+  const v0y = p2.y - p1.y;
+  const v1x = p3.x - p1.x;
+  const v1y = p3.y - p1.y;
+  const v2x = P.x - p1.x;
+  const v2y = P.y - p1.y;
 
-  const denom = v0.x * v1.y - v1.x * v0.y;
-  const v = (v2.x * v1.y - v1.x * v2.y) / denom;
-  const w = (v0.x * v2.y - v2.x * v0.y) / denom;
+  const invDenom = 1 / (v0x * v1y - v1x * v0y);
+  const v = (v2x * v1y - v1x * v2y) * invDenom;
+  const w = (v0x * v2y - v2x * v0y) * invDenom;
   const u = 1 - v - w;
 
-  return new Vector3(u, v, w);
+  return { u, v, w };
 };
 
 export const triangle = (
   p0: Vector3,
   p1: Vector3,
   p2: Vector3,
+  c0: Vector3,
+  c1: Vector3,
+  c2: Vector3,
   zBuffer: Float32Array,
-  colour: Vector3,
   image: ImageData
 ) => {
+  // Clip near and far planes
+  if (p0.z < -1 || p1.z < -1 || p2.z < -1) return;
+  if (p0.z > 1 || p1.z > 1 || p2.z > 1) return;
+
+  // Backface culling
+  const ab = p1.subtract(p0);
+  const ac = p2.subtract(p0);
+  const n = ab.x * ac.y - ac.x * ab.y;
+  if (n < 0) return;
+
   let minX = ~~Math.max(0, Math.min(p0.x, p1.x, p2.x));
   let minY = ~~Math.max(0, Math.min(p0.y, p1.y, p2.y));
   let maxX = ~~Math.min(image.width, Math.max(p0.x, p1.x, p2.x));
   let maxY = ~~Math.min(image.height, Math.max(p0.y, p1.y, p2.y));
   const P = new Vector3();
+  const c = new Vector3();
   for (P.y = minY; P.y <= maxY; P.y++) {
     for (P.x = minX; P.x <= maxX; P.x++) {
-      const bcScreen = barycentric(p0, p1, p2, P);
-      if (bcScreen.x < 0 || bcScreen.y < 0 || bcScreen.z < 0) continue;
-      P.z = p0.z * bcScreen.x + p1.z * bcScreen.y + p2.z * bcScreen.z;
+      const bc = barycentric(p0, p1, p2, P);
+      if (bc.u < 0 || bc.v < 0 || bc.w < 0) continue;
+      P.z = p0.z * bc.u + p1.z * bc.v + p2.z * bc.w;
       const index = P.x + P.y * image.width;
       if (P.z < zBuffer[index]) {
         zBuffer[index] = P.z;
-        setPixel(P.xy, colour, image);
+        // Interpolate colour
+        c.x = c0.x * bc.u + c1.x * bc.v + c2.x * bc.w;
+        c.y = c0.y * bc.u + c1.y * bc.v + c2.y * bc.w;
+        c.z = c0.z * bc.u + c1.z * bc.v + c2.z * bc.w;
+        setPixel(P.xy, c, image);
       }
     }
   }
