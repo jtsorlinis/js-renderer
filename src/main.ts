@@ -74,18 +74,6 @@ const draw = () => {
     const v2 = viewportTransform(c2, image);
     const v3 = viewportTransform(c3, image);
 
-    // backface culling
-    if (!drawWireframe) {
-      const ab = v2.subtract(v1);
-      const ac = v3.subtract(v1);
-      const n = ab.x * ac.y - ac.x * ab.y;
-      if (n < 0) continue;
-    }
-
-    // clip near and far planes
-    if (v1.z < -1 || v2.z < -1 || v3.z < -1) continue;
-    if (v1.z > 1 || v2.z > 1 || v3.z > 1) continue;
-
     if (drawWireframe) {
       // Draw wireframe
       line(v1, v2, Vector3.One.toRGB(), image);
@@ -100,7 +88,7 @@ const draw = () => {
       const col = lightCol.scale(intensity).toRGB();
 
       // Draw filled
-      triangle(v1, v2, v3, zBuffer, col, image);
+      triangle(v1, v2, v3, col, col, col, zBuffer, image);
     }
   }
   ctx.putImageData(image, 0, 0);
