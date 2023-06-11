@@ -35,14 +35,14 @@ let orthoSize = 1.5;
 
 const vertShader = (v: Vector4, n: Vector4, mvp: Matrix4, rotMat: Matrix4) => {
   // Vertex transformation
-  const pos = mvp.multiplyAndPerpsectiveDivide(v);
+  const position = mvp.multiplyAndPerpsectiveDivide(v);
 
   // Vertex lighting
   const rotatedNormal = rotMat.multiplyVector(n);
   const intensity = -rotatedNormal.xyz.dot(lightDir);
-  const col = lightCol.scale(intensity).toRGB();
+  const colour = lightCol.scale(intensity).toRGB();
 
-  return { pos, col };
+  return { position, colour };
 };
 
 const draw = () => {
@@ -59,27 +59,23 @@ const draw = () => {
   const mvp = modelMat.multiply(viewMat.multiply(projMat));
 
   for (let i = 0; i < model.vertices.length; i += 3) {
-    const vert0 = model.vertices[i].toVec4();
-    const vert1 = model.vertices[i + 1].toVec4();
-    const vert2 = model.vertices[i + 2].toVec4();
-
-    const norm0 = model.normals[i].toVec4();
-    const norm1 = model.normals[i + 1].toVec4();
-    const norm2 = model.normals[i + 2].toVec4();
-
-    const p0 = vertShader(vert0, norm0, mvp, rotMat);
-    const p1 = vertShader(vert1, norm1, mvp, rotMat);
-    const p2 = vertShader(vert2, norm2, mvp, rotMat);
-
-    if (drawWireframe) {
-      // Draw wireframe
-      line(p0.pos, p1.pos, Vector3.One.toRGB(), image);
-      line(p1.pos, p2.pos, Vector3.One.toRGB(), image);
-      line(p2.pos, p0.pos, Vector3.One.toRGB(), image);
-    } else {
-      // Draw filled
-      triangle(p0.pos, p1.pos, p2.pos, p0.col, p1.col, p2.col, zBuffer, image);
+    const verts = [];
+    for (let j = 0; j < 3; j++) {
+      const vert = model.vertices[i + j];
+      const norm = model.normals[i + j];
+      verts[j] = vertShader(vert.toVec4(), norm.toVec4(), mvp, rotMat);
     }
+
+    // Draw wireframe
+    if (drawWireframe) {
+      line(verts[0].position, verts[1].position, image);
+      line(verts[1].position, verts[2].position, image);
+      line(verts[2].position, verts[0].position, image);
+      continue;
+    }
+
+    // Draw filled
+    triangle(verts, zBuffer, image);
   }
   ctx.putImageData(image, 0, 0);
 };
