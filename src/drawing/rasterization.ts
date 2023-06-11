@@ -1,6 +1,6 @@
-import { Barycentric, Vertex, setPixel, viewportTransform } from ".";
+import { Barycentric, setPixel, viewportTransform } from ".";
 import { Vector3 } from "../maths";
-import { Uniforms, fragShader } from "../shader";
+import { Uniforms, Vertex, fragShader } from "../shader";
 
 const WHITE = new Vector3(255, 255, 255);
 
@@ -99,15 +99,10 @@ export const triangle = (
 
   // Reuse variables to avoid allocations
   const P = new Vector3();
-  const c = new Vector3();
   const n = new Vector3();
   const bc: Barycentric = { u: 0, v: 0, w: 0 };
 
-  // Extract attributes
-  const c0 = verts[0].colour;
-  const c1 = verts[1].colour;
-  const c2 = verts[2].colour;
-
+  // Extract normals
   const n0 = verts[0].normal;
   const n1 = verts[1].normal;
   const n2 = verts[2].normal;
@@ -136,12 +131,11 @@ export const triangle = (
         // Update z buffer with new pixel depth
         zBuffer[index] = P.z;
 
-        // Interpolate attributes
-        interpolateVec3(c0, c1, c2, bc, c);
+        // Interpolate normals
         interpolateVec3(n0, n1, n2, bc, n);
 
         // Fragment shader
-        const finalColour = fragShader(c, n, uniforms);
+        const finalColour = fragShader(n, uniforms);
 
         // Set final pixel colour
         setPixel(P.xy, finalColour.toRGB(), image);
