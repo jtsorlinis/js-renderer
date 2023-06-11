@@ -20,4 +20,8 @@ export class Vector4 {
   public get xyz() {
     return new Vector3(this.x, this.y, this.z);
   }
+
+  public divideByW() {
+    return new Vector3(this.x / this.w, this.y / this.w, this.z / this.w);
+  }
 }
