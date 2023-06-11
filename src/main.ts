@@ -1,6 +1,6 @@
 import "./style.css";
 import { Matrix4, Vector3, Vector4 } from "./maths";
-import { clear, line, triangle } from "./drawing";
+import { Vertex, clear, line, triangle } from "./drawing";
 import { loadObj } from "./utils/objLoader";
 import obj from "./models/head.obj?raw";
 
@@ -36,13 +36,13 @@ let orthoSize = 1.5;
 const vertShader = (v: Vector4, n: Vector4, mvp: Matrix4, rotMat: Matrix4) => {
   // Vertex transformation
   const position = mvp.multiplyAndPerpsectiveDivide(v);
+  const normal = rotMat.multiplyVector(n).xyz;
 
   // Vertex lighting
-  const rotatedNormal = rotMat.multiplyVector(n);
-  const intensity = -rotatedNormal.xyz.dot(lightDir);
+  const intensity = -normal.dot(lightDir);
   const colour = lightCol.scale(intensity).toRGB();
 
-  return { position, colour };
+  return { position, normal, colour };
 };
 
 const draw = () => {
@@ -59,7 +59,7 @@ const draw = () => {
   const mvp = modelMat.multiply(viewMat.multiply(projMat));
 
   for (let i = 0; i < model.vertices.length; i += 3) {
-    const verts = [];
+    const verts: Vertex[] = [];
     for (let j = 0; j < 3; j++) {
       const vert = model.vertices[i + j];
       const norm = model.normals[i + j];
