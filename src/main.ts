@@ -2,8 +2,9 @@ import "./style.css";
 import { Matrix4, Vector3 } from "./maths";
 import { clear, line, triangle } from "./drawing";
 import { loadObj } from "./utils/objLoader";
-import obj from "./models/head.obj?raw";
 import { Vertex, vertShader } from "./shader";
+
+import obj from "./models/head.obj?raw";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
