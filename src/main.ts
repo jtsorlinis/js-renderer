@@ -71,10 +71,26 @@ const draw = () => {
   ctx.putImageData(image, 0, 0);
 };
 
+let prevTime = 0;
+const loop = () => {
+  const now = performance.now();
+  const dt = (now - prevTime) / 1000;
+  fpsText.innerHTML = dt.toFixed(3);
+  prevTime = now;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+};
+
 canvas.onmousemove = (e) => {
   if (e.buttons === 1) {
+    // left mouse button
     modelRotation.y += e.movementX / 250;
     modelRotation.x -= e.movementY / 250;
+  } else if (e.buttons === 2) {
+    // right mouse button
+    camPos.x -= e.movementX / 250;
+    camPos.y += e.movementY / 250;
   }
 };
 
@@ -88,15 +104,6 @@ canvas.onwheel = (e) => {
   }
 };
 
-let prevTime = 0;
-const loop = () => {
-  const now = performance.now();
-  const dt = (now - prevTime) / 1000;
-  fpsText.innerHTML = dt.toFixed(3);
-  prevTime = now;
-  update(dt);
-  draw();
-  requestAnimationFrame(loop);
-};
+canvas.oncontextmenu = (e) => e.preventDefault();
 
 loop();
