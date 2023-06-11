@@ -22,7 +22,7 @@ let drawWireframe = wireframeCb.checked;
 let isOrtho = orthographicCb.checked;
 
 // Model
-const model = loadObj(obj);
+const model = loadObj(obj, true);
 let modelRotation = new Vector3(0, 0, 0);
 
 const update = (dt: number) => {
