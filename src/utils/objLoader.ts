@@ -1,6 +1,6 @@
 import { Vector3 } from "../maths";
 
-export const loadObj = (file: string) => {
+export const loadObj = (file: string, normalize = false) => {
   const vertices: Vector3[] = [];
   const normals: Vector3[] = [];
 
@@ -61,13 +61,26 @@ export const loadObj = (file: string) => {
     }
   }
 
+  const maxPos = new Vector3(0, 0, 0);
+
   // rebuild vertices and normals
   for (let i = 0; i < tempTris.length; i++) {
     const vert = tempVerts[tempTris[i]];
     const normal = tempNormals[tempNormalTris[i]];
     vertices.push(vert);
     normals.push(normal);
+
+    if (Math.abs(vert.x) > maxPos.x) maxPos.x = vert.x;
+    if (Math.abs(vert.y) > maxPos.y) maxPos.y = vert.y;
+    if (Math.abs(vert.z) > maxPos.z) maxPos.z = vert.z;
   }
 
+  // normalize vertices
+  if (normalize) {
+    const scaleFactor = 1 / Math.max(maxPos.x, maxPos.y, maxPos.z);
+    for (let i = 0; i < vertices.length; i++) {
+      vertices[i] = vertices[i].scale(scaleFactor);
+    }
+  }
   return { vertices, normals };
 };
