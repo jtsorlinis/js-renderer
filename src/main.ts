@@ -1,5 +1,5 @@
 import "./style.css";
-import { Matrix4, Vector3, Vector4 } from "./maths";
+import { Matrix4, Vector3 } from "./maths";
 import { Vertex, clear, line, triangle } from "./drawing";
 import { loadObj } from "./utils/objLoader";
 import obj from "./models/head.obj?raw";
@@ -33,10 +33,10 @@ const lightCol = new Vector3(1, 1, 1);
 const camPos = new Vector3(0, 0, -2.5);
 let orthoSize = 1.5;
 
-const vertShader = (v: Vector4, n: Vector4, mvp: Matrix4, rotMat: Matrix4) => {
+const vertShader = (v: Vector3, n: Vector3, mvp: Matrix4, rotMat: Matrix4) => {
   // Vertex transformation
-  const position = mvp.multiplyAndPerpsectiveDivide(v);
-  const normal = rotMat.multiplyVector(n).xyz;
+  const position = mvp.multPerspectiveDiv(v);
+  const normal = rotMat.multiplyVector3(n);
 
   // Vertex lighting
   const intensity = -normal.dot(lightDir);
@@ -63,7 +63,7 @@ const draw = () => {
     for (let j = 0; j < 3; j++) {
       const vert = model.vertices[i + j];
       const norm = model.normals[i + j];
-      verts[j] = vertShader(vert.toVec4(), norm.toVec4(), mvp, rotMat);
+      verts[j] = vertShader(vert, norm, mvp, rotMat);
     }
 
     // Draw wireframe
