@@ -9,12 +9,6 @@ export interface Barycentric {
   w: number;
 }
 
-export interface Vertex {
-  position: Vector3;
-  colour: Vector3;
-  normal: Vector3;
-}
-
 export const viewportTransform = (v: Vector3, image: ImageData) => {
   const x = (v.x * image.width) / 2 + image.width / 2;
   const y = (-v.y * image.height) / 2 + image.height / 2;

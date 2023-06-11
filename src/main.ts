@@ -1,9 +1,9 @@
 import "./style.css";
 import { Matrix4, Vector3 } from "./maths";
-import { Vertex, clear, line, triangle } from "./drawing";
+import { clear, line, triangle } from "./drawing";
 import { loadObj } from "./utils/objLoader";
 import obj from "./models/head.obj?raw";
-import { vertShader } from "./shader";
+import { Vertex, vertShader } from "./shader";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
@@ -51,9 +51,9 @@ const draw = () => {
   for (let i = 0; i < model.vertices.length; i += 3) {
     const verts: Vertex[] = [];
     for (let j = 0; j < 3; j++) {
-      const vert = model.vertices[i + j];
-      const norm = model.normals[i + j];
-      verts[j] = vertShader(vert, norm, uniforms);
+      const position = model.vertices[i + j];
+      const normal = model.normals[i + j];
+      verts[j] = vertShader({ position, normal }, uniforms);
     }
 
     // Draw wireframe
