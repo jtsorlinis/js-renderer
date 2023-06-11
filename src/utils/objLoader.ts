@@ -3,6 +3,7 @@ import { Vector3 } from "../maths";
 export const loadObj = (file: string, normalize = false) => {
   const vertices: Vector3[] = [];
   const normals: Vector3[] = [];
+  const flatNormals: Vector3[] = [];
 
   const tempVerts: Vector3[] = [];
   const tempNormals: Vector3[] = [];
@@ -75,6 +76,14 @@ export const loadObj = (file: string, normalize = false) => {
     if (Math.abs(vert.z) > maxPos.z) maxPos.z = vert.z;
   }
 
+  // Flat normals
+  for (let i = 0; i < vertices.length; i += 3) {
+    const ab = vertices[i + 1].subtract(vertices[i]);
+    const ac = vertices[i + 2].subtract(vertices[i]);
+    const normal = ab.cross(ac).normalize();
+    flatNormals.push(normal, normal, normal);
+  }
+
   // normalize vertices
   if (normalize) {
     const scaleFactor = 1 / Math.max(maxPos.x, maxPos.y, maxPos.z);
@@ -82,5 +91,5 @@ export const loadObj = (file: string, normalize = false) => {
       vertices[i] = vertices[i].scale(scaleFactor);
     }
   }
-  return { vertices, normals };
+  return { vertices, normals, flatNormals };
 };

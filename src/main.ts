@@ -8,8 +8,9 @@ import obj from "./models/head.obj?raw";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
-const wireframeCb = document.getElementById("wireframeCb") as HTMLInputElement;
 const orthographicCb = document.getElementById("orthoCb") as HTMLInputElement;
+const shadingDd = document.getElementById("shadingDd") as HTMLSelectElement;
+
 const ctx = canvas.getContext("2d");
 if (!ctx) {
   throw new Error("Could not get canvas context");
@@ -18,8 +19,6 @@ if (!ctx) {
 // Setup canvas and zBuffer
 const image = new ImageData(canvas.width, canvas.height);
 const zBuffer = new Float32Array(canvas.width * canvas.height);
-let drawWireframe = wireframeCb.checked;
-let isOrtho = orthographicCb.checked;
 
 // Model
 const model = loadObj(obj, true);
@@ -40,7 +39,7 @@ const draw = () => {
 
   const camForward = camPos.add(Vector3.Forward);
   const viewMat = Matrix4.LookAt(camPos, camForward, Vector3.Up);
-  const projMat = isOrtho
+  const projMat = orthographicCb.checked
     ? Matrix4.Ortho(orthoSize, image)
     : Matrix4.Perspective(60, image);
 
@@ -53,12 +52,13 @@ const draw = () => {
     const verts: Vertex[] = [];
     for (let j = 0; j < 3; j++) {
       const position = model.vertices[i + j];
-      const normal = model.normals[i + j];
+      const normalsKey = shadingDd.value === "flat" ? "flatNormals" : "normals";
+      const normal = model[normalsKey][i + j];
       verts[j] = vertShader({ position, normal }, uniforms);
     }
 
     // Draw wireframe
-    if (drawWireframe) {
+    if (shadingDd.value === "wireframe") {
       line(verts[0].position, verts[1].position, image);
       line(verts[1].position, verts[2].position, image);
       line(verts[2].position, verts[0].position, image);
@@ -71,15 +71,6 @@ const draw = () => {
   ctx.putImageData(image, 0, 0);
 };
 
-orthographicCb.onchange = () => {
-  isOrtho = orthographicCb.checked;
-  camPos.z = -2.5;
-};
-
-wireframeCb.onchange = () => {
-  drawWireframe = wireframeCb.checked;
-};
-
 canvas.onmousemove = (e) => {
   if (e.buttons === 1) {
     modelRotation.y += e.movementX / 250;
@@ -88,7 +79,7 @@ canvas.onmousemove = (e) => {
 };
 
 canvas.onwheel = (e) => {
-  if (isOrtho) {
+  if (orthographicCb.checked) {
     orthoSize += e.deltaY / 100;
     orthoSize = Math.max(0.01, orthoSize);
   } else {
