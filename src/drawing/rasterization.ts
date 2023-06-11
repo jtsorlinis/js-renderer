@@ -1,12 +1,9 @@
 import { setPixel, viewportTransform } from ".";
 import { Vector3 } from "../maths";
 
-export const line = (
-  start: Vector3,
-  end: Vector3,
-  colour: Vector3,
-  image: ImageData
-) => {
+const WHITE = new Vector3(255, 255, 255);
+
+export const line = (start: Vector3, end: Vector3, image: ImageData) => {
   // Clip near and far planes
   if (start.z < -1 || end.z < -1) return;
   if (start.z > 1 || end.z > 1) return;
@@ -33,7 +30,7 @@ export const line = (
 
   while (true) {
     if (s.x >= 0 && s.x < image.width && s.y >= 0 && s.y < image.height) {
-      setPixel(s.xy, colour, image);
+      setPixel(s.xy, WHITE, image);
     }
 
     if (s.x === e.x && s.y === e.y) break;
@@ -66,15 +63,17 @@ const barycentric = (p1: Vector3, p2: Vector3, p3: Vector3, P: Vector3) => {
 };
 
 export const triangle = (
-  p0: Vector3,
-  p1: Vector3,
-  p2: Vector3,
-  c0: Vector3,
-  c1: Vector3,
-  c2: Vector3,
+  verts: any,
   zBuffer: Float32Array,
   image: ImageData
 ) => {
+  let p0 = verts[0].position;
+  let p1 = verts[1].position;
+  let p2 = verts[2].position;
+  const c0 = verts[0].colour;
+  const c1 = verts[1].colour;
+  const c2 = verts[2].colour;
+
   // Clip near and far planes
   if (p0.z < -1 || p1.z < -1 || p2.z < -1) return;
   if (p0.z > 1 || p1.z > 1 || p2.z > 1) return;
