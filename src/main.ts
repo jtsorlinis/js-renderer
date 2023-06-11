@@ -79,6 +79,7 @@ canvas.onmousemove = (e) => {
 };
 
 canvas.onwheel = (e) => {
+  e.preventDefault();
   if (orthographicCb.checked) {
     orthoSize += e.deltaY / 100;
     orthoSize = Math.max(0.01, orthoSize);
