@@ -9,9 +9,17 @@
   <body>
     <div id="app"></div>
     <canvas id="canvas" width="800" height="600"></canvas>
-    <input type="checkbox" id="orthoCb">Orthographic</input>
-    <input type="checkbox" id="wireframeCb">Wireframe</input>
-    <hr/>
+    <label><input type="checkbox" id="orthoCb" />Orthographic</label>
+    &emsp;
+    <label>
+      Shading:
+      <select id="shadingDd">
+        <option value="phong">Phong</option>
+        <option value="flat">Flat</option>
+        <option value="wireframe">Wireframe</option>
+      </select>
+    </label>
+    <hr />
     <div>Frametime: <span id="fps">00</span>s</div>
     <script type="module" src="/src/main.ts"></script>
   </body>
