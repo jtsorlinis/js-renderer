@@ -1,5 +1,6 @@
 import { Barycentric, Vertex, setPixel, viewportTransform } from ".";
 import { Vector3 } from "../maths";
+import { Uniforms, fragShader } from "../shader";
 
 const WHITE = new Vector3(255, 255, 255);
 
@@ -72,6 +73,7 @@ const barycentric = (
 // Draw a triangle in screen space (pixels)
 export const triangle = (
   verts: Vertex[],
+  uniforms: Uniforms,
   zBuffer: Float32Array,
   image: ImageData
 ) => {
@@ -138,8 +140,11 @@ export const triangle = (
         interpolateVec3(c0, c1, c2, bc, c);
         interpolateVec3(n0, n1, n2, bc, n);
 
+        // Fragment shader
+        const finalColour = fragShader(c, n, uniforms);
+
         // Set final pixel colour
-        setPixel(P.xy, c, image);
+        setPixel(P.xy, finalColour.toRGB(), image);
       }
     }
   }

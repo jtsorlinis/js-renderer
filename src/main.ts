@@ -46,14 +46,14 @@ const draw = () => {
   const modelMat = Matrix4.TRS(Vector3.Zero, modelRotation, Vector3.One);
   const rotMat = Matrix4.RotateEuler(modelRotation);
   const mvp = modelMat.multiply(viewMat.multiply(projMat));
-  const vertUniforms = { mvp, rotMat, lightDir, lightCol };
+  const uniforms = { mvp, rotMat, lightDir, lightCol };
 
   for (let i = 0; i < model.vertices.length; i += 3) {
     const verts: Vertex[] = [];
     for (let j = 0; j < 3; j++) {
       const vert = model.vertices[i + j];
       const norm = model.normals[i + j];
-      verts[j] = vertShader(vert, norm, vertUniforms);
+      verts[j] = vertShader(vert, norm, uniforms);
     }
 
     // Draw wireframe
@@ -65,7 +65,7 @@ const draw = () => {
     }
 
     // Draw filled
-    triangle(verts, zBuffer, image);
+    triangle(verts, uniforms, zBuffer, image);
   }
   ctx.putImageData(image, 0, 0);
 };
