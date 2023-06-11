@@ -3,6 +3,7 @@ import { Matrix4, Vector3 } from "./maths";
 import { Vertex, clear, line, triangle } from "./drawing";
 import { loadObj } from "./utils/objLoader";
 import obj from "./models/head.obj?raw";
+import { vertShader } from "./shader";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
@@ -33,18 +34,6 @@ const lightCol = new Vector3(1, 1, 1);
 const camPos = new Vector3(0, 0, -2.5);
 let orthoSize = 1.5;
 
-const vertShader = (v: Vector3, n: Vector3, mvp: Matrix4, rotMat: Matrix4) => {
-  // Vertex transformation
-  const position = mvp.multPerspectiveDiv(v);
-  const normal = rotMat.multiplyVector3(n);
-
-  // Vertex lighting
-  const intensity = -normal.dot(lightDir);
-  const colour = lightCol.scale(intensity).toRGB();
-
-  return { position, normal, colour };
-};
-
 const draw = () => {
   clear(image, zBuffer);
 
@@ -57,13 +46,14 @@ const draw = () => {
   const modelMat = Matrix4.TRS(Vector3.Zero, modelRotation, Vector3.One);
   const rotMat = Matrix4.RotateEuler(modelRotation);
   const mvp = modelMat.multiply(viewMat.multiply(projMat));
+  const vertUniforms = { mvp, rotMat, lightDir, lightCol };
 
   for (let i = 0; i < model.vertices.length; i += 3) {
     const verts: Vertex[] = [];
     for (let j = 0; j < 3; j++) {
       const vert = model.vertices[i + j];
       const norm = model.normals[i + j];
-      verts[j] = vertShader(vert, norm, mvp, rotMat);
+      verts[j] = vertShader(vert, norm, vertUniforms);
     }
 
     // Draw wireframe
