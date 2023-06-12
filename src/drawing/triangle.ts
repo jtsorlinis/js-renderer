@@ -44,7 +44,7 @@ export const triangle = (
   let p2 = verts[2].position;
 
   // Clip near and far planes
-  if (p0.z < -1 || p1.z < -1 || p2.z < -1) return;
+  if (p0.z < 0 || p1.z < 0 || p2.z < 0) return;
   if (p0.z > 1 || p1.z > 1 || p2.z > 1) return;
 
   // Backface culling based on winding order

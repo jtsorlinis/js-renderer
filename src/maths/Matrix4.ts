@@ -88,8 +88,8 @@ export class Matrix4 {
     const aspect = image.width / image.height;
     orthoMat.m[0] = 1 / (orthoSize * aspect);
     orthoMat.m[5] = 1 / orthoSize;
-    orthoMat.m[10] = 2 / (far - near);
-    orthoMat.m[14] = -(far + near) / (far - near);
+    orthoMat.m[10] = 1 / (far - near);
+    orthoMat.m[14] = -near / (far - near);
     return orthoMat;
   }
 
@@ -101,9 +101,9 @@ export class Matrix4 {
 
     perspectiveMat.m[0] = 1 / (aspect * tanHalfFovy);
     perspectiveMat.m[5] = 1 / tanHalfFovy;
-    perspectiveMat.m[10] = (far + near) / (far - near);
+    perspectiveMat.m[10] = far / (far - near);
     perspectiveMat.m[11] = 1;
-    perspectiveMat.m[14] = -(2 * far * near) / (far - near);
+    perspectiveMat.m[14] = -near * (far / (far - near));
     perspectiveMat.m[15] = 0;
 
     return perspectiveMat;
