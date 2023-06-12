@@ -2,7 +2,7 @@ import "./style.css";
 import { Matrix4, Vector3 } from "./maths";
 import { clear, line, triangle } from "./drawing";
 import { loadObj } from "./utils/objLoader";
-import { Vertex, vertShader } from "./shader";
+import { Vertex, fragShader, vertShader } from "./shader";
 
 import obj from "./models/head.obj?raw";
 
@@ -66,7 +66,7 @@ const draw = () => {
     }
 
     // Draw filled
-    triangle(verts, uniforms, zBuffer, image);
+    triangle(verts, fragShader, uniforms, zBuffer, image);
   }
   ctx.putImageData(image, 0, 0);
 };
