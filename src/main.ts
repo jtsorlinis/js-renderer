@@ -2,7 +2,7 @@ import "./style.css";
 import { Matrix4, Vector3 } from "./maths";
 import { clear, line, triangle } from "./drawing";
 import { loadObj } from "./utils/objLoader";
-import { Vertex, shader } from "./shader";
+import { V2F, shader } from "./shader";
 
 import obj from "./models/head.obj?raw";
 
@@ -49,7 +49,7 @@ const draw = () => {
   const uniforms = { mvp, rotMat, lightDir, lightCol };
 
   for (let i = 0; i < model.vertices.length; i += 3) {
-    const verts: Vertex[] = [];
+    const verts: V2F[] = [];
     for (let j = 0; j < 3; j++) {
       const position = model.vertices[i + j];
       const normalsKey = shadingDd.value === "flat" ? "flatNormals" : "normals";

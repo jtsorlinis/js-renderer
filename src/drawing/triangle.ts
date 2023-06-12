@@ -1,6 +1,6 @@
 import { setPixel, viewportTransform } from ".";
 import { Vector3 } from "../maths";
-import { Uniforms, Vertex } from "../shader";
+import { Uniforms, V2F, Vertex } from "../shader";
 
 export interface Barycentric {
   u: number;
@@ -32,8 +32,8 @@ const barycentric = (
 
 // Draw a triangle in screen space (pixels)
 export const triangle = (
-  verts: Vertex[],
-  fragShader: (...args: any[]) => Vector3,
+  verts: V2F[],
+  fragShader: (varyings: V2F, uniforms: Uniforms) => Vector3,
   uniforms: Uniforms,
   zBuffer: Float32Array,
   image: ImageData
@@ -58,15 +58,19 @@ export const triangle = (
   p1 = viewportTransform(p1, image);
   p2 = viewportTransform(p2, image);
 
-  // Reuse variables to avoid allocations
-  const P = new Vector3();
-  const n = new Vector3();
-  const bc: Barycentric = { u: 0, v: 0, w: 0 };
+  const varyings = {
+    position: new Vector3(),
+    normal: new Vector3(),
+  };
 
-  // Extract normals
+  // Extract varyings
   const n0 = verts[0].normal;
   const n1 = verts[1].normal;
   const n2 = verts[2].normal;
+
+  // Reuse variables to avoid allocations
+  const P = varyings.position;
+  const bc: Barycentric = { u: 0, v: 0, w: 0 };
 
   // Calculate bounding box
   let minX = ~~Math.max(0, Math.min(p0.x, p1.x, p2.x));
@@ -92,11 +96,11 @@ export const triangle = (
         // Update z buffer with new pixel depth
         zBuffer[index] = P.z;
 
-        // Interpolate normals
-        interpolateVec3(n0, n1, n2, bc, n);
+        // Interpolate varyings other than position
+        interpolateVec3(n0, n1, n2, bc, varyings.normal);
 
         // Fragment shader
-        const finalColour = fragShader(n, uniforms);
+        const finalColour = fragShader(varyings, uniforms);
 
         // Set final pixel colour
         setPixel(P.xy, finalColour.toRGB(), image);
