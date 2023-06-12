@@ -4,12 +4,13 @@ import { clear, line, triangle } from "./drawing";
 import { loadObj } from "./utils/objLoader";
 import { V2F, shader } from "./shader";
 
-import obj from "./models/head.obj?raw";
+import modelFile from "./models/head.obj?raw";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
 const orthographicCb = document.getElementById("orthoCb") as HTMLInputElement;
 const shadingDd = document.getElementById("shadingDd") as HTMLSelectElement;
+const fileInput = document.getElementById("fileInput") as HTMLInputElement;
 
 const ctx = canvas.getContext("2d");
 if (!ctx) {
@@ -21,7 +22,7 @@ const image = new ImageData(canvas.width, canvas.height);
 const zBuffer = new Float32Array(canvas.width * canvas.height);
 
 // Model
-const model = loadObj(obj, true);
+let model = loadObj(modelFile, true);
 let modelRotation = new Vector3(0, 0, 0);
 
 const update = (dt: number) => {
@@ -105,5 +106,14 @@ canvas.onwheel = (e) => {
 };
 
 canvas.oncontextmenu = (e) => e.preventDefault();
+
+fileInput.onchange = async () => {
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return;
+  const data = await file.text();
+  model = loadObj(data, true);
+  modelRotation.set(0, 0, 0);
+  camPos.set(0, 0, -2.5);
+};
 
 loop();
