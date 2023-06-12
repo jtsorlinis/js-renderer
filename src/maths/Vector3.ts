@@ -91,4 +91,10 @@ export class Vector3 {
   public toRGB() {
     return new Vector3(this.x * 255, this.y * 255, this.z * 255);
   }
+
+  public set(x: number, y: number, z: number) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+  }
 }
