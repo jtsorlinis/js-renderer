@@ -1,6 +1,6 @@
 import { setPixel, viewportTransform } from ".";
 import { Vector3 } from "../maths";
-import { Uniforms, Vertex, fragShader } from "../shader";
+import { Uniforms, Vertex } from "../shader";
 
 export interface Barycentric {
   u: number;
@@ -33,6 +33,7 @@ const barycentric = (
 // Draw a triangle in screen space (pixels)
 export const triangle = (
   verts: Vertex[],
+  fragShader: (...args: any[]) => Vector3,
   uniforms: Uniforms,
   zBuffer: Float32Array,
   image: ImageData
