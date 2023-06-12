@@ -2,7 +2,7 @@ import { Vector3 } from "../maths";
 
 export const loadObj = (file: string, normalize = false) => {
   const vertices: Vector3[] = [];
-  const normals: Vector3[] = [];
+  let normals: Vector3[] = [];
   const flatNormals: Vector3[] = [];
 
   const tempVerts: Vector3[] = [];
@@ -63,17 +63,23 @@ export const loadObj = (file: string, normalize = false) => {
   }
 
   const maxPos = new Vector3(0, 0, 0);
+  const minPos = new Vector3(0, 0, 0);
 
   // rebuild vertices and normals
   for (let i = 0; i < tempTris.length; i++) {
     const vert = tempVerts[tempTris[i]];
     const normal = tempNormals[tempNormalTris[i]];
     vertices.push(vert);
-    normals.push(normal);
+    if (normal) {
+      normals.push(normal);
+    }
 
-    if (Math.abs(vert.x) > maxPos.x) maxPos.x = vert.x;
-    if (Math.abs(vert.y) > maxPos.y) maxPos.y = vert.y;
-    if (Math.abs(vert.z) > maxPos.z) maxPos.z = vert.z;
+    if (vert.x > maxPos.x) maxPos.x = vert.x;
+    if (vert.y > maxPos.y) maxPos.y = vert.y;
+    if (vert.z > maxPos.z) maxPos.z = vert.z;
+    if (vert.x < minPos.x) minPos.x = vert.x;
+    if (vert.y < minPos.y) minPos.y = vert.y;
+    if (vert.z < minPos.z) minPos.z = vert.z;
   }
 
   // Flat normals
@@ -84,12 +90,18 @@ export const loadObj = (file: string, normalize = false) => {
     flatNormals.push(normal, normal, normal);
   }
 
-  // normalize vertices
+  // Scale and center model
   if (normalize) {
-    const scaleFactor = 1 / Math.max(maxPos.x, maxPos.y, maxPos.z);
+    const scale = maxPos.subtract(minPos);
+    const scaleFactor = 2 / Math.max(scale.x, scale.y, scale.z);
+    const translate = maxPos.add(minPos).scale(0.5);
     for (let i = 0; i < vertices.length; i++) {
-      vertices[i] = vertices[i].scale(scaleFactor);
+      vertices[i] = vertices[i].subtract(translate).scale(scaleFactor);
     }
   }
+  if (!normals.length) {
+    normals = flatNormals;
+  }
+
   return { vertices, normals, flatNormals };
 };
