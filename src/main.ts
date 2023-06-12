@@ -2,7 +2,7 @@ import "./style.css";
 import { Matrix4, Vector3 } from "./maths";
 import { clear, line, triangle } from "./drawing";
 import { loadObj } from "./utils/objLoader";
-import { Vertex, fragShader, vertShader } from "./shader";
+import { Vertex, shader } from "./shader";
 
 import obj from "./models/head.obj?raw";
 
@@ -54,7 +54,7 @@ const draw = () => {
       const position = model.vertices[i + j];
       const normalsKey = shadingDd.value === "flat" ? "flatNormals" : "normals";
       const normal = model[normalsKey][i + j];
-      verts[j] = vertShader({ position, normal }, uniforms);
+      verts[j] = shader.vertex({ position, normal }, uniforms);
     }
 
     // Draw wireframe
@@ -66,7 +66,7 @@ const draw = () => {
     }
 
     // Draw filled
-    triangle(verts, fragShader, uniforms, zBuffer, image);
+    triangle(verts, shader.fragment, uniforms, zBuffer, image);
   }
   ctx.putImageData(image, 0, 0);
 };

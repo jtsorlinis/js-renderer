@@ -12,7 +12,7 @@ export interface Vertex {
   normal: Vector3;
 }
 
-export const vertShader = (vert: Vertex, params: Uniforms) => {
+const vertex = (vert: Vertex, params: Uniforms) => {
   // Vertex transformation
   const position = params.mvp.multPerspectiveDiv(vert.position);
   const normal = params.rotMat.multiplyVector3(vert.normal);
@@ -20,7 +20,12 @@ export const vertShader = (vert: Vertex, params: Uniforms) => {
   return { position, normal };
 };
 
-export const fragShader = (n: Vector3, params: Uniforms) => {
+const fragment = (n: Vector3, params: Uniforms) => {
   const intensity = -n.dot(params.lightDir);
   return params.lightCol.scale(intensity);
+};
+
+export const shader = {
+  vertex,
+  fragment,
 };
