@@ -1,6 +1,6 @@
 import { setPixel, viewportTransform } from ".";
 import { Vector3 } from "../maths";
-import { Uniforms, V2F, Vertex } from "../shader";
+import { Uniforms, V2F } from "../shader";
 
 export interface Barycentric {
   u: number;
