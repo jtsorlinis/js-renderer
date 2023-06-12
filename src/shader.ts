@@ -12,7 +12,12 @@ export interface Vertex {
   normal: Vector3;
 }
 
-const vertex = (vert: Vertex, params: Uniforms) => {
+export interface V2F {
+  position: Vector3;
+  normal: Vector3;
+}
+
+const vertex = (vert: Vertex, params: Uniforms): V2F => {
   // Vertex transformation
   const position = params.mvp.multPerspectiveDiv(vert.position);
   const normal = params.rotMat.multiplyVector3(vert.normal);
@@ -20,8 +25,8 @@ const vertex = (vert: Vertex, params: Uniforms) => {
   return { position, normal };
 };
 
-const fragment = (n: Vector3, params: Uniforms) => {
-  const intensity = -n.dot(params.lightDir);
+const fragment = (varyings: V2F, params: Uniforms) => {
+  const intensity = -varyings.normal.dot(params.lightDir);
   return params.lightCol.scale(intensity);
 };
 
