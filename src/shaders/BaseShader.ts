@@ -15,3 +15,11 @@ export abstract class BaseShader {
   abstract vertex(i: number, nthVert: number): Vector3;
   abstract fragment(bc: Barycentric): Vector3 | undefined;
 }
+
+export const varying = <T>(): Array<T> => {
+  return Array<T>(3);
+};
+
+export const v2f = <T>(varying: Array<T>, value: T, nthVert: number) => {
+  varying[nthVert] = value;
+};

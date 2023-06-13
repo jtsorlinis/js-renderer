@@ -1,4 +1,4 @@
-import { BaseShader } from "./BaseShader";
+import { BaseShader, v2f, varying } from "./BaseShader";
 import { Barycentric, interpolate3 } from "../drawing/triangle";
 import { Vector3, Matrix4 } from "../maths";
 
@@ -14,20 +14,21 @@ export class PhongShader extends BaseShader {
   uniforms!: Uniforms;
 
   // Varyings
-  normal = Array(3).fill(new Vector3());
+  vNormal = varying<Vector3>();
 
   vertex = (i: number, nthVert: number): Vector3 => {
     const pos = this.uniforms.mvp.multPerspectiveDiv(this.model.vertices[i]);
-    this.normal[nthVert] = this.uniforms.rotMat.multiplyVector3(
-      this.model.normals[i]
-    );
+    const normal = this.uniforms.rotMat.multiplyVector3(this.model.normals[i]);
+
+    // Pass varyings to fragment shader
+    v2f(this.vNormal, normal, nthVert);
 
     return pos;
   };
 
   fragment = (bc: Barycentric) => {
-    const varyingNormal = interpolate3(this.normal, bc);
-    const intensity = -varyingNormal.dot(this.uniforms.lightDir);
+    const normal = interpolate3(this.vNormal, bc);
+    const intensity = -normal.dot(this.uniforms.lightDir);
     return this.uniforms.lightCol.scale(intensity);
   };
 }
