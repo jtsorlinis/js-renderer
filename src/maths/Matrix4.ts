@@ -28,8 +28,8 @@ export class Matrix4 {
     const m = Matrix4.Identity();
     const cx = Math.cos(r.x);
     const sx = Math.sin(r.x);
-    const cy = -Math.cos(r.y);
-    const sy = -Math.sin(r.y);
+    const cy = Math.cos(r.y);
+    const sy = Math.sin(r.y);
     const cz = Math.cos(r.z);
     const sz = Math.sin(r.z);
 

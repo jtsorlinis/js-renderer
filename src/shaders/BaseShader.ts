@@ -1,12 +1,14 @@
 import { Vector3 } from "../maths";
-import { Model } from "../utils/objLoader";
 import { Barycentric } from "../drawing/triangle";
 
+export interface Verts {
+  [key: string]: any;
+}
 export abstract class BaseShader {
-  model: Model;
+  model: Verts;
   abstract uniforms?: { [key: string]: any };
 
-  constructor(model: Model) {
+  constructor(model: Verts) {
     this.model = model;
   }
 
