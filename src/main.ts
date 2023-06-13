@@ -37,8 +37,8 @@ let modelRotation = new Vector3(0, Math.PI, 0);
 let modelPos = new Vector3(0, 0, 0);
 
 // Setup shaders
-const phongShader = new PhongShader(model);
-const flatShader = new FlatShader(model);
+const phongShader = new PhongShader();
+const flatShader = new FlatShader();
 let shader: BaseShader;
 
 const update = (dt: number) => {
@@ -58,9 +58,9 @@ const draw = () => {
   const rotMat = Matrix4.RotateEuler(modelRotation);
   const mvp = modelMat.multiply(viewMat.multiply(projMat));
   shader = shadingDd.value === "flat" ? flatShader : phongShader;
-  shader.uniforms = { mvp, rotMat, lightDir, lightCol };
+  shader.uniforms = { model, mvp, rotMat, lightDir, lightCol };
 
-  for (let i = 0; i < shader.model.vertices.length; i += 3) {
+  for (let i = 0; i < model.vertices.length; i += 3) {
     const triVerts: Vector3[] = [];
     for (let j = 0; j < 3; j++) {
       triVerts[j] = shader.vertex(i + j, j);
