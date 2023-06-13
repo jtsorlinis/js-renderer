@@ -33,7 +33,7 @@ let orthoSize = 1.5;
 
 // Model
 let model = loadObj(modelFile, true);
-let modelRotation = new Vector3(0, 0, 0);
+let modelRotation = new Vector3(0, Math.PI, 0);
 let modelPos = new Vector3(0, 0, 0);
 
 // Setup shaders
