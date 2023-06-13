@@ -34,6 +34,7 @@ let orthoSize = 1.5;
 // Model
 let model = loadObj(modelFile, true);
 let modelRotation = new Vector3(0, 0, 0);
+let modelPos = new Vector3(0, 0, 0);
 
 // Setup shaders
 const phongShader = new PhongShader(model);
@@ -53,7 +54,7 @@ const draw = () => {
     ? Matrix4.Ortho(orthoSize, image)
     : Matrix4.Perspective(60, image);
 
-  const modelMat = Matrix4.TRS(Vector3.Zero, modelRotation, Vector3.One);
+  const modelMat = Matrix4.TRS(modelPos, modelRotation, Vector3.One);
   const rotMat = Matrix4.RotateEuler(modelRotation);
   const mvp = modelMat.multiply(viewMat.multiply(projMat));
   shader = shadingDd.value === "flat" ? flatShader : phongShader;
@@ -95,10 +96,10 @@ canvas.onmousemove = (e) => {
     // left mouse button
     modelRotation.y += e.movementX / 250;
     modelRotation.x -= e.movementY / 250;
-  } else if (e.buttons === 2) {
+  } else if (e.buttons === 2 || e.buttons === 4) {
     // right mouse button
-    camPos.x -= e.movementX / 250;
-    camPos.y += e.movementY / 250;
+    modelPos.x += e.movementX / 250;
+    modelPos.y -= e.movementY / 250;
   }
 };
 
@@ -120,7 +121,7 @@ fileInput.onchange = async () => {
   const data = await file.text();
   model = loadObj(data, true);
   modelRotation.set(0, 0, 0);
-  camPos.set(0, 0, -2.5);
+  modelPos.set(0, 0, 0);
 };
 
 loop();
