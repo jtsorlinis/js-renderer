@@ -2,9 +2,11 @@ import "./style.css";
 import { Matrix4, Vector3 } from "./maths";
 import { clear, line, triangle } from "./drawing";
 import { loadObj } from "./utils/objLoader";
-import { V2F, shader } from "./shader";
+import { PhongShader } from "./shaders/Phong";
 
 import modelFile from "./models/head.obj?raw";
+import { FlatShader } from "./shaders/Flat";
+import { BaseShader } from "./shaders/BaseShader";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
@@ -21,19 +23,26 @@ if (!ctx) {
 const image = new ImageData(canvas.width, canvas.height);
 const zBuffer = new Float32Array(canvas.width * canvas.height);
 
+// Setup light
+const lightDir = new Vector3(0, 0, 1);
+const lightCol = new Vector3(1, 1, 1);
+
+// Setup camera
+const camPos = new Vector3(0, 0, -2.5);
+let orthoSize = 1.5;
+
 // Model
 let model = loadObj(modelFile, true);
 let modelRotation = new Vector3(0, 0, 0);
 
+// Setup shaders
+const phongShader = new PhongShader(model);
+const flatShader = new FlatShader(model);
+let shader: BaseShader;
+
 const update = (dt: number) => {
   modelRotation.y += dt / 5;
 };
-
-const lightDir = new Vector3(0, 0, 1);
-const lightCol = new Vector3(1, 1, 1);
-
-const camPos = new Vector3(0, 0, -2.5);
-let orthoSize = 1.5;
 
 const draw = () => {
   clear(image, zBuffer);
@@ -47,27 +56,25 @@ const draw = () => {
   const modelMat = Matrix4.TRS(Vector3.Zero, modelRotation, Vector3.One);
   const rotMat = Matrix4.RotateEuler(modelRotation);
   const mvp = modelMat.multiply(viewMat.multiply(projMat));
-  const uniforms = { mvp, rotMat, lightDir, lightCol };
+  shader = shadingDd.value === "flat" ? flatShader : phongShader;
+  shader.uniforms = { mvp, rotMat, lightDir, lightCol };
 
   for (let i = 0; i < model.vertices.length; i += 3) {
-    const verts: V2F[] = [];
+    const triVerts: Vector3[] = [];
     for (let j = 0; j < 3; j++) {
-      const position = model.vertices[i + j];
-      const normalsKey = shadingDd.value === "flat" ? "flatNormals" : "normals";
-      const normal = model[normalsKey][i + j];
-      verts[j] = shader.vertex({ position, normal }, uniforms);
+      triVerts[j] = shader.vertex(i + j, j);
     }
 
     // Draw wireframe
     if (shadingDd.value === "wireframe") {
-      line(verts[0].position, verts[1].position, image);
-      line(verts[1].position, verts[2].position, image);
-      line(verts[2].position, verts[0].position, image);
+      line(triVerts[0], triVerts[1], image);
+      line(triVerts[1], triVerts[2], image);
+      line(triVerts[2], triVerts[0], image);
       continue;
     }
 
     // Draw filled
-    triangle(verts, shader.fragment, uniforms, zBuffer, image);
+    triangle(triVerts, shader.fragment, zBuffer, image);
   }
   ctx.putImageData(image, 0, 0);
 };
