@@ -32,9 +32,9 @@ const barycentric = (
 // Draw a triangle in screen space (pixels)
 export const triangle = (
   verts: Vector3[],
-  fragShader: (bc: Barycentric) => Vector3,
-  zBuffer: Float32Array,
-  image: ImageData
+  fragShader: (bc: Barycentric) => Vector3 | undefined,
+  image: ImageData,
+  zBuffer: Float32Array
 ) => {
   // Extract vertex positions
   let p0 = verts[0];
@@ -88,6 +88,7 @@ export const triangle = (
         const finalColour = fragShader(bc);
 
         // Set final pixel colour
+        if (!finalColour) continue;
         setPixel(P.xy, finalColour.toRGB(), image);
       }
     }
