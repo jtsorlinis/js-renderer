@@ -1,6 +1,5 @@
 import { setPixel, viewportTransform } from ".";
 import { Vector3 } from "../maths";
-import { Uniforms, V2F } from "../shader";
 
 export interface Barycentric {
   u: number;
@@ -32,16 +31,15 @@ const barycentric = (
 
 // Draw a triangle in screen space (pixels)
 export const triangle = (
-  verts: V2F[],
-  fragShader: (varyings: V2F, uniforms: Uniforms) => Vector3,
-  uniforms: Uniforms,
+  verts: Vector3[],
+  fragShader: (bc: Barycentric) => Vector3,
   zBuffer: Float32Array,
   image: ImageData
 ) => {
   // Extract vertex positions
-  let p0 = verts[0].position;
-  let p1 = verts[1].position;
-  let p2 = verts[2].position;
+  let p0 = verts[0];
+  let p1 = verts[1];
+  let p2 = verts[2];
 
   // Clip near and far planes
   if (p0.z < 0 || p1.z < 0 || p2.z < 0) return;
@@ -58,18 +56,8 @@ export const triangle = (
   p1 = viewportTransform(p1, image);
   p2 = viewportTransform(p2, image);
 
-  const varyings = {
-    position: new Vector3(),
-    normal: new Vector3(),
-  };
-
-  // Extract varyings
-  const n0 = verts[0].normal;
-  const n1 = verts[1].normal;
-  const n2 = verts[2].normal;
-
   // Reuse variables to avoid allocations
-  const P = varyings.position;
+  const P = new Vector3();
   const bc: Barycentric = { u: 0, v: 0, w: 0 };
 
   // Calculate bounding box
@@ -96,11 +84,8 @@ export const triangle = (
         // Update z buffer with new pixel depth
         zBuffer[index] = P.z;
 
-        // Interpolate varyings other than position
-        interpolateVec3(n0, n1, n2, bc, varyings.normal);
-
         // Fragment shader
-        const finalColour = fragShader(varyings, uniforms);
+        const finalColour = fragShader(bc);
 
         // Set final pixel colour
         setPixel(P.xy, finalColour.toRGB(), image);
@@ -110,19 +95,19 @@ export const triangle = (
 };
 
 // Interpolate a value given barycentric coordinates
-const interpolate = (n0: number, n1: number, n2: number, bc: Barycentric) => {
+export const interpolate = (
+  n0: number,
+  n1: number,
+  n2: number,
+  bc: Barycentric
+) => {
   return n0 * bc.u + n1 * bc.v + n2 * bc.w;
 };
 
 // Interpolate a vector given barycentric coordinates
-const interpolateVec3 = (
-  v0: Vector3,
-  v1: Vector3,
-  v2: Vector3,
-  bc: Barycentric,
-  out: Vector3
-) => {
-  out.x = interpolate(v0.x, v1.x, v2.x, bc);
-  out.y = interpolate(v0.y, v1.y, v2.y, bc);
-  out.z = interpolate(v0.z, v1.z, v2.z, bc);
+export const interpolate3 = (vals: Vector3[], bc: Barycentric) => {
+  const x = interpolate(vals[0].x, vals[1].x, vals[2].x, bc);
+  const y = interpolate(vals[0].y, vals[1].y, vals[2].y, bc);
+  const z = interpolate(vals[0].z, vals[1].z, vals[2].z, bc);
+  return new Vector3(x, y, z);
 };

@@ -1,6 +1,12 @@
 import { Vector3 } from "../maths";
 
-export const loadObj = (file: string, normalize = false) => {
+export interface Model {
+  vertices: Vector3[];
+  normals: Vector3[];
+  flatNormals: Vector3[];
+}
+
+export const loadObj = (file: string, normalize = false): Model => {
   const vertices: Vector3[] = [];
   let normals: Vector3[] = [];
   const flatNormals: Vector3[] = [];
