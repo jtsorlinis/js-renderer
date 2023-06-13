@@ -75,7 +75,7 @@ const draw = () => {
     }
 
     // Draw filled
-    triangle(triVerts, shader.fragment, zBuffer, image);
+    triangle(triVerts, shader.fragment, image, zBuffer);
   }
   ctx.putImageData(image, 0, 0);
 };

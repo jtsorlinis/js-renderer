@@ -11,5 +11,5 @@ export abstract class BaseShader {
   }
 
   abstract vertex(i: number, nthVert: number): Vector3;
-  abstract fragment(bc: Barycentric): Vector3;
+  abstract fragment(bc: Barycentric): Vector3 | undefined;
 }
