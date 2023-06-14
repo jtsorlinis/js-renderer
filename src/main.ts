@@ -55,10 +55,10 @@ const draw = () => {
     : Matrix4.Perspective(60, image);
 
   const modelMat = Matrix4.TRS(modelPos, modelRotation, Vector3.One);
-  const rotMat = Matrix4.RotateEuler(modelRotation);
+  const normalMat = modelMat.invert().transpose();
   const mvp = modelMat.multiply(viewMat.multiply(projMat));
   shader = shadingDd.value === "flat" ? flatShader : phongShader;
-  shader.uniforms = { model, mvp, rotMat, lightDir, lightCol };
+  shader.uniforms = { model, mvp, normalMat, lightDir, lightCol };
 
   for (let i = 0; i < model.vertices.length; i += 3) {
     const triVerts: Vector3[] = [];

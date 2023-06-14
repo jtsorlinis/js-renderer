@@ -4,7 +4,7 @@ import { Vector3, Matrix4 } from "../maths";
 export interface Uniforms {
   model: Verts;
   mvp: Matrix4;
-  rotMat: Matrix4;
+  normalMat: Matrix4;
   lightDir: Vector3;
   lightCol: Vector3;
 }
@@ -20,7 +20,7 @@ export class PhongShader extends BaseShader {
     const model = this.uniforms.model;
     const i = this.vertexId;
     const pos = this.uniforms.mvp.multPerspectiveDiv(model.vertices[i]);
-    const normal = this.uniforms.rotMat.multiplyVector3(model.normals[i]);
+    const normal = this.uniforms.normalMat.multiplyVector3(model.normals[i]);
 
     // Pass varyings to fragment shader
     this.v2f(this.vNormal, normal);
