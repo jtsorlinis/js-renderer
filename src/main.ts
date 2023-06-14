@@ -63,7 +63,9 @@ const draw = () => {
   for (let i = 0; i < model.vertices.length; i += 3) {
     const triVerts: Vector3[] = [];
     for (let j = 0; j < 3; j++) {
-      triVerts[j] = shader.vertex(i + j, j);
+      shader.vertexId = i + j;
+      shader.nthVert = j;
+      triVerts[j] = shader.vertex();
     }
 
     // Draw wireframe
@@ -75,7 +77,7 @@ const draw = () => {
     }
 
     // Draw filled
-    triangle(triVerts, shader.fragment, image, zBuffer);
+    triangle(triVerts, shader, image, zBuffer);
   }
   ctx.putImageData(image, 0, 0);
 };
