@@ -4,7 +4,7 @@ import { Vector3, Matrix4 } from "../maths";
 export interface Uniforms {
   model: Verts;
   mvp: Matrix4;
-  rotMat: Matrix4;
+  normalMat: Matrix4;
   lightDir: Vector3;
   lightCol: Vector3;
 }
@@ -20,8 +20,8 @@ export class FlatShader extends BaseShader {
     const model = this.uniforms.model;
     const i = this.vertexId;
     const pos = this.uniforms.mvp.multPerspectiveDiv(model.vertices[i]);
-    const normal = this.uniforms.rotMat.multiplyVector3(model.flatNormals[i]);
-    this.intensity = -normal.dot(this.uniforms.lightDir);
+    const norm = this.uniforms.normalMat.multiplyVector3(model.flatNormals[i]);
+    this.intensity = -norm.dot(this.uniforms.lightDir);
 
     return pos;
   };
