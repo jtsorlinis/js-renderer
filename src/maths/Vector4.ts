@@ -22,6 +22,7 @@ export class Vector4 {
   }
 
   public divideByW() {
-    return new Vector3(this.x / this.w, this.y / this.w, this.z / this.w);
+    const invW = 1 / this.w;
+    return new Vector3(this.x * invW, this.y * invW, this.z * invW);
   }
 }
