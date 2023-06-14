@@ -13,7 +13,7 @@ export class FlatShader extends BaseShader {
   // Uniforms
   uniforms!: Uniforms;
 
-  // Attributes
+  // No interpolation needed for flat shading
   intensity = 0;
 
   vertex = (): Vector3 => {
