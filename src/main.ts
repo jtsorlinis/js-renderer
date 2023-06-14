@@ -33,8 +33,9 @@ let orthoSize = 1.5;
 
 // Model
 let model = loadObj(modelFile, true);
-let modelRotation = new Vector3(0, Math.PI, 0);
 let modelPos = new Vector3(0, 0, 0);
+let modelRotation = new Vector3(0, Math.PI, 0);
+let modelScale = new Vector3(1, 1, 1);
 
 // Setup shaders
 const phongShader = new PhongShader();
@@ -54,7 +55,7 @@ const draw = () => {
     ? Matrix4.Ortho(orthoSize, image)
     : Matrix4.Perspective(60, image);
 
-  const modelMat = Matrix4.TRS(modelPos, modelRotation, Vector3.One);
+  const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
   const normalMat = modelMat.invert().transpose();
   const mvp = modelMat.multiply(viewMat.multiply(projMat));
   shader = shadingDd.value === "flat" ? flatShader : phongShader;
@@ -122,7 +123,7 @@ fileInput.onchange = async () => {
   if (!file) return;
   const data = await file.text();
   model = loadObj(data, true);
-  modelRotation.set(0, 0, 0);
+  modelRotation.set(0, Math.PI, 0);
   modelPos.set(0, 0, 0);
 };
 

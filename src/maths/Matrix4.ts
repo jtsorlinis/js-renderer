@@ -120,28 +120,23 @@ export class Matrix4 {
     return result;
   }
 
+  // Perspective division is normally automatically done by the GPU, but we need to do it manually
   // prettier-ignore
-  public multiplyVector3(v: Vector3) {
+  public multiplyPoint(v: Vector3) {
+    let invW = 1 / (this.m[3] * v.x + this.m[7] * v.y + this.m[11] * v.z + this.m[15]);
     const result = new Vector3();
-    result.x = this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12];
-    result.y = this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z + this.m[13];
-    result.z = this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z + this.m[14];
-
+    result.x = (this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12]) * invW;
+    result.y = (this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z + this.m[13]) * invW;
+    result.z = (this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z + this.m[14]) * invW;
+  
     return result;
   }
 
-  // Perspective division is normally automatically done by the GPU, but we need to do it manually
-  // prettier-ignore
-  public multPerspectiveDiv(v: Vector3) {
+  public multiplyDirection(v: Vector3) {
     const result = new Vector3();
-    result.x = this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12];
-    result.y = this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z + this.m[13];
-    result.z = this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z + this.m[14];
-    const w = this.m[3] * v.x + this.m[7] * v.y + this.m[11] * v.z + this.m[15];
-
-    result.x /= w;
-    result.y /= w;
-    result.z /= w;
+    result.x = this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z;
+    result.y = this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z;
+    result.z = this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z;
 
     return result;
   }

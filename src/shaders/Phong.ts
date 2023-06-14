@@ -19,8 +19,10 @@ export class PhongShader extends BaseShader {
   vertex = (): Vector3 => {
     const model = this.uniforms.model;
     const i = this.vertexId;
-    const pos = this.uniforms.mvp.multPerspectiveDiv(model.vertices[i]);
-    const normal = this.uniforms.normalMat.multiplyVector3(model.normals[i]);
+    const pos = this.uniforms.mvp.multiplyPoint(model.vertices[i]);
+    const normal = this.uniforms.normalMat
+      .multiplyDirection(model.normals[i])
+      .normalize();
 
     // Pass varyings to fragment shader
     this.v2f(this.vNormal, normal);
