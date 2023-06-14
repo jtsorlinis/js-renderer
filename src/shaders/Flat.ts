@@ -14,14 +14,14 @@ export class FlatShader extends BaseShader {
   uniforms!: Uniforms;
 
   // Attributes
-  normal = new Vector3();
   intensity = 0;
 
-  vertex = (i: number): Vector3 => {
+  vertex = (): Vector3 => {
     const model = this.uniforms.model;
+    const i = this.vertexId;
     const pos = this.uniforms.mvp.multPerspectiveDiv(model.vertices[i]);
-    this.normal = this.uniforms.rotMat.multiplyVector3(model.flatNormals[i]);
-    this.intensity = -this.normal.dot(this.uniforms.lightDir);
+    const normal = this.uniforms.rotMat.multiplyVector3(model.flatNormals[i]);
+    this.intensity = -normal.dot(this.uniforms.lightDir);
 
     return pos;
   };

@@ -1,5 +1,6 @@
 import { setPixel, viewportTransform } from ".";
 import { Vector3 } from "../maths";
+import { BaseShader } from "../shaders/BaseShader";
 
 export interface Barycentric {
   u: number;
@@ -32,7 +33,7 @@ const barycentric = (
 // Draw a triangle in screen space (pixels)
 export const triangle = (
   verts: Vector3[],
-  fragShader: (bc: Barycentric) => Vector3 | undefined,
+  shader: BaseShader,
   image: ImageData,
   zBuffer: Float32Array
 ) => {
@@ -76,7 +77,7 @@ export const triangle = (
       if (bc.u < 0 || bc.v < 0 || bc.w < 0) continue;
 
       // Interpolate depth to get z value at pixel
-      P.z = interpolate([p0.z, p1.z, p2.z], bc);
+      P.z = p0.z * bc.u + p1.z * bc.v + p2.z * bc.w;
 
       // Check pixel'z depth against z buffer, if pixel is closer, draw it
       const index = P.x + P.y * image.width;
@@ -85,7 +86,8 @@ export const triangle = (
         zBuffer[index] = P.z;
 
         // Fragment shader
-        const finalColour = fragShader(bc);
+        shader.bc = bc;
+        const finalColour = shader.fragment();
 
         // Set final pixel colour
         if (!finalColour) continue;
@@ -93,17 +95,4 @@ export const triangle = (
       }
     }
   }
-};
-
-// Interpolate a value given barycentric coordinates
-export const interpolate = (vals: number[], bc: Barycentric) => {
-  return vals[0] * bc.u + vals[1] * bc.v + vals[2] * bc.w;
-};
-
-// Interpolate a vector given barycentric coordinates
-export const interpolate3 = (vals: Vector3[], bc: Barycentric) => {
-  const x = interpolate([vals[0].x, vals[1].x, vals[2].x], bc);
-  const y = interpolate([vals[0].y, vals[1].y, vals[2].y], bc);
-  const z = interpolate([vals[0].z, vals[1].z, vals[2].z], bc);
-  return new Vector3(x, y, z);
 };
