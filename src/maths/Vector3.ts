@@ -56,8 +56,8 @@ export class Vector3 {
   }
 
   public normalize() {
-    const l = this.length();
-    return new Vector3(this.x / l, this.y / l, this.z / l);
+    const invLen = 1 / this.length();
+    return new Vector3(this.x * invLen, this.y * invLen, this.z * invLen);
   }
 
   public translate(v: Vector3) {

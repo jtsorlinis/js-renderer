@@ -19,9 +19,12 @@ export class FlatShader extends BaseShader {
   vertex = (): Vector3 => {
     const model = this.uniforms.model;
     const i = this.vertexId;
-    const pos = this.uniforms.mvp.multPerspectiveDiv(model.vertices[i]);
-    const norm = this.uniforms.normalMat.multiplyVector3(model.flatNormals[i]);
-    this.intensity = -norm.dot(this.uniforms.lightDir);
+    const pos = this.uniforms.mvp.multiplyPoint(model.vertices[i]);
+    const normal = this.uniforms.normalMat
+      .multiplyDirection(model.flatNormals[i])
+      .normalize();
+
+    this.intensity = -normal.dot(this.uniforms.lightDir);
 
     return pos;
   };
