@@ -173,30 +173,88 @@ export class Matrix4 {
     return result;
   }
 
+  public transpose() {
+    const result = new Matrix4();
+    result.m[0] = this.m[0];
+    result.m[1] = this.m[4];
+    result.m[2] = this.m[8];
+    result.m[3] = this.m[12];
+
+    result.m[4] = this.m[1];
+    result.m[5] = this.m[5];
+    result.m[6] = this.m[9];
+    result.m[7] = this.m[13];
+
+    result.m[8] = this.m[2];
+    result.m[9] = this.m[6];
+    result.m[10] = this.m[10];
+    result.m[11] = this.m[14];
+
+    result.m[12] = this.m[3];
+    result.m[13] = this.m[7];
+    result.m[14] = this.m[11];
+    result.m[15] = this.m[15];
+
+    return result;
+  }
+
+  // prettier-ignore
+  public invert() {
+      let m = this.m;
+      let result = new Matrix4();
+    
+      // calculate the adjugate of m
+      result.m[0]  =  m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
+      result.m[4]  = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
+      result.m[8]  =  m[4] * m[9]  * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
+      result.m[12] = -m[4] * m[9]  * m[14] + m[4] * m[10] * m[13] + m[8] * m[5] * m[14] - m[8] * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[9];
+      result.m[1]  = -m[1] * m[10] * m[15] + m[1] * m[11] * m[14] + m[9] * m[2] * m[15] - m[9] * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10];
+      result.m[5]  =  m[0] * m[10] * m[15] - m[0] * m[11] * m[14] - m[8] * m[2] * m[15] + m[8] * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10];
+      result.m[9]  = -m[0] * m[9]  * m[15] + m[0] * m[11] * m[13] + m[8] * m[1] * m[15] - m[8] * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[9];
+      result.m[13] =  m[0] * m[9]  * m[14] - m[0] * m[10] * m[13] - m[8] * m[1] * m[14] + m[8] * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[9];
+      result.m[2]  =  m[1] * m[6]  * m[15] - m[1] * m[7]  * m[14] - m[5] * m[2] * m[15] + m[5] * m[3] * m[14] + m[13] * m[2] * m[7]  - m[13] * m[3] * m[6];
+      result.m[6]  = -m[0] * m[6]  * m[15] + m[0] * m[7]  * m[14] + m[4] * m[2] * m[15] - m[4] * m[3] * m[14] - m[12] * m[2] * m[7]  + m[12] * m[3] * m[6];
+      result.m[10] =  m[0] * m[5]  * m[15] - m[0] * m[7]  * m[13] - m[4] * m[1] * m[15] + m[4] * m[3] * m[13] + m[12] * m[1] * m[7]  - m[12] * m[3] * m[5];
+      result.m[14] = -m[0] * m[5]  * m[14] + m[0] * m[6]  * m[13] + m[4] * m[1] * m[14] - m[4] * m[2] * m[13] - m[12] * m[1] * m[6]  + m[12] * m[2] * m[5];
+      result.m[3]  = -m[1] * m[6]  * m[11] + m[1] * m[7]  * m[10] + m[5] * m[2] * m[11] - m[5] * m[3] * m[10] - m[9]  * m[2] * m[7]  + m[9]  * m[3] * m[6];
+      result.m[7]  =  m[0] * m[6]  * m[11] - m[0] * m[7]  * m[10] - m[4] * m[2] * m[11] + m[4] * m[3] * m[10] + m[8]  * m[2] * m[7]  - m[8]  * m[3] * m[6];
+      result.m[11] = -m[0] * m[5]  * m[11] + m[0] * m[7]  * m[9]  + m[4] * m[1] * m[11] - m[4] * m[3] * m[9]  - m[8]  * m[1] * m[7]  + m[8]  * m[3] * m[5];
+      result.m[15] =  m[0] * m[5]  * m[10] - m[0] * m[6]  * m[9]  - m[4] * m[1] * m[10] + m[4] * m[2] * m[9]  + m[8]  * m[1] * m[6]  - m[8]  * m[2] * m[5];
+  
+      // calculate the determinant of m
+      let det = m[0] * result.m[0] + m[1] * result.m[4] + m[2] * result.m[8] + m[3] * result.m[12];
+  
+      if (det === 0) {
+        return new Matrix4();
+      }
+  
+      // calculate the inverse of m by dividing the adjugate by the determinant
+      const invDet = 1 / det;
+      result.m[0] *= invDet;
+      result.m[1] *= invDet;
+      result.m[2] *= invDet;
+      result.m[3] *= invDet;
+      result.m[4] *= invDet;
+      result.m[5] *= invDet;
+      result.m[6] *= invDet;
+      result.m[7] *= invDet;
+      result.m[8] *= invDet;
+      result.m[9] *= invDet;
+      result.m[10] *= invDet;
+      result.m[11] *= invDet;
+      result.m[12] *= invDet;
+      result.m[13] *= invDet;
+      result.m[14] *= invDet;
+      result.m[15] *= invDet;
+     
+      return result;
+  }
+
+  // prettier-ignore
   public print() {
-    console.log(
-      this.m[0].toFixed(2),
-      this.m[4].toFixed(2),
-      this.m[8].toFixed(2),
-      this.m[12].toFixed(2)
-    );
-    console.log(
-      this.m[1].toFixed(2),
-      this.m[5].toFixed(2),
-      this.m[9].toFixed(2),
-      this.m[13].toFixed(2)
-    );
-    console.log(
-      this.m[2].toFixed(2),
-      this.m[6].toFixed(2),
-      this.m[10].toFixed(2),
-      this.m[14].toFixed(2)
-    );
-    console.log(
-      this.m[3].toFixed(2),
-      this.m[7].toFixed(2),
-      this.m[11].toFixed(2),
-      this.m[15].toFixed(2)
-    );
+    console.log(this.m[0].toFixed(2), this.m[4].toFixed(2), this.m[8].toFixed(2), this.m[12].toFixed(2));
+    console.log(this.m[1].toFixed(2), this.m[5].toFixed(2), this.m[9].toFixed(2), this.m[13].toFixed(2));
+    console.log(this.m[2].toFixed(2), this.m[6].toFixed(2), this.m[10].toFixed(2), this.m[14].toFixed(2));
+    console.log(this.m[3].toFixed(2), this.m[7].toFixed(2), this.m[11].toFixed(2), this.m[15].toFixed(2));
   }
 }
