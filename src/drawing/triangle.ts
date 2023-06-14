@@ -82,16 +82,18 @@ export const triangle = (
       // Check pixel'z depth against z buffer, if pixel is closer, draw it
       const index = P.x + P.y * image.width;
       if (P.z < zBuffer[index]) {
-        // Update z buffer with new pixel depth
-        zBuffer[index] = P.z;
-
         // Fragment shader
         shader.bc = bc;
-        const finalColour = shader.fragment();
+        const frag = shader.fragment();
+
+        // If pixel is discarded, skip it
+        if (!frag) continue;
+
+        // Update z buffer with new depth
+        zBuffer[index] = P.z;
 
         // Set final pixel colour
-        if (!finalColour) continue;
-        setPixel(P.xy, finalColour.toRGB(), image);
+        setPixel(P.xy, frag.toRGB(), image);
       }
     }
   }
