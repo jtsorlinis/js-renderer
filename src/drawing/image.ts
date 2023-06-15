@@ -17,9 +17,7 @@ export const clear = (image: ImageData, zBuffer: Float32Array) => {
 };
 
 export const viewportTransform = (v: Vector3, image: ImageData) => {
-  const halfWidth = image.width * 0.5;
-  const halfHeight = image.height * 0.5;
-  const x = v.x * halfWidth + halfWidth;
-  const y = -v.y * halfHeight + halfHeight;
+  const x = (v.x + 1) * (image.width * 0.5);
+  const y = (-v.y + 1) * (image.height * 0.5);
   return new Vector3(x, y, v.z);
 };
