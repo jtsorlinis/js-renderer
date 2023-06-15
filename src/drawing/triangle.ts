@@ -29,8 +29,8 @@ export const triangle = (
   if (v0.z > 1 || v1.z > 1 || v2.z > 1) return;
 
   // // Backface culling based on winding order
-  const weight = edgeFunction(v2, v1, v0);
-  if (weight >= 0) return;
+  const weight = edgeFunction(v0, v1, v2);
+  if (weight <= 0) return;
 
   // Scale from [-1, 1] to [0, width] and [0, height]]
   const p0 = viewportTransform(v0, image);
