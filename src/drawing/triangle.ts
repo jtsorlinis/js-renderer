@@ -1,5 +1,5 @@
 import { setPixel, viewportTransform } from ".";
-import { Vector2, Vector3 } from "../maths";
+import { Vector3 } from "../maths";
 import { BaseShader } from "../shaders/BaseShader";
 
 export interface Barycentric {
