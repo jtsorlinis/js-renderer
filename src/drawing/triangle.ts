@@ -8,26 +8,8 @@ export interface Barycentric {
   w: number;
 }
 
-// Calculate barycentric coordinates for a point P in triangle (p1, p2, p3)
-// We only calculaate 2D coordinates because the triangle is already in screen space
-const barycentric = (
-  p1: Vector3,
-  p2: Vector3,
-  p3: Vector3,
-  P: Vector3,
-  out: Barycentric
-) => {
-  const v0x = p2.x - p1.x;
-  const v0y = p2.y - p1.y;
-  const v1x = p3.x - p1.x;
-  const v1y = p3.y - p1.y;
-  const v2x = P.x - p1.x;
-  const v2y = P.y - p1.y;
-
-  const invDenom = 1 / (v0x * v1y - v1x * v0y);
-  out.v = (v2x * v1y - v1x * v2y) * invDenom;
-  out.w = (v0x * v2y - v2x * v0y) * invDenom;
-  out.u = 1 - out.v - out.w;
+const edgeFunction = (a: Vector3, b: Vector3, c: Vector3) => {
+  return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x);
 };
 
 // Draw a triangle in screen space (pixels)
@@ -46,10 +28,9 @@ export const triangle = (
   if (v0.z < 0 || v1.z < 0 || v2.z < 0) return;
   if (v0.z > 1 || v1.z > 1 || v2.z > 1) return;
 
-  // Backface culling based on winding order
-  const ab = new Vector2(v2.x - v0.x, v2.y - v0.y);
-  const ac = new Vector2(v1.x - v0.x, v1.y - v0.y);
-  if (ab.cross(ac) < 0) return;
+  // // Backface culling based on winding order
+  const weight = edgeFunction(v2, v1, v0);
+  if (weight >= 0) return;
 
   // Scale from [-1, 1] to [0, width] and [0, height]]
   const p0 = viewportTransform(v0, image);
@@ -69,11 +50,19 @@ export const triangle = (
   // Loop over pixels in bounding box
   for (P.y = minY; P.y <= maxY; P.y++) {
     for (P.x = minX; P.x <= maxX; P.x++) {
-      // Calculate barycentric coordinates of pixel in triangle
-      barycentric(p0, p1, p2, P, bc);
+      // Check if pixel is inside triangle using edge functions
+      const w0 = edgeFunction(p2, p1, P);
+      const w1 = edgeFunction(p0, p2, P);
+      const w2 = edgeFunction(p1, p0, P);
 
       // Skip pixel if outside triangle
-      if (bc.u < 0 || bc.v < 0 || bc.w < 0) continue;
+      if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+
+      // Calculate barycentric coordinates of point using edge functions
+      const a = 1 / (w0 + w1 + w2);
+      bc.u = w0 * a;
+      bc.v = w1 * a;
+      bc.w = 1 - bc.u - bc.v;
 
       // Interpolate depth to get z value at pixel
       P.z = p0.z * bc.u + p1.z * bc.v + p2.z * bc.w;
