@@ -1,5 +1,5 @@
 import { setPixel, viewportTransform } from ".";
-import { Vector3 } from "../maths";
+import { Vector2, Vector3 } from "../maths";
 import { BaseShader } from "../shaders/BaseShader";
 
 export interface Barycentric {
@@ -38,24 +38,24 @@ export const triangle = (
   zBuffer: Float32Array
 ) => {
   // Extract vertex positions
-  let p0 = verts[0];
-  let p1 = verts[1];
-  let p2 = verts[2];
+  let v0 = verts[0];
+  let v1 = verts[1];
+  let v2 = verts[2];
 
   // Clip near and far planes
-  if (p0.z < 0 || p1.z < 0 || p2.z < 0) return;
-  if (p0.z > 1 || p1.z > 1 || p2.z > 1) return;
+  if (v0.z < 0 || v1.z < 0 || v2.z < 0) return;
+  if (v0.z > 1 || v1.z > 1 || v2.z > 1) return;
 
   // Backface culling based on winding order
-  const ab = p2.subtract(p0);
-  const ac = p1.subtract(p0);
+  const ab = new Vector2(v2.x - v0.x, v2.y - v0.y);
+  const ac = new Vector2(v1.x - v0.x, v1.y - v0.y);
   const determinant = ab.x * ac.y - ac.x * ab.y;
   if (determinant < 0) return;
 
-  // Viewport transform
-  p0 = viewportTransform(p0, image);
-  p1 = viewportTransform(p1, image);
-  p2 = viewportTransform(p2, image);
+  // Scale from [-1, 1] to [0, width] and [0, height]]
+  const p0 = viewportTransform(v0, image);
+  const p1 = viewportTransform(v1, image);
+  const p2 = viewportTransform(v2, image);
 
   // Reuse variables to avoid allocations
   const P = new Vector3();
