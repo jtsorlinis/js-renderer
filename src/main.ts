@@ -86,8 +86,9 @@ const draw = () => {
 let prevTime = 0;
 const loop = () => {
   const now = performance.now();
-  const dt = (now - prevTime) / 1000;
-  fpsText.innerHTML = dt.toFixed(3);
+  const dtms = now - prevTime;
+  const dt = dtms / 1000;
+  fpsText.innerText = dtms.toFixed(0);
   prevTime = now;
   update(dt);
   draw();
