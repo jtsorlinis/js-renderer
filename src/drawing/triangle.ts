@@ -49,8 +49,7 @@ export const triangle = (
   // Backface culling based on winding order
   const ab = new Vector2(v2.x - v0.x, v2.y - v0.y);
   const ac = new Vector2(v1.x - v0.x, v1.y - v0.y);
-  const determinant = ab.x * ac.y - ac.x * ab.y;
-  if (determinant < 0) return;
+  if (ab.cross(ac) < 0) return;
 
   // Scale from [-1, 1] to [0, width] and [0, height]]
   const p0 = viewportTransform(v0, image);

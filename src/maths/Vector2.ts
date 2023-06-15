@@ -23,6 +23,11 @@ export class Vector2 {
     return this.x * v.x + this.y * v.y;
   }
 
+  // Technically 2D vectors don't have a cross product, but we can assume z = 0
+  public cross(v: Vector2) {
+    return this.x * v.y - this.y * v.x;
+  }
+
   public clone() {
     return new Vector2(this.x, this.y);
   }
