@@ -61,8 +61,8 @@ const draw = () => {
   shader = shadingDd.value === "flat" ? flatShader : phongShader;
   shader.uniforms = { model, mvp, normalMat, lightDir, lightCol };
 
+  const triVerts: Vector3[] = [];
   for (let i = 0; i < model.vertices.length; i += 3) {
-    const triVerts: Vector3[] = [];
     for (let j = 0; j < 3; j++) {
       shader.vertexId = i + j;
       shader.nthVert = j;
