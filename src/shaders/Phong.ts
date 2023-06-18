@@ -19,7 +19,7 @@ export class PhongShader extends BaseShader {
   vertex = (): Vector3 => {
     const model = this.uniforms.model;
     const i = this.vertexId;
-    const pos = this.uniforms.mvp.multiplyPoint(model.vertices[i]);
+    const pos = this.uniforms.mvp.multiplyPoint(model.vertices[i], this);
     const normal = this.uniforms.normalMat
       .multiplyDirection(model.normals[i])
       .normalize();
@@ -32,7 +32,7 @@ export class PhongShader extends BaseShader {
 
   fragment = () => {
     // Get interpolated values
-    const normal = this.interpolateVec3(this.vNormal);
+    const normal = this.interpolateVec3(this.vNormal).normalize();
 
     const intensity = -normal.dot(this.uniforms.lightDir);
     return this.uniforms.lightCol.scale(intensity);

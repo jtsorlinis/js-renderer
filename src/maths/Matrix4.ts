@@ -1,4 +1,5 @@
 import { Vector3, Vector4 } from ".";
+import { BaseShader } from "../shaders/BaseShader";
 
 export class Matrix4 {
   m: Float32Array;
@@ -122,12 +123,16 @@ export class Matrix4 {
 
   // Perspective division is normally automatically done by the GPU, but we need to do it manually
   // prettier-ignore
-  public multiplyPoint(v: Vector3) {
-    let invW = 1 / (this.m[3] * v.x + this.m[7] * v.y + this.m[11] * v.z + this.m[15]);
+  public multiplyPoint(v: Vector3, shader: BaseShader) {
+    const w = this.m[3] * v.x + this.m[7] * v.y + this.m[11] * v.z + this.m[15]
+    const invW = 1 / w;
     const result = new Vector3();
     result.x = (this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12]) * invW;
     result.y = (this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z + this.m[13]) * invW;
     result.z = (this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z + this.m[14]) * invW;
+
+    // Pass w to the shader
+    shader.w[shader.nthVert] = w;
   
     return result;
   }
