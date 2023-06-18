@@ -32,7 +32,7 @@ export class PhongShader extends BaseShader {
 
   fragment = () => {
     // Get interpolated values
-    const normal = this.interpolateVec3(this.vNormal);
+    const normal = this.interpolateVec3(this.vNormal).normalize();
 
     const intensity = -normal.dot(this.uniforms.lightDir);
     return this.uniforms.lightCol.scale(intensity);
