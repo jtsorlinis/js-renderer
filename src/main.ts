@@ -19,6 +19,10 @@ if (!ctx) {
   throw new Error("Could not get canvas context");
 }
 
+// Set canvas size
+canvas.width = 800;
+canvas.height = 600;
+
 // Setup canvas and zBuffer
 const image = new ImageData(canvas.width, canvas.height);
 const zBuffer = new Float32Array(canvas.width * canvas.height);
