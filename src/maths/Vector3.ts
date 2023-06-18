@@ -45,6 +45,13 @@ export class Vector3 {
     return new Vector3(this.x * s, this.y * s, this.z * s);
   }
 
+  public scaleInPlace(s: number) {
+    this.x *= s;
+    this.y *= s;
+    this.z *= s;
+    return this;
+  }
+
   public lengthSq() {
     return this.x * this.x + this.y * this.y + this.z * this.z;
   }
@@ -86,8 +93,15 @@ export class Vector3 {
     return new Vector3(this.x - v.x, this.y - v.y, this.z - v.z);
   }
 
-  public toRGB() {
-    return new Vector3(this.x * 255, this.y * 255, this.z * 255);
+  public multiply(v: Vector3) {
+    return new Vector3(this.x * v.x, this.y * v.y, this.z * v.z);
+  }
+
+  public multiplyInPlace(v: Vector3) {
+    this.x *= v.x;
+    this.y *= v.y;
+    this.z *= v.z;
+    return this;
   }
 
   public set(x: number, y: number, z: number) {
