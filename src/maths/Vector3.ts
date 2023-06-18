@@ -1,5 +1,3 @@
-import { Vector2, Vector4 } from ".";
-
 export class Vector3 {
   x: number;
   y: number;
@@ -66,14 +64,6 @@ export class Vector3 {
 
   public dot(v: Vector3) {
     return this.x * v.x + this.y * v.y + this.z * v.z;
-  }
-
-  public get xy() {
-    return new Vector2(this.x, this.y);
-  }
-
-  public toVec4() {
-    return new Vector4(this.x, this.y, this.z);
   }
 
   public add(v: Vector3) {

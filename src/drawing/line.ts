@@ -31,7 +31,7 @@ export const line = (start: Vector3, end: Vector3, image: ImageData) => {
 
   while (true) {
     if (s.x >= 0 && s.x < image.width && s.y >= 0 && s.y < image.height) {
-      setPixel(s.xy, WHITE, image);
+      setPixel(s.x, s.y, WHITE, image);
     }
 
     if (s.x === e.x && s.y === e.y) break;

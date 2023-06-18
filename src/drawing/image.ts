@@ -1,8 +1,13 @@
-import { Vector2, Vector3 } from "../maths";
+import { Vector3 } from "../maths";
 
-export const setPixel = (pos: Vector2, colour: Vector3, image: ImageData) => {
-  const index = (pos.x + pos.y * image.width) * 4;
-  image.data[index] = colour.x * 255;
+export const setPixel = (
+  x: number,
+  y: number,
+  colour: Vector3,
+  image: ImageData
+) => {
+  const index = (x + y * image.width) * 4;
+  image.data[index + 0] = colour.x * 255;
   image.data[index + 1] = colour.y * 255;
   image.data[index + 2] = colour.z * 255;
 };
