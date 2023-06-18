@@ -53,19 +53,9 @@ export class Vector3 {
     return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
   }
 
-  // Returns a normalized copy of the vector
-  public normalized() {
-    const invLen = 1 / this.length();
-    return new Vector3(this.x * invLen, this.y * invLen, this.z * invLen);
-  }
-
-  // Normalizes the vector in place
   public normalize() {
     const invLen = 1 / this.length();
-    this.x *= invLen;
-    this.y *= invLen;
-    this.z *= invLen;
-    return this;
+    return new Vector3(this.x * invLen, this.y * invLen, this.z * invLen);
   }
 
   public translate(v: Vector3) {
