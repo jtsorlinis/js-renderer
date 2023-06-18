@@ -12,6 +12,10 @@ const edgeFunction = (a: Vector3, b: Vector3, c: Vector3) => {
   return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x);
 };
 
+// Only instantiate these once and reuse them
+const P = new Vector3();
+const bc: Barycentric = { u: 0, v: 0, w: 0 };
+
 // Draw a triangle in screen space (pixels)
 export const triangle = (
   verts: Vector3[],
@@ -37,9 +41,8 @@ export const triangle = (
   const p1 = viewportTransform(v1, image);
   const p2 = viewportTransform(v2, image);
 
-  // Reuse variables to avoid allocations
-  const P = new Vector3();
-  const bc: Barycentric = { u: 0, v: 0, w: 0 };
+  // Calculate signed area of triangle in screen space
+  const invArea = 1 / edgeFunction(p2, p1, p0);
 
   // Calculate bounding box
   let minX = ~~Math.max(0, Math.min(p0.x, p1.x, p2.x));
@@ -59,9 +62,8 @@ export const triangle = (
       if (w0 < 0 || w1 < 0 || w2 < 0) continue;
 
       // Calculate barycentric coordinates of point using edge functions
-      const a = 1 / (w0 + w1 + w2);
-      bc.u = w0 * a;
-      bc.v = w1 * a;
+      bc.u = w0 * invArea;
+      bc.v = w1 * invArea;
       bc.w = 1 - bc.u - bc.v;
 
       // Interpolate depth to get z value at pixel
