@@ -4,7 +4,7 @@ export const loadObj = (file: string, normalize = false) => {
   const vertices: Vector3[] = [];
   let normals: Vector3[] = [];
   const uvs: Vector2[] = [];
-  const flatNormals: Vector3[] = [];
+  const faceNormals: Vector3[] = [];
 
   const tempVerts: Vector3[] = [];
   const tempUVs: Vector2[] = [];
@@ -115,7 +115,7 @@ export const loadObj = (file: string, normalize = false) => {
     const ab = vertices[i + 1].subtract(vertices[i]);
     const ac = vertices[i + 2].subtract(vertices[i]);
     const normal = ab.cross(ac).normalize();
-    flatNormals.push(normal, normal, normal);
+    faceNormals.push(normal, normal, normal);
   }
 
   // Scale and center model
@@ -127,9 +127,17 @@ export const loadObj = (file: string, normalize = false) => {
       vertices[i] = vertices[i].subtract(translate).scale(scaleFactor);
     }
   }
+
+  // If no normals, use face normals
   if (!normals.length) {
-    normals = flatNormals;
+    normals = faceNormals;
   }
 
-  return { vertices, normals, flatNormals, uvs };
+  // If no UVs, fill with empty UVs
+  if (!uvs.length) {
+    uvs.length = vertices.length;
+    uvs.fill(new Vector2());
+  }
+
+  return { vertices, normals, faceNormals, uvs };
 };

@@ -21,7 +21,7 @@ export class FlatShader extends BaseShader {
     const i = this.vertexId;
     const pos = this.uniforms.mvp.multiplyPoint(model.vertices[i]);
     const normal = this.uniforms.normalMat
-      .multiplyDirection(model.flatNormals[i])
+      .multiplyDirection(model.faceNormals[i])
       .normalize();
 
     this.intensity = -normal.dot(this.uniforms.lightDir);
