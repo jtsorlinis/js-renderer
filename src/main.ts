@@ -1,5 +1,5 @@
 import "./style.css";
-import { Matrix4, Vector3 } from "./maths";
+import { Matrix4, Vector3, Vector4 } from "./maths";
 import { clear, line, triangle } from "./drawing";
 import { loadObj } from "./utils/objLoader";
 import { PhongShader } from "./shaders/Phong";
@@ -65,7 +65,7 @@ const draw = () => {
   shader = shadingDd.value === "flat" ? flatShader : phongShader;
   shader.uniforms = { model, mvp, normalMat, lightDir, lightCol };
 
-  const triVerts: Vector3[] = [];
+  const triVerts: Vector4[] = [];
   for (let i = 0; i < model.vertices.length; i += 3) {
     for (let j = 0; j < 3; j++) {
       shader.vertexId = i + j;

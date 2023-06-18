@@ -1,5 +1,5 @@
 import { BaseShader, Verts } from "./BaseShader";
-import { Vector3, Matrix4 } from "../maths";
+import { Vector3, Matrix4, Vector4 } from "../maths";
 
 export interface Uniforms {
   model: Verts;
@@ -16,7 +16,7 @@ export class FlatShader extends BaseShader {
   // No interpolation needed for flat shading
   intensity = 0;
 
-  vertex = (): Vector3 => {
+  vertex = (): Vector4 => {
     const model = this.uniforms.model;
     const i = this.vertexId;
     const pos = this.uniforms.mvp.multiplyPoint(model.vertices[i]);
