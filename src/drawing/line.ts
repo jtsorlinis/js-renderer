@@ -1,7 +1,7 @@
 import { viewportTransform, setPixel } from ".";
 import { Vector3 } from "../maths";
 
-const WHITE = new Vector3(255, 255, 255);
+const WHITE = new Vector3(1, 1, 1);
 
 // Bresenham's line algorithm
 export const line = (start: Vector3, end: Vector3, image: ImageData) => {

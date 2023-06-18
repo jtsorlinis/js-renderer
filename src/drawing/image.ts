@@ -2,10 +2,9 @@ import { Vector2, Vector3 } from "../maths";
 
 export const setPixel = (pos: Vector2, colour: Vector3, image: ImageData) => {
   const index = (pos.x + pos.y * image.width) * 4;
-  image.data[index + 0] = colour.x;
-  image.data[index + 1] = colour.y;
-  image.data[index + 2] = colour.z;
-  image.data[index + 3] = 255;
+  image.data[index] = colour.x * 255;
+  image.data[index + 1] = colour.y * 255;
+  image.data[index + 2] = colour.z * 255;
 };
 
 export const clear = (image: ImageData, zBuffer: Float32Array) => {
