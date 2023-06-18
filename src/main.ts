@@ -10,6 +10,7 @@ import { BaseShader } from "./shaders/BaseShader";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
+const trisText = document.getElementById("tris") as HTMLSpanElement;
 const orthographicCb = document.getElementById("orthoCb") as HTMLInputElement;
 const shadingDd = document.getElementById("shadingDd") as HTMLSelectElement;
 const fileInput = document.getElementById("fileInput") as HTMLInputElement;
@@ -37,6 +38,7 @@ let orthoSize = 1.5;
 
 // Model
 let model = loadObj(modelFile, true);
+trisText.innerText = (model.vertices.length / 3).toFixed(0);
 let modelPos = new Vector3(0, 0, 0);
 let modelRotation = new Vector3(0, Math.PI, 0);
 let modelScale = new Vector3(1, 1, 1);
@@ -128,6 +130,7 @@ fileInput.onchange = async () => {
   if (!file) return;
   const data = await file.text();
   model = loadObj(data, true);
+  trisText.innerText = (model.vertices.length / 3).toFixed(0);
   modelRotation.set(0, Math.PI, 0);
   modelPos.set(0, 0, 0);
 };
