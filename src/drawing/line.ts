@@ -1,10 +1,10 @@
 import { viewportTransform, setPixel } from ".";
-import { Vector3 } from "../maths";
+import { Vector3, Vector4 } from "../maths";
 
 const WHITE = new Vector3(1, 1, 1);
 
 // Bresenham's line algorithm
-export const line = (start: Vector3, end: Vector3, image: ImageData) => {
+export const line = (start: Vector4, end: Vector4, image: ImageData) => {
   // Clip near and far planes
   if (start.z < -1 || end.z < -1) return;
   if (start.z > 1 || end.z > 1) return;

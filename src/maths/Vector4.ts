@@ -1,5 +1,3 @@
-import { Vector3 } from ".";
-
 export class Vector4 {
   x: number;
   y: number;
@@ -17,8 +15,7 @@ export class Vector4 {
     this.w = w ?? 0;
   }
 
-  public divideByW() {
-    const invW = 1 / this.w;
-    return new Vector3(this.x * invW, this.y * invW, this.z * invW);
+  truncate() {
+    return new Vector4(~~this.x, ~~this.y, ~~this.z, ~~this.w);
   }
 }

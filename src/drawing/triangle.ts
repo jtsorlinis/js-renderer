@@ -1,5 +1,5 @@
 import { setPixel, viewportTransform } from ".";
-import { Vector3 } from "../maths";
+import { Vector4 } from "../maths";
 import { BaseShader } from "../shaders/BaseShader";
 
 export interface Barycentric {
@@ -8,17 +8,18 @@ export interface Barycentric {
   w: number;
 }
 
-const edgeFunction = (a: Vector3, b: Vector3, c: Vector3) => {
+const edgeFunction = (a: Vector4, b: Vector4, c: Vector4) => {
   return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x);
 };
 
 // Only instantiate these once and reuse them
-const P = new Vector3();
+const P = new Vector4();
 const bc: Barycentric = { u: 0, v: 0, w: 0 };
+const bcClip: Barycentric = { u: 0, v: 0, w: 0 };
 
 // Draw a triangle in screen space (pixels)
 export const triangle = (
-  verts: Vector3[],
+  verts: Vector4[],
   shader: BaseShader,
   image: ImageData,
   zBuffer: Float32Array
@@ -50,6 +51,11 @@ export const triangle = (
   let maxX = ~~Math.min(image.width, Math.max(p0.x, p1.x, p2.x));
   let maxY = ~~Math.min(image.height, Math.max(p0.y, p1.y, p2.y));
 
+  // Calculate inverse vertex depths
+  const invW0 = 1 / v0.w;
+  const invW1 = 1 / v1.w;
+  const invW2 = 1 / v2.w;
+
   // Loop over pixels in bounding box
   for (P.y = minY; P.y <= maxY; P.y++) {
     for (P.x = minX; P.x <= maxX; P.x++) {
@@ -72,8 +78,18 @@ export const triangle = (
       // Check pixel'z depth against z buffer, if pixel is closer, draw it
       const index = P.x + P.y * image.width;
       if (P.z < zBuffer[index]) {
+        // Get perspective correct barycentric coordinates
+        bcClip.u = bc.u * invW0;
+        bcClip.v = bc.v * invW1;
+        bcClip.w = bc.w * invW2;
+        const invSum = 1 / (bcClip.u + bcClip.v + bcClip.w);
+        bcClip.u *= invSum;
+        bcClip.v *= invSum;
+        bcClip.w *= invSum;
+
         // Fragment shader
         shader.bc = bc;
+        shader.bcClip = bcClip;
         const frag = shader.fragment();
 
         // If pixel is discarded, skip it
