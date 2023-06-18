@@ -81,7 +81,7 @@ export const triangle = (
         zBuffer[index] = P.z;
 
         // Set final pixel colour
-        setPixel(P.xy, frag.toRGB(), image);
+        setPixel(P.xy, frag, image);
       }
     }
   }
