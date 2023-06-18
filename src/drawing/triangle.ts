@@ -8,6 +8,7 @@ export interface Barycentric {
   w: number;
 }
 
+// Calculates the signed area of a triangle from 3 points
 const edgeFunction = (a: Vector4, b: Vector4, c: Vector4) => {
   return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x);
 };
@@ -33,17 +34,17 @@ export const triangle = (
   if (v0.z < 0 || v1.z < 0 || v2.z < 0) return;
   if (v0.z > 1 || v1.z > 1 || v2.z > 1) return;
 
-  // // Backface culling based on winding order
-  const weight = edgeFunction(v0, v1, v2);
-  if (weight <= 0) return;
+  // Backface culling based on winding order
+  const area = edgeFunction(v0, v1, v2);
+  if (area <= 0) return;
 
   // Scale from [-1, 1] to [0, width] and [0, height]]
   const p0 = viewportTransform(v0, image);
   const p1 = viewportTransform(v1, image);
   const p2 = viewportTransform(v2, image);
 
-  // Calculate signed area of triangle in screen space
-  const invArea = 1 / edgeFunction(p2, p1, p0);
+  // Calculate inverse signed area of triangle in screen space
+  const invAreaSs = 1 / edgeFunction(p2, p1, p0);
 
   // Calculate bounding box
   let minX = ~~Math.max(0, Math.min(p0.x, p1.x, p2.x));
@@ -68,8 +69,8 @@ export const triangle = (
       if (w0 < 0 || w1 < 0 || w2 < 0) continue;
 
       // Calculate barycentric coordinates of point using edge functions
-      bc.u = w0 * invArea;
-      bc.v = w1 * invArea;
+      bc.u = w0 * invAreaSs;
+      bc.v = w1 * invAreaSs;
       bc.w = 1 - bc.u - bc.v;
 
       // Interpolate depth to get z value at pixel
