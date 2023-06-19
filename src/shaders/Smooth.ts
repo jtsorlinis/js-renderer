@@ -9,7 +9,7 @@ export interface Uniforms {
   lightCol: Vector3;
 }
 
-export class PhongShader extends BaseShader {
+export class SmoothShader extends BaseShader {
   // Uniforms
   uniforms!: Uniforms;
 

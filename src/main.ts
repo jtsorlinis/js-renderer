@@ -1,12 +1,14 @@
 import "./style.css";
 import { Matrix4, Vector3, Vector4 } from "./maths";
-import { clear, line, triangle } from "./drawing";
+import { Texture, clear, line, triangle } from "./drawing";
 import { loadObj } from "./utils/objLoader";
-import { PhongShader } from "./shaders/Phong";
-
-import modelFile from "./models/head.obj?raw";
+import { SmoothShader } from "./shaders/Smooth";
+import { TexturedShader } from "./shaders/Textured";
 import { FlatShader } from "./shaders/Flat";
 import { BaseShader } from "./shaders/BaseShader";
+
+import modelFile from "./models/head.obj?raw";
+import diffuseTex from "./models/head_diffuse.png";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
@@ -38,14 +40,19 @@ let orthoSize = 1.5;
 
 // Model
 let model = loadObj(modelFile, true);
+let texture = new Texture();
+await texture.setData(diffuseTex);
 trisText.innerText = (model.vertices.length / 3).toFixed(0);
 let modelPos = new Vector3(0, 0, 0);
 let modelRotation = new Vector3(0, Math.PI, 0);
 let modelScale = new Vector3(1, 1, 1);
 
 // Setup shaders
-const phongShader = new PhongShader();
-const flatShader = new FlatShader();
+const shaders = {
+  textured: new TexturedShader(),
+  smooth: new SmoothShader(),
+  flat: new FlatShader(),
+};
 let shader: BaseShader;
 
 const update = (dt: number) => {
@@ -64,8 +71,21 @@ const draw = () => {
   const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
   const normalMat = modelMat.invert().transpose();
   const mvp = modelMat.multiply(viewMat.multiply(projMat));
-  shader = shadingDd.value === "flat" ? flatShader : phongShader;
-  shader.uniforms = { model, mvp, normalMat, lightDir, lightCol };
+
+  // Set shader based on dropdown
+  if (shadingDd.value !== "wireframe") {
+    shader = shaders[shadingDd.value as keyof typeof shaders];
+  }
+
+  // If the model has no texture or UVs, don't try to draw it textured
+  const hasTexAndUVs = texture.data.length && model.uvs.length;
+  if (!hasTexAndUVs && shadingDd.value === "textured") {
+    shadingDd.value = "smooth";
+    shader = shaders.smooth;
+  }
+
+  // Set shader uniforms
+  shader.uniforms = { model, mvp, normalMat, lightDir, lightCol, texture };
 
   const triVerts: Vector4[] = [];
   for (let i = 0; i < model.vertices.length; i += 3) {
@@ -130,6 +150,7 @@ fileInput.onchange = async () => {
   if (!file) return;
   const data = await file.text();
   model = loadObj(data, true);
+  texture = new Texture();
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
   modelRotation.set(0, Math.PI, 0);
   modelPos.set(0, 0, 0);
