@@ -6,9 +6,11 @@ import { SmoothShader } from "./shaders/Smooth";
 import { TexturedShader } from "./shaders/Textured";
 import { FlatShader } from "./shaders/Flat";
 import { BaseShader } from "./shaders/BaseShader";
+import { DepthShader } from "./shaders/DepthShader";
 
 import modelFile from "./models/head.obj?raw";
 import diffuseTex from "./models/head_diffuse.png";
+import { clearBuffer } from "./drawing/image";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
@@ -29,6 +31,7 @@ canvas.height = 600;
 // Setup canvas and zBuffer
 const image = new ImageData(canvas.width, canvas.height);
 const zBuffer = new Float32Array(canvas.width * canvas.height);
+const shadowMap = new Float32Array(canvas.width * canvas.height);
 
 // Setup light
 const lightDir = new Vector3(0, 0, 1);
@@ -54,22 +57,32 @@ const shaders = {
   flat: new FlatShader(),
 };
 let shader: BaseShader;
+const depthShader = new DepthShader();
 
 const update = (dt: number) => {
   modelRotation.y += dt / 5;
 };
 
 const draw = () => {
-  clear(image, zBuffer);
+  clear(image);
+  clearBuffer(zBuffer);
+  clearBuffer(shadowMap);
 
+  // Setup model and normal matrices
+  const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
+  const normalMat = modelMat.invert().transpose();
+
+  // Setup light matrices
+  const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), lightDir, Vector3.Up);
+  const lightProjMat = Matrix4.Ortho(orthoSize, image);
+  const lightSpaceMat = modelMat.multiply(lightViewMat.multiply(lightProjMat));
+
+  // Setup view and projection matrices
   const camForward = camPos.add(Vector3.Forward);
   const viewMat = Matrix4.LookAt(camPos, camForward, Vector3.Up);
   const projMat = orthographicCb.checked
     ? Matrix4.Ortho(orthoSize, image)
     : Matrix4.Perspective(60, image);
-
-  const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
-  const normalMat = modelMat.invert().transpose();
   const mvp = modelMat.multiply(viewMat.multiply(projMat));
 
   // Set shader based on dropdown
@@ -85,9 +98,23 @@ const draw = () => {
   }
 
   // Set shader uniforms
+  depthShader.uniforms = { model, lightSpaceMat };
   shader.uniforms = { model, mvp, normalMat, lightDir, lightCol, texture };
 
   const triVerts: Vector4[] = [];
+
+  // Shadow pass
+  for (let i = 0; i < model.vertices.length; i += 3) {
+    for (let j = 0; j < 3; j++) {
+      depthShader.vertexId = i + j;
+      depthShader.nthVert = j;
+      triVerts[j] = depthShader.vertex();
+    }
+
+    triangle(triVerts, depthShader, image, shadowMap);
+  }
+
+  // Final pass
   for (let i = 0; i < model.vertices.length; i += 3) {
     for (let j = 0; j < 3; j++) {
       shader.vertexId = i + j;

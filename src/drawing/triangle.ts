@@ -79,6 +79,9 @@ export const triangle = (
       // Check pixel'z depth against z buffer, if pixel is closer, draw it
       const index = P.x + P.y * image.width;
       if (P.z < zBuffer[index]) {
+        // Update z buffer with new depth
+        zBuffer[index] = P.z;
+
         // Get perspective correct barycentric coordinates
         bcClip.u = bc.u * invW0;
         bcClip.v = bc.v * invW1;
@@ -91,13 +94,11 @@ export const triangle = (
         // Fragment shader
         shader.bc = bc;
         shader.bcClip = bcClip;
+        shader.fragDepth = P.z;
         const frag = shader.fragment();
 
         // If pixel is discarded, skip it
         if (!frag) continue;
-
-        // Update z buffer with new depth
-        zBuffer[index] = P.z;
 
         // Set final pixel colour
         setPixel(P.x, P.y, frag, image);

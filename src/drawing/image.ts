@@ -12,12 +12,15 @@ export const setPixel = (
   image.data[index + 2] = colour.z * 255;
 };
 
-export const clear = (image: ImageData, zBuffer: Float32Array) => {
+export const clear = (image: ImageData) => {
   image.data.fill(0);
   for (let i = 3; i < image.data.length; i += 4) {
     image.data[i] = 255;
   }
-  zBuffer.fill(1000);
+};
+
+export const clearBuffer = (buffer: Float32Array) => {
+  buffer.fill(1000);
 };
 
 export const viewportTransform = (v: Vector4, image: ImageData) => {
