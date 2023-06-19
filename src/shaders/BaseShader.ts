@@ -54,6 +54,29 @@ export abstract class BaseShader {
     return new Vector3(x, y, z);
   };
 
+  interpolateVec3Persp = (vals: Vector3[]) => {
+    const x = this.interpolatePersp([vals[0].x, vals[1].x, vals[2].x]);
+    const y = this.interpolatePersp([vals[0].y, vals[1].y, vals[2].y]);
+    const z = this.interpolatePersp([vals[0].z, vals[1].z, vals[2].z]);
+    return new Vector3(x, y, z);
+  };
+
+  interpolateVec4 = (vals: Vector4[]) => {
+    const x = this.interpolate([vals[0].x, vals[1].x, vals[2].x]);
+    const y = this.interpolate([vals[0].y, vals[1].y, vals[2].y]);
+    const z = this.interpolate([vals[0].z, vals[1].z, vals[2].z]);
+    const w = this.interpolate([vals[0].w, vals[1].w, vals[2].w]);
+    return new Vector4(x, y, z, w);
+  };
+
+  interpolateVec4Persp = (vals: Vector4[]) => {
+    const x = this.interpolatePersp([vals[0].x, vals[1].x, vals[2].x]);
+    const y = this.interpolatePersp([vals[0].y, vals[1].y, vals[2].y]);
+    const z = this.interpolatePersp([vals[0].z, vals[1].z, vals[2].z]);
+    const w = this.interpolatePersp([vals[0].w, vals[1].w, vals[2].w]);
+    return new Vector4(x, y, z, w);
+  };
+
   sample = (texture: Texture, uv: Vector2): Vector3 => {
     const x = ~~(uv.x * texture.width);
     const y = ~~((1 - uv.y) * texture.height);
