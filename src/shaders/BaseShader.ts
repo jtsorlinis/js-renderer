@@ -8,12 +8,13 @@ export abstract class BaseShader {
   abstract uniforms?: { [key: string]: any };
 
   abstract vertex(): Vector4;
-  abstract fragment(): Vector3 | undefined;
+  abstract fragment(): Vector3 | void;
 
   vertexId = 0;
   nthVert = 0;
   bc = { u: 0, v: 0, w: 0 };
   bcClip = { u: 0, v: 0, w: 0 };
+  fragDepth = 0;
 
   v2f = <T>(varying: Array<T>, value: T) => {
     varying[this.nthVert] = value;
