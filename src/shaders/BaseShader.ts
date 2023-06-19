@@ -14,7 +14,7 @@ export abstract class BaseShader {
   nthVert = 0;
   bc = { u: 0, v: 0, w: 0 };
   bcClip = { u: 0, v: 0, w: 0 };
-  fragDepth = 0;
+  fragPos = new Vector4();
 
   v2f = <T>(varying: Array<T>, value: T) => {
     varying[this.nthVert] = value;

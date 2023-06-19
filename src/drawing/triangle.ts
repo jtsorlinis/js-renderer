@@ -94,7 +94,7 @@ export const triangle = (
         // Fragment shader
         shader.bc = bc;
         shader.bcClip = bcClip;
-        shader.fragDepth = P.z;
+        shader.fragPos = P;
         const frag = shader.fragment();
 
         // If pixel is discarded, skip it
