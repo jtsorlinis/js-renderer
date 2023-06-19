@@ -1,4 +1,5 @@
 import { Vector3, Vector4 } from "../maths";
+import { DepthTexture } from "./Texture";
 
 export const setPixel = (
   x: number,
@@ -19,8 +20,8 @@ export const clear = (image: ImageData) => {
   }
 };
 
-export const clearBuffer = (buffer: Float32Array) => {
-  buffer.fill(1000);
+export const clearDepthTexture = (texture: DepthTexture, val: number) => {
+  texture.data.fill(val);
 };
 
 export const viewportTransform = (v: Vector4, image: ImageData) => {

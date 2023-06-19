@@ -1,4 +1,4 @@
-import { Texture } from "../drawing";
+import { DepthTexture, Texture } from "../drawing";
 import { Vector2, Vector3, Vector4 } from "../maths";
 
 export interface Verts {
@@ -83,5 +83,15 @@ export abstract class BaseShader {
     const y = ~~((1 - uv.y) * texture.height);
     const index = x + y * texture.width;
     return texture.data[index];
+  };
+
+  sampleDepth = (
+    depthTexture: DepthTexture,
+    uv: Vector2 | Vector3 | Vector4
+  ) => {
+    const x = ~~(uv.x * depthTexture.width);
+    const y = ~~((1 - uv.y) * depthTexture.height);
+    const index = x + y * depthTexture.width;
+    return depthTexture.data[index];
   };
 }

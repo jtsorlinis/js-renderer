@@ -1,4 +1,4 @@
-import { setPixel, viewportTransform } from ".";
+import { DepthTexture, setPixel, viewportTransform } from ".";
 import { Vector4 } from "../maths";
 import { BaseShader } from "../shaders/BaseShader";
 
@@ -23,7 +23,7 @@ export const triangle = (
   verts: Vector4[],
   shader: BaseShader,
   image: ImageData,
-  zBuffer: Float32Array
+  zBuffer: DepthTexture
 ) => {
   // Extract vertex positions
   let v0 = verts[0];
@@ -78,9 +78,9 @@ export const triangle = (
 
       // Check pixel'z depth against z buffer, if pixel is closer, draw it
       const index = P.x + P.y * image.width;
-      if (P.z < zBuffer[index]) {
+      if (P.z < zBuffer.data[index]) {
         // Update z buffer with new depth
-        zBuffer[index] = P.z;
+        zBuffer.data[index] = P.z;
 
         // Get perspective correct barycentric coordinates
         bcClip.u = bc.u * invW0;

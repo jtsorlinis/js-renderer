@@ -1,6 +1,13 @@
 import "./style.css";
 import { Matrix4, Vector3, Vector4 } from "./maths";
-import { Texture, clear, line, triangle } from "./drawing";
+import {
+  DepthTexture,
+  Texture,
+  clear,
+  clearDepthTexture,
+  line,
+  triangle,
+} from "./drawing";
 import { loadObj } from "./utils/objLoader";
 import { SmoothShader } from "./shaders/Smooth";
 import { TexturedShader } from "./shaders/Textured";
@@ -10,7 +17,6 @@ import { DepthShader } from "./shaders/DepthShader";
 
 import modelFile from "./models/head.obj?raw";
 import diffuseTex from "./models/head_diffuse.png";
-import { clearBuffer } from "./drawing/image";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
@@ -30,8 +36,8 @@ canvas.height = 600;
 
 // Setup canvas and zBuffer
 const image = new ImageData(canvas.width, canvas.height);
-const zBuffer = new Float32Array(canvas.width * canvas.height);
-const shadowMap = new Float32Array(canvas.width * canvas.height);
+const zBuffer = new DepthTexture(canvas.width, canvas.height);
+const shadowMap = new DepthTexture(canvas.width, canvas.height);
 
 // Setup light
 const lightDir = new Vector3(0, 0, 1);
@@ -65,8 +71,8 @@ const update = (dt: number) => {
 
 const draw = () => {
   clear(image);
-  clearBuffer(zBuffer);
-  clearBuffer(shadowMap);
+  clearDepthTexture(zBuffer, 1000);
+  clearDepthTexture(shadowMap, 1000);
 
   // Setup model and normal matrices
   const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
@@ -99,7 +105,16 @@ const draw = () => {
 
   // Set shader uniforms
   depthShader.uniforms = { model, lightSpaceMat };
-  shader.uniforms = { model, mvp, normalMat, lightDir, lightCol, texture };
+  shader.uniforms = {
+    model,
+    mvp,
+    normalMat,
+    lightDir,
+    lightCol,
+    texture,
+    lightSpaceMat,
+    shadowMap,
+  };
 
   const triVerts: Vector4[] = [];
 
