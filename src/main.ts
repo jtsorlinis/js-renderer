@@ -93,12 +93,13 @@ const draw = () => {
 
   // Set shader based on dropdown
   if (shadingDd.value !== "wireframe") {
-    shader = shaders[shadingDd.value as keyof typeof shaders];
+    shader = shaders[shadingDd.value.split("-")[0] as keyof typeof shaders];
+    lightDir.y = shadingDd.value.includes("shadows") ? -1 : 0;
   }
 
   // If the model has no texture or UVs, don't try to draw it textured
   const hasTexAndUVs = texture.data.length && model.uvs.length;
-  if (!hasTexAndUVs && shadingDd.value === "textured") {
+  if (!hasTexAndUVs && shadingDd.value.includes("textured")) {
     shadingDd.value = "smooth";
     shader = shaders.smooth;
   }
@@ -118,15 +119,17 @@ const draw = () => {
 
   const triVerts: Vector4[] = [];
 
-  // Shadow pass
-  for (let i = 0; i < model.vertices.length; i += 3) {
-    for (let j = 0; j < 3; j++) {
-      depthShader.vertexId = i + j;
-      depthShader.nthVert = j;
-      triVerts[j] = depthShader.vertex();
-    }
+  if (shadingDd.value.includes("shadows")) {
+    // Shadow pass
+    for (let i = 0; i < model.vertices.length; i += 3) {
+      for (let j = 0; j < 3; j++) {
+        depthShader.vertexId = i + j;
+        depthShader.nthVert = j;
+        triVerts[j] = depthShader.vertex();
+      }
 
-    triangle(triVerts, depthShader, image, shadowMap);
+      triangle(triVerts, depthShader, image, shadowMap);
+    }
   }
 
   // Final pass
