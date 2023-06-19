@@ -1,3 +1,5 @@
+import { Vector3 } from ".";
+
 export class Vector4 {
   x: number;
   y: number;
@@ -17,5 +19,9 @@ export class Vector4 {
 
   truncate() {
     return new Vector4(~~this.x, ~~this.y, ~~this.z, ~~this.w);
+  }
+
+  divideByW() {
+    return new Vector3(this.x / this.w, this.y / this.w, this.z / this.w);
   }
 }

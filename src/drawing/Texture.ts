@@ -1,5 +1,17 @@
 import { Vector3 } from "../maths";
 
+export class DepthTexture {
+  data: Float32Array;
+  width: number;
+  height: number;
+
+  constructor(width: number, height: number) {
+    this.data = new Float32Array(width * height);
+    this.width = width;
+    this.height = height;
+  }
+}
+
 export class Texture {
   data: Vector3[];
   width: number;
