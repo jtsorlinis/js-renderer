@@ -1,3 +1,4 @@
+import { Texture } from "../drawing";
 import { Vector2, Vector3, Vector4 } from "../maths";
 
 export interface Verts {
@@ -51,5 +52,12 @@ export abstract class BaseShader {
     const y = this.interpolate([vals[0].y, vals[1].y, vals[2].y]);
     const z = this.interpolate([vals[0].z, vals[1].z, vals[2].z]);
     return new Vector3(x, y, z);
+  };
+
+  sample = (texture: Texture, uv: Vector2): Vector3 => {
+    const x = ~~(uv.x * texture.width);
+    const y = ~~((1 - uv.y) * texture.height);
+    const index = x + y * texture.width;
+    return texture.data[index];
   };
 }

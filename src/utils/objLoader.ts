@@ -133,11 +133,5 @@ export const loadObj = (file: string, normalize = false) => {
     normals = faceNormals;
   }
 
-  // If no UVs, fill with empty UVs
-  if (!uvs.length) {
-    uvs.length = vertices.length;
-    uvs.fill(new Vector2());
-  }
-
   return { vertices, normals, faceNormals, uvs };
 };
