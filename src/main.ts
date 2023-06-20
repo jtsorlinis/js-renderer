@@ -1,5 +1,5 @@
 import "./style.css";
-import { Matrix4, Vector3, Vector4 } from "./maths";
+import { Matrix4, Vector2, Vector3, Vector4 } from "./maths";
 import {
   DepthTexture,
   Texture,
@@ -33,11 +33,14 @@ if (!ctx) {
 // Set canvas size
 canvas.width = 800;
 canvas.height = 600;
+const imageDim = new Vector2(canvas.width, canvas.height);
+const aspectRatio = imageDim.x / imageDim.y;
 
-// Setup canvas and zBuffer
-const image = new ImageData(canvas.width, canvas.height);
-const zBuffer = new DepthTexture(canvas.width, canvas.height);
-const shadowMap = new DepthTexture(canvas.width, canvas.height);
+// Setup canvas and buffers
+const image = new ImageData(imageDim.x, imageDim.y);
+const frameBuffer = image.data;
+const zBuffer = new DepthTexture(imageDim.x, imageDim.y);
+const shadowMap = new DepthTexture(imageDim.x, imageDim.y);
 
 // Setup light
 const lightDir = new Vector3(0, 0, 1);
@@ -70,7 +73,7 @@ const update = (dt: number) => {
 };
 
 const draw = () => {
-  clear(image);
+  clear(frameBuffer);
   clearDepthTexture(zBuffer, 1000);
   clearDepthTexture(shadowMap, 1000);
 
@@ -80,15 +83,15 @@ const draw = () => {
 
   // Setup light matrices
   const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), lightDir, Vector3.Up);
-  const lightProjMat = Matrix4.Ortho(orthoSize, image);
+  const lightProjMat = Matrix4.Ortho(orthoSize, aspectRatio);
   const lightSpaceMat = modelMat.multiply(lightViewMat.multiply(lightProjMat));
 
   // Setup view and projection matrices
   const camForward = camPos.add(Vector3.Forward);
   const viewMat = Matrix4.LookAt(camPos, camForward, Vector3.Up);
   const projMat = orthographicCb.checked
-    ? Matrix4.Ortho(orthoSize, image)
-    : Matrix4.Perspective(60, image);
+    ? Matrix4.Ortho(orthoSize, aspectRatio)
+    : Matrix4.Perspective(60, aspectRatio);
   const mvp = modelMat.multiply(viewMat.multiply(projMat));
 
   // Set shader based on dropdown
@@ -128,7 +131,7 @@ const draw = () => {
         triVerts[j] = depthShader.vertex();
       }
 
-      triangle(triVerts, depthShader, image, shadowMap);
+      triangle(triVerts, depthShader, frameBuffer, imageDim, shadowMap);
     }
   }
 
@@ -142,14 +145,14 @@ const draw = () => {
 
     // Draw wireframe
     if (shadingDd.value === "wireframe") {
-      line(triVerts[0], triVerts[1], image);
-      line(triVerts[1], triVerts[2], image);
-      line(triVerts[2], triVerts[0], image);
+      line(triVerts[0], triVerts[1], frameBuffer, imageDim);
+      line(triVerts[1], triVerts[2], frameBuffer, imageDim);
+      line(triVerts[2], triVerts[0], frameBuffer, imageDim);
       continue;
     }
 
     // Draw filled
-    triangle(triVerts, shader, image, zBuffer);
+    triangle(triVerts, shader, frameBuffer, imageDim, zBuffer);
   }
   ctx.putImageData(image, 0, 0);
 };
