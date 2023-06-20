@@ -9,25 +9,8 @@
   <body>
     <div id="app"></div>
     <canvas id="canvas"></canvas>
-    <label><input type="checkbox" id="orthoCb" />Orthographic</label>
-    &emsp;
-    <label>
-      Shading:
-      <select id="shadingDd">
-        <option value="textured-shadows">Shadows</option>
-        <option value="textured">Textured</option>
-        <option value="smooth">Smooth</option>
-        <option value="flat">Flat</option>
-        <option value="wireframe">Wireframe</option>
-      </select>
-    </label>
-    &emsp;
-    <input type="file" id="fileInput" accept=".obj" />
-    <hr />
     <div>
-      <span>Triangles: <span id="tris">00</span></span>
-      &emsp;
-      <span>Frametime: <span id="fps">00</span>ms</span>
+      <span>Rasterization: <span id="fps">00</span>ms</span>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -1,29 +1,9 @@
 import "./style.css";
-import { Matrix4, Vector2, Vector3, Vector4 } from "./maths";
-import {
-  DepthTexture,
-  Texture,
-  clear,
-  clearDepthTexture,
-  line,
-  triangle,
-} from "./drawing";
-import { loadObj } from "./utils/objLoader";
-import { SmoothShader } from "./shaders/Smooth";
-import { TexturedShader } from "./shaders/Textured";
-import { FlatShader } from "./shaders/Flat";
-import { BaseShader } from "./shaders/BaseShader";
-import { DepthShader } from "./shaders/DepthShader";
-
-import modelFile from "./models/head.obj?raw";
-import diffuseTex from "./models/head_diffuse.png";
+import { clear, setPixel } from "./drawing";
+import { Vector2, Vector3 } from "./maths";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
-const trisText = document.getElementById("tris") as HTMLSpanElement;
-const orthographicCb = document.getElementById("orthoCb") as HTMLInputElement;
-const shadingDd = document.getElementById("shadingDd") as HTMLSelectElement;
-const fileInput = document.getElementById("fileInput") as HTMLInputElement;
 
 const ctx = canvas.getContext("2d");
 if (!ctx) {
@@ -31,177 +11,80 @@ if (!ctx) {
 }
 
 // Set canvas size
-canvas.width = 800;
-canvas.height = 600;
-const imageDim = new Vector2(canvas.width, canvas.height);
-const aspectRatio = imageDim.x / imageDim.y;
+canvas.width = 2000;
+canvas.height = 1600;
 
-// Setup canvas and buffers
+// Setup canvas and zBuffer
+const imageDim = new Vector2(canvas.width, canvas.height);
 const image = new ImageData(imageDim.x, imageDim.y);
 const frameBuffer = image.data;
-const zBuffer = new DepthTexture(imageDim.x, imageDim.y);
-const shadowMap = new DepthTexture(imageDim.x, imageDim.y);
 
-// Setup light
-const lightDir = new Vector3(0, 0, 1);
-const lightCol = new Vector3(1, 1, 1);
+// triangle positions
+const p0 = new Vector3(imageDim.x * 0.1, imageDim.y * 0.9, 0);
+const p1 = new Vector3(imageDim.x * 0.5, imageDim.y * 0.1, 0);
+const p2 = new Vector3(imageDim.x * 0.9, imageDim.y * 0.9, 0);
 
-// Setup camera
-const camPos = new Vector3(0, 0, -2.5);
-let orthoSize = 1.5;
+// triangle colours
+const c0 = new Vector3(1, 0, 0);
+const c1 = new Vector3(0, 1, 0);
+const c2 = new Vector3(0, 0, 1);
 
-// Model
-let model = loadObj(modelFile, true);
-let texture = new Texture();
-await texture.setData(diffuseTex);
-trisText.innerText = (model.vertices.length / 3).toFixed(0);
-let modelPos = new Vector3(0, 0, 0);
-let modelRotation = new Vector3(0, Math.PI / 2, 0);
-let modelScale = new Vector3(1, 1, 1);
-
-// Setup shaders
-const shaders = {
-  textured: new TexturedShader(),
-  smooth: new SmoothShader(),
-  flat: new FlatShader(),
-};
-let shader: BaseShader;
-const depthShader = new DepthShader();
-
-const update = (dt: number) => {
-  modelRotation.y += dt / 5;
+const edgeFunction = (a: Vector3, b: Vector3, c: Vector3) => {
+  return (c.x - a.x) * (a.y - b.y) - (c.y - a.y) * (a.x - b.x);
 };
 
+const triangleEdge = (p0: Vector3, p1: Vector3, p2: Vector3) => {
+  const bBoxMinX = Math.min(p0.x, p1.x, p2.x);
+  const bBoxMaxX = Math.max(p0.x, p1.x, p2.x);
+  const bBoxMinY = Math.min(p0.y, p1.y, p2.y);
+  const bBoxMaxY = Math.max(p0.y, p1.y, p2.y);
+
+  const area = edgeFunction(p0, p1, p2);
+  const invArea = 1 / area;
+
+  const pos = new Vector3();
+  const interpCol = new Vector3();
+
+  const width = image.width;
+  for (pos.y = bBoxMinY; pos.y <= bBoxMaxY; pos.y++) {
+    for (pos.x = bBoxMinX; pos.x <= bBoxMaxX; pos.x++) {
+      const w0 = edgeFunction(p0, p1, pos);
+      const w1 = edgeFunction(p1, p2, pos);
+      const w2 = edgeFunction(p2, p0, pos);
+
+      if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+
+      const bcx = w1 * invArea;
+      const bcy = w2 * invArea;
+      const bcz = w0 * invArea;
+
+      interpCol.x = bcx * c0.x + bcy * c1.x + bcz * c2.x;
+      interpCol.y = bcx * c0.y + bcy * c1.y + bcz * c2.y;
+      interpCol.z = bcx * c0.z + bcy * c1.z + bcz * c2.z;
+
+      setPixel(pos.x, pos.y, imageDim, interpCol, frameBuffer);
+    }
+  }
+};
+
+let rasterDuration = 0;
 const draw = () => {
   clear(frameBuffer);
-  clearDepthTexture(zBuffer, 1000);
-  clearDepthTexture(shadowMap, 1000);
 
-  // Setup model and normal matrices
-  const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
-  const normalMat = modelMat.invert().transpose();
+  const start = performance.now();
 
-  // Setup light matrices
-  const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), lightDir, Vector3.Up);
-  const lightProjMat = Matrix4.Ortho(orthoSize, aspectRatio);
-  const lightSpaceMat = modelMat.multiply(lightViewMat.multiply(lightProjMat));
+  // Fill triangle with edge algorithm
+  triangleEdge(p0, p1, p2);
 
-  // Setup view and projection matrices
-  const camForward = camPos.add(Vector3.Forward);
-  const viewMat = Matrix4.LookAt(camPos, camForward, Vector3.Up);
-  const projMat = orthographicCb.checked
-    ? Matrix4.Ortho(orthoSize, aspectRatio)
-    : Matrix4.Perspective(60, aspectRatio);
-  const mvp = modelMat.multiply(viewMat.multiply(projMat));
+  rasterDuration = performance.now() - start;
 
-  // Set shader based on dropdown
-  if (shadingDd.value !== "wireframe") {
-    shader = shaders[shadingDd.value.split("-")[0] as keyof typeof shaders];
-    lightDir.y = shadingDd.value.includes("shadows") ? -1 : 0;
-  }
-
-  // If the model has no texture or UVs, don't try to draw it textured
-  const hasTexAndUVs = texture.data.length && model.uvs.length;
-  if (!hasTexAndUVs && shadingDd.value.includes("textured")) {
-    shadingDd.value = "smooth";
-    shader = shaders.smooth;
-  }
-
-  // Set shader uniforms
-  depthShader.uniforms = { model, lightSpaceMat };
-  shader.uniforms = {
-    model,
-    mvp,
-    normalMat,
-    lightDir,
-    lightCol,
-    texture,
-    lightSpaceMat,
-    shadowMap,
-  };
-
-  const triVerts: Vector4[] = [];
-
-  if (shadingDd.value.includes("shadows")) {
-    // Shadow pass
-    for (let i = 0; i < model.vertices.length; i += 3) {
-      for (let j = 0; j < 3; j++) {
-        depthShader.vertexId = i + j;
-        depthShader.nthVert = j;
-        triVerts[j] = depthShader.vertex();
-      }
-
-      triangle(triVerts, depthShader, frameBuffer, imageDim, shadowMap);
-    }
-  }
-
-  // Final pass
-  for (let i = 0; i < model.vertices.length; i += 3) {
-    for (let j = 0; j < 3; j++) {
-      shader.vertexId = i + j;
-      shader.nthVert = j;
-      triVerts[j] = shader.vertex();
-    }
-
-    // Draw wireframe
-    if (shadingDd.value === "wireframe") {
-      line(triVerts[0], triVerts[1], frameBuffer, imageDim);
-      line(triVerts[1], triVerts[2], frameBuffer, imageDim);
-      line(triVerts[2], triVerts[0], frameBuffer, imageDim);
-      continue;
-    }
-
-    // Draw filled
-    triangle(triVerts, shader, frameBuffer, imageDim, zBuffer);
-  }
   ctx.putImageData(image, 0, 0);
 };
 
-let prevTime = 0;
 const loop = () => {
-  const now = performance.now();
-  const dtms = now - prevTime;
-  const dt = dtms / 1000;
-  fpsText.innerText = dtms.toFixed(0);
-  prevTime = now;
-  update(dt);
   draw();
+  fpsText.innerText = rasterDuration.toFixed(1);
   requestAnimationFrame(loop);
-};
-
-canvas.onmousemove = (e) => {
-  if (e.buttons === 1) {
-    // left mouse button
-    modelRotation.y += e.movementX / 250;
-    modelRotation.x -= e.movementY / 250;
-  } else if (e.buttons === 2 || e.buttons === 4) {
-    // right mouse button
-    modelPos.x += e.movementX / 250;
-    modelPos.y -= e.movementY / 250;
-  }
-};
-
-canvas.onwheel = (e) => {
-  e.preventDefault();
-  if (orthographicCb.checked) {
-    orthoSize += e.deltaY / 100;
-    orthoSize = Math.max(0.01, orthoSize);
-  } else {
-    camPos.z -= e.deltaY / 100;
-  }
-};
-
-canvas.oncontextmenu = (e) => e.preventDefault();
-
-fileInput.onchange = async () => {
-  const file = fileInput.files && fileInput.files[0];
-  if (!file) return;
-  const data = await file.text();
-  model = loadObj(data, true);
-  texture = new Texture();
-  trisText.innerText = (model.vertices.length / 3).toFixed(0);
-  modelRotation.set(0, Math.PI / 2, 0);
-  modelPos.set(0, 0, 0);
 };
 
 loop();
