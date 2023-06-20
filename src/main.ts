@@ -45,7 +45,6 @@ const triangleEdge = (p0: Vector3, p1: Vector3, p2: Vector3) => {
   const pos = new Vector3();
   const interpCol = new Vector3();
 
-  const width = image.width;
   for (pos.y = bBoxMinY; pos.y <= bBoxMaxY; pos.y++) {
     for (pos.x = bBoxMinX; pos.x <= bBoxMaxX; pos.x++) {
       const w0 = edgeFunction(p0, p1, pos);
