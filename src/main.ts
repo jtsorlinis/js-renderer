@@ -53,7 +53,7 @@ let texture = new Texture();
 await texture.setData(diffuseTex);
 trisText.innerText = (model.vertices.length / 3).toFixed(0);
 let modelPos = new Vector3(0, 0, 0);
-let modelRotation = new Vector3(0, Math.PI, 0);
+let modelRotation = new Vector3(0, Math.PI / 2, 0);
 let modelScale = new Vector3(1, 1, 1);
 
 // Setup shaders
@@ -197,7 +197,7 @@ fileInput.onchange = async () => {
   model = loadObj(data, true);
   texture = new Texture();
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
-  modelRotation.set(0, Math.PI, 0);
+  modelRotation.set(0, Math.PI / 2, 0);
   modelPos.set(0, 0, 0);
 };
 
