@@ -1,4 +1,4 @@
-import { Vector3, Vector4 } from ".";
+import { Vector2, Vector3, Vector4 } from ".";
 
 export class Matrix4 {
   m: Float32Array;
@@ -83,23 +83,22 @@ export class Matrix4 {
     return m;
   }
 
-  static Ortho(orthoSize: number, image: ImageData, near = 0.1, far = 1000) {
+  static Ortho(orthoSize: number, aspectRatio: number, near = 0.1, far = 1000) {
     const orthoMat = Matrix4.Identity();
-    const aspect = image.width / image.height;
-    orthoMat.m[0] = 1 / (orthoSize * aspect);
+    orthoMat.m[0] = 1 / (orthoSize * aspectRatio);
     orthoMat.m[5] = 1 / orthoSize;
     orthoMat.m[10] = 1 / (far - near);
     orthoMat.m[14] = -near / (far - near);
     return orthoMat;
   }
 
-  static Perspective(fov: number, image: ImageData, near = 0.1, far = 1000) {
+  static Perspective(fov: number, aspectRatio: number, near = 0.1, far = 1000) {
     const perspectiveMat = Matrix4.Identity();
-    const aspect = image.width / image.height;
+
     const fovRad = fov * (Math.PI / 180);
     const tanHalfFovy = Math.tan(fovRad / 2);
 
-    perspectiveMat.m[0] = 1 / (aspect * tanHalfFovy);
+    perspectiveMat.m[0] = 1 / (aspectRatio * tanHalfFovy);
     perspectiveMat.m[5] = 1 / tanHalfFovy;
     perspectiveMat.m[10] = far / (far - near);
     perspectiveMat.m[11] = 1;

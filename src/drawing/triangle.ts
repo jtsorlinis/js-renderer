@@ -1,5 +1,5 @@
 import { DepthTexture, setPixel, viewportTransform } from ".";
-import { Vector4 } from "../maths";
+import { Vector2, Vector4 } from "../maths";
 import { BaseShader } from "../shaders/BaseShader";
 
 export interface Barycentric {
@@ -22,7 +22,8 @@ const bcClip: Barycentric = { u: 0, v: 0, w: 0 };
 export const triangle = (
   verts: Vector4[],
   shader: BaseShader,
-  image: ImageData,
+  buffer: Uint8ClampedArray,
+  imageDim: Vector2,
   zBuffer: DepthTexture
 ) => {
   // Extract vertex positions
@@ -39,9 +40,9 @@ export const triangle = (
   if (area <= 0) return;
 
   // Scale from [-1, 1] to [0, width] and [0, height]]
-  const p0 = viewportTransform(v0, image);
-  const p1 = viewportTransform(v1, image);
-  const p2 = viewportTransform(v2, image);
+  const p0 = viewportTransform(v0, imageDim);
+  const p1 = viewportTransform(v1, imageDim);
+  const p2 = viewportTransform(v2, imageDim);
 
   // Calculate inverse signed area of triangle in screen space
   const invAreaSs = 1 / edgeFunction(p2, p1, p0);
@@ -49,8 +50,8 @@ export const triangle = (
   // Calculate bounding box
   let minX = ~~Math.max(0, Math.min(p0.x, p1.x, p2.x));
   let minY = ~~Math.max(0, Math.min(p0.y, p1.y, p2.y));
-  let maxX = ~~Math.min(image.width, Math.max(p0.x, p1.x, p2.x));
-  let maxY = ~~Math.min(image.height, Math.max(p0.y, p1.y, p2.y));
+  let maxX = ~~Math.min(imageDim.x, Math.max(p0.x, p1.x, p2.x));
+  let maxY = ~~Math.min(imageDim.y, Math.max(p0.y, p1.y, p2.y));
 
   // Calculate inverse vertex depths
   const invW0 = 1 / v0.w;
@@ -77,7 +78,7 @@ export const triangle = (
       P.z = p0.z * bc.u + p1.z * bc.v + p2.z * bc.w;
 
       // Check pixel'z depth against z buffer, if pixel is closer, draw it
-      const index = P.x + P.y * image.width;
+      const index = P.x + P.y * imageDim.x;
       if (P.z < zBuffer.data[index]) {
         // Update z buffer with new depth
         zBuffer.data[index] = P.z;
@@ -101,7 +102,7 @@ export const triangle = (
         if (!frag) continue;
 
         // Set final pixel colour
-        setPixel(P.x, P.y, frag, image);
+        setPixel(P.x, P.y, imageDim, frag, buffer);
       }
     }
   }
