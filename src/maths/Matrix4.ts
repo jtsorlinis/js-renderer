@@ -1,4 +1,4 @@
-import { Vector2, Vector3, Vector4 } from ".";
+import { Vector3, Vector4 } from ".";
 
 export class Matrix4 {
   m: Float32Array;
