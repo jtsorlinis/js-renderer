@@ -43,12 +43,12 @@ const triangleScanline = (verts: Vector3[]) => {
   // Split triangle into top and bottom half
   const height = verts[i2].y - verts[i0].y;
   const topHalfHeight = verts[i1].y - verts[i0].y;
-  const bottomHalfHeight = verts[i2].y - verts[i1].y;
+  const botHalfHeight = verts[i2].y - verts[i1].y;
 
   // Calculate inverse slopes
   const invSlope0 = (verts[i2].x - verts[i0].x) / height;
   const invSlope1 = (verts[i1].x - verts[i0].x) / topHalfHeight;
-  const invSlope2 = (verts[i2].x - verts[i1].x) / bottomHalfHeight;
+  const invSlope2 = (verts[i2].x - verts[i1].x) / botHalfHeight;
 
   // Loop through each row of the triangle
   for (let y = 0; y <= height; y++) {
