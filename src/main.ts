@@ -50,6 +50,18 @@ const triangleScanline = (verts: Vector3[]) => {
   const d02 = (verts[i2].x - verts[i0].x) / height;
   const d12 = (verts[i2].x - verts[i1].x) / botHalfHeight;
 
+  const c01x = (cols[i1].x - cols[i0].x) / topHalfHeight;
+  const c01y = (cols[i1].y - cols[i0].y) / topHalfHeight;
+  const c01z = (cols[i1].z - cols[i0].z) / topHalfHeight;
+
+  const c02x = (cols[i2].x - cols[i0].x) / height;
+  const c02y = (cols[i2].y - cols[i0].y) / height;
+  const c02z = (cols[i2].z - cols[i0].z) / height;
+
+  const c12x = (cols[i2].x - cols[i1].x) / botHalfHeight;
+  const c12y = (cols[i2].y - cols[i1].y) / botHalfHeight;
+  const c12z = (cols[i2].z - cols[i1].z) / botHalfHeight;
+
   // Loop through each row of the triangle
   for (let y = 0; y <= height; y++) {
     const secondHalf = y > topHalfHeight;
@@ -57,14 +69,41 @@ const triangleScanline = (verts: Vector3[]) => {
     let xEnd = secondHalf
       ? verts[i1].x + (y - topHalfHeight) * d12
       : verts[i0].x + y * d01;
-    if (xStart > xEnd) {
-      const temp = xStart;
-      xStart = xEnd;
-      xEnd = temp;
-    }
 
-    for (let x = xStart; x <= xEnd; x++) {
-      setPixel(~~x, verts[i0].y + ~~y, imageDim, cols[0], frameBuffer);
+    let colStartX = cols[i0].x + y * c02x;
+    let colStartY = cols[i0].y + y * c02y;
+    let colStartZ = cols[i0].z + y * c02z;
+
+    let colEndX = secondHalf
+      ? cols[i1].x + (y - topHalfHeight) * c12x
+      : cols[i0].x + y * c01x;
+    let colEndY = secondHalf
+      ? cols[i1].y + (y - topHalfHeight) * c12y
+      : cols[i0].y + y * c01y;
+    let colEndZ = secondHalf
+      ? cols[i1].z + (y - topHalfHeight) * c12z
+      : cols[i0].z + y * c01z;
+
+    if (xStart > xEnd) {
+      for (let x = xEnd; x <= xStart; x++) {
+        const t = (x - xStart) / (xEnd - xStart);
+        const col = new Vector3(
+          colStartX + (colEndX - colStartX) * t,
+          colStartY + (colEndY - colStartY) * t,
+          colStartZ + (colEndZ - colStartZ) * t
+        );
+        setPixel(~~x, verts[i0].y + ~~y, imageDim, col, frameBuffer);
+      }
+    } else {
+      for (let x = xStart; x <= xEnd; x++) {
+        const t = (x - xStart) / (xEnd - xStart);
+        const col = new Vector3(
+          colStartX + (colEndX - colStartX) * t,
+          colStartY + (colEndY - colStartY) * t,
+          colStartZ + (colEndZ - colStartZ) * t
+        );
+        setPixel(~~x, verts[i0].y + ~~y, imageDim, col, frameBuffer);
+      }
     }
   }
 };
