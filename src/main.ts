@@ -36,9 +36,9 @@ const triangleScanline = (verts: Vector3[]) => {
     i2 = 2;
 
   // Sort vertices by y
-  if (verts[0].y > verts[1].y) [i0, i1] = [i1, i0];
-  if (verts[0].y > verts[2].y) [i0, i2] = [i2, i0];
-  if (verts[1].y > verts[2].y) [i1, i2] = [i2, i1];
+  if (verts[i0].y > verts[i1].y) [i0, i1] = [i1, i0];
+  if (verts[i0].y > verts[i2].y) [i0, i2] = [i2, i0];
+  if (verts[i1].y > verts[i2].y) [i1, i2] = [i2, i1];
 
   // Split triangle into top and bottom half
   const height = verts[i2].y - verts[i0].y;
@@ -63,24 +63,8 @@ const triangleScanline = (verts: Vector3[]) => {
       xEnd = temp;
     }
 
-    // Interpolate colour
-    const scaledY = y / height;
-    // Scale col0 to col1
-    const col0 = new Vector3();
-    col0.x = cols[i0].x * (1 - scaledY) + cols[i1].x * scaledY;
-    col0.y = cols[i0].y * (1 - scaledY) + cols[i1].y * scaledY;
-    col0.z = cols[i0].z * (1 - scaledY) + cols[i1].z * scaledY;
-    // Scale col0 to col2
-    const col1 = new Vector3();
-    col1.x = cols[i0].x * (1 - scaledY) + cols[i2].x * scaledY;
-    col1.y = cols[i0].y * (1 - scaledY) + cols[i2].y * scaledY;
-    col1.z = cols[i0].z * (1 - scaledY) + cols[i2].z * scaledY;
-
     for (let x = xStart; x <= xEnd; x++) {
-      const scaledX = (x - xStart) / (xEnd - xStart);
-      // Scale col0 to col1
-      const col = col0.scale(1 - scaledX).add(col1.scale(scaledX));
-      setPixel(~~x, verts[i0].y + ~~y, imageDim, col, frameBuffer);
+      setPixel(~~x, verts[i0].y + ~~y, imageDim, cols[0], frameBuffer);
     }
   }
 };
