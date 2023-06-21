@@ -28,72 +28,6 @@ const verts = [
 
 // triangle colours
 const cols = [new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1)];
-const sCols: Vector3[] = [];
-
-const fillBotTri = (v0: Vector3, v1: Vector3, v2: Vector3) => {
-  let invSlope1 = (v1.x - v0.x) / (v1.y - v0.y);
-  let invSlope2 = (v2.x - v0.x) / (v2.y - v0.y);
-
-  let xStart = v0.x;
-  let xEnd = v0.x;
-
-  const cSlope1x = (sCols[1].x - sCols[0].x) / (v1.y - v0.y);
-  const cSlope1y = (sCols[1].y - sCols[0].y) / (v1.y - v0.y);
-  const cSlope1z = (sCols[1].z - sCols[0].z) / (v1.y - v0.y);
-
-  const cSlope2x = (sCols[2].x - sCols[0].x) / (v2.y - v0.y);
-  const cSlope2y = (sCols[2].y - sCols[0].y) / (v2.y - v0.y);
-  const cSlope2z = (sCols[2].z - sCols[0].z) / (v2.y - v0.y);
-
-  let cStartX = sCols[0].x;
-  let cStartY = sCols[0].y;
-  let cStartZ = sCols[0].z;
-
-  let cEndX = sCols[0].x;
-  let cEndY = sCols[0].y;
-  let cEndZ = sCols[0].z;
-
-  if (v1.x > v2.x) [invSlope1, invSlope2] = [invSlope2, invSlope1];
-
-  for (let y = v0.y; y <= v1.y; y++) {
-    for (let x = xStart; x <= xEnd; x++) {
-      const t = (x - xStart) / (xEnd - xStart);
-      const col = new Vector3(
-        cStartX + (cEndX - cStartX) * t,
-        cStartY + (cEndY - cStartY) * t,
-        cStartZ + (cEndZ - cStartZ) * t
-      );
-      setPixel(~~x, ~~y, imageDim, col, frameBuffer);
-    }
-    xStart += invSlope1;
-    xEnd += invSlope2;
-    cStartX += cSlope1x;
-    cStartY += cSlope1y;
-    cStartZ += cSlope1z;
-    cEndX += cSlope2x;
-    cEndY += cSlope2y;
-    cEndZ += cSlope2z;
-  }
-};
-
-const fillTopTri = (v0: Vector3, v1: Vector3, v2: Vector3) => {
-  let invSlope1 = (v2.x - v0.x) / (v2.y - v0.y);
-  let invSlope2 = (v2.x - v1.x) / (v2.y - v1.y);
-
-  let xStart = v2.x;
-  let xEnd = v2.x;
-
-  if (v0.x > v1.x) [invSlope1, invSlope2] = [invSlope2, invSlope1];
-
-  for (let y = v2.y; y > v0.y; y--) {
-    // if (xStart > xEnd) [xStart, xEnd] = [xEnd, xStart];
-    for (let x = xStart; x <= xEnd; x++) {
-      setPixel(~~x, ~~y, imageDim, sCols[0], frameBuffer);
-    }
-    xStart -= invSlope1;
-    xEnd -= invSlope2;
-  }
-};
 
 // Scanline algorithm
 const triangleScanline = (verts: Vector3[]) => {
@@ -106,24 +40,71 @@ const triangleScanline = (verts: Vector3[]) => {
   if (verts[i0].y > verts[i2].y) [i0, i2] = [i2, i0];
   if (verts[i1].y > verts[i2].y) [i1, i2] = [i2, i1];
 
-  const v0 = verts[i0];
-  const v1 = verts[i1];
-  const v2 = verts[i2];
+  // Split triangle into top and bottom half
+  const height = verts[i2].y - verts[i0].y;
+  const topHalfHeight = verts[i1].y - verts[i0].y;
+  const botHalfHeight = verts[i2].y - verts[i1].y;
 
-  sCols[0] = cols[i0];
-  sCols[1] = cols[i1];
-  sCols[2] = cols[i2];
+  // Calculate inverse slopes
+  const d01 = (verts[i1].x - verts[i0].x) / topHalfHeight;
+  const d02 = (verts[i2].x - verts[i0].x) / height;
+  const d12 = (verts[i2].x - verts[i1].x) / botHalfHeight;
 
-  if (v1.y === v2.y) {
-    fillBotTri(v0, v1, v2);
-  } else if (v0.y === v1.y) {
-    fillTopTri(v0, v1, v2);
-  } else {
-    const ratio = (v1.y - v0.y) / (v2.y - v0.y);
-    const width = v2.x - v0.x;
-    const v3 = new Vector3(v0.x + ratio * width, v1.y, 0);
-    fillBotTri(v0, v1, v3);
-    fillTopTri(v1, v3, v2);
+  const c01x = (cols[i1].x - cols[i0].x) / topHalfHeight;
+  const c01y = (cols[i1].y - cols[i0].y) / topHalfHeight;
+  const c01z = (cols[i1].z - cols[i0].z) / topHalfHeight;
+
+  const c02x = (cols[i2].x - cols[i0].x) / height;
+  const c02y = (cols[i2].y - cols[i0].y) / height;
+  const c02z = (cols[i2].z - cols[i0].z) / height;
+
+  const c12x = (cols[i2].x - cols[i1].x) / botHalfHeight;
+  const c12y = (cols[i2].y - cols[i1].y) / botHalfHeight;
+  const c12z = (cols[i2].z - cols[i1].z) / botHalfHeight;
+
+  // Loop through each row of the triangle
+  for (let y = 0; y <= height; y++) {
+    const secondHalf = y > topHalfHeight;
+    let xStart = verts[i0].x + y * d02;
+    let xEnd = secondHalf
+      ? verts[i1].x + (y - topHalfHeight) * d12
+      : verts[i0].x + y * d01;
+
+    let colStartX = cols[i0].x + y * c02x;
+    let colStartY = cols[i0].y + y * c02y;
+    let colStartZ = cols[i0].z + y * c02z;
+
+    let colEndX = secondHalf
+      ? cols[i1].x + (y - topHalfHeight) * c12x
+      : cols[i0].x + y * c01x;
+    let colEndY = secondHalf
+      ? cols[i1].y + (y - topHalfHeight) * c12y
+      : cols[i0].y + y * c01y;
+    let colEndZ = secondHalf
+      ? cols[i1].z + (y - topHalfHeight) * c12z
+      : cols[i0].z + y * c01z;
+
+    if (xStart > xEnd) {
+      for (let x = xEnd; x <= xStart; x++) {
+        const t = (x - xStart) / (xEnd - xStart);
+        const col = new Vector3(
+          colStartX + (colEndX - colStartX) * t,
+          colStartY + (colEndY - colStartY) * t,
+          colStartZ + (colEndZ - colStartZ) * t
+        );
+        setPixel(~~x, verts[i0].y + ~~y, imageDim, col, frameBuffer);
+      }
+    } else {
+      for (let x = xStart; x <= xEnd; x++) {
+        const t = (x - xStart) / (xEnd - xStart);
+        const col = new Vector3(
+          colStartX + (colEndX - colStartX) * t,
+          colStartY + (colEndY - colStartY) * t,
+          colStartZ + (colEndZ - colStartZ) * t
+        );
+        setPixel(~~x, verts[i0].y + ~~y, imageDim, col, frameBuffer);
+      }
+    }
   }
 };
 
