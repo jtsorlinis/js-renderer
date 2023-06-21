@@ -20,46 +20,67 @@ const image = new ImageData(imageDim.x, imageDim.y);
 const frameBuffer = image.data;
 
 // triangle positions
-const p0 = new Vector3(imageDim.x * 0.1, imageDim.y * 0.9, 0);
-const p1 = new Vector3(imageDim.x * 0.5, imageDim.y * 0.1, 0);
-const p2 = new Vector3(imageDim.x * 0.9, imageDim.y * 0.9, 0);
+const verts = [
+  new Vector3(imageDim.x * 0.1, imageDim.y * 0.9, 0),
+  new Vector3(imageDim.x * 0.5, imageDim.y * 0.1, 0),
+  new Vector3(imageDim.x * 0.9, imageDim.y * 0.9, 0),
+];
 
 // triangle colours
-const c0 = new Vector3(1, 0, 0);
-const c1 = new Vector3(0, 1, 0);
-const c2 = new Vector3(0, 0, 1);
+const cols = [new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1)];
 
 // Scanline algorithm
-const triangleScanline = (p0: Vector3, p1: Vector3, p2: Vector3) => {
+const triangleScanline = (verts: Vector3[]) => {
+  let i0 = 0,
+    i1 = 1,
+    i2 = 2;
+
   // Sort vertices by y
-  if (p0.y > p1.y) [p0, p1] = [p1, p0];
-  if (p0.y > p2.y) [p0, p2] = [p2, p0];
-  if (p1.y > p2.y) [p1, p2] = [p2, p1];
+  if (verts[0].y > verts[1].y) [i0, i1] = [i1, i0];
+  if (verts[0].y > verts[2].y) [i0, i2] = [i2, i0];
+  if (verts[1].y > verts[2].y) [i1, i2] = [i2, i1];
 
   // Split triangle into top and bottom half
-  const height = p2.y - p0.y;
-  const topHalfHeight = p1.y - p0.y;
-  const bottomHalfHeight = p2.y - p1.y;
+  const height = verts[i2].y - verts[i0].y;
+  const topHalfHeight = verts[i1].y - verts[i0].y;
+  const bottomHalfHeight = verts[i2].y - verts[i1].y;
 
   // Calculate inverse slopes
-  const invSlope0 = (p2.x - p0.x) / height;
-  const invSlope1 = (p1.x - p0.x) / topHalfHeight;
-  const invSlope2 = (p2.x - p1.x) / bottomHalfHeight;
+  const invSlope0 = (verts[i2].x - verts[i0].x) / height;
+  const invSlope1 = (verts[i1].x - verts[i0].x) / topHalfHeight;
+  const invSlope2 = (verts[i2].x - verts[i1].x) / bottomHalfHeight;
 
   // Loop through each row of the triangle
   for (let y = 0; y <= height; y++) {
     const secondHalf = y > topHalfHeight;
-    let xStart = p0.x + y * invSlope0;
+    let xStart = verts[i0].x + y * invSlope0;
     let xEnd = secondHalf
-      ? p1.x + (y - topHalfHeight) * invSlope2
-      : p0.x + y * invSlope1;
+      ? verts[i1].x + (y - topHalfHeight) * invSlope2
+      : verts[i0].x + y * invSlope1;
     if (xStart > xEnd) {
       const temp = xStart;
       xStart = xEnd;
       xEnd = temp;
     }
+
+    // Interpolate colour
+    const scaledY = y / height;
+    // Scale col0 to col1
+    const col0 = new Vector3();
+    col0.x = cols[i0].x * (1 - scaledY) + cols[i1].x * scaledY;
+    col0.y = cols[i0].y * (1 - scaledY) + cols[i1].y * scaledY;
+    col0.z = cols[i0].z * (1 - scaledY) + cols[i1].z * scaledY;
+    // Scale col0 to col2
+    const col1 = new Vector3();
+    col1.x = cols[i0].x * (1 - scaledY) + cols[i2].x * scaledY;
+    col1.y = cols[i0].y * (1 - scaledY) + cols[i2].y * scaledY;
+    col1.z = cols[i0].z * (1 - scaledY) + cols[i2].z * scaledY;
+
     for (let x = xStart; x <= xEnd; x++) {
-      setPixel(~~x, p0.y + ~~y, imageDim, c0, frameBuffer);
+      const scaledX = (x - xStart) / (xEnd - xStart);
+      // Scale col0 to col1
+      const col = col0.scale(1 - scaledX).add(col1.scale(scaledX));
+      setPixel(~~x, verts[i0].y + ~~y, imageDim, col, frameBuffer);
     }
   }
 };
@@ -70,13 +91,17 @@ const edgeFunction = (a: Vector3, b: Vector3, c: Vector3) => {
 };
 
 // Barycentric/Edge algorithm
-const triangleEdge = (p0: Vector3, p1: Vector3, p2: Vector3) => {
-  const bBoxMinX = Math.min(p0.x, p1.x, p2.x);
-  const bBoxMaxX = Math.max(p0.x, p1.x, p2.x);
-  const bBoxMinY = Math.min(p0.y, p1.y, p2.y);
-  const bBoxMaxY = Math.max(p0.y, p1.y, p2.y);
+const triangleEdge = (verts: Vector3[]) => {
+  const v0 = verts[0];
+  const v1 = verts[1];
+  const v2 = verts[2];
 
-  const area = edgeFunction(p0, p1, p2);
+  const bBoxMinX = Math.min(v0.x, v1.x, v2.x);
+  const bBoxMaxX = Math.max(v0.x, v1.x, v2.x);
+  const bBoxMinY = Math.min(v0.y, v1.y, v2.y);
+  const bBoxMaxY = Math.max(v0.y, v1.y, v2.y);
+
+  const area = edgeFunction(v0, v1, v2);
   const invArea = 1 / area;
 
   const pos = new Vector3();
@@ -84,9 +109,9 @@ const triangleEdge = (p0: Vector3, p1: Vector3, p2: Vector3) => {
 
   for (pos.y = bBoxMinY; pos.y <= bBoxMaxY; pos.y++) {
     for (pos.x = bBoxMinX; pos.x <= bBoxMaxX; pos.x++) {
-      const w0 = edgeFunction(p0, p1, pos);
-      const w1 = edgeFunction(p1, p2, pos);
-      const w2 = edgeFunction(p2, p0, pos);
+      const w0 = edgeFunction(v0, v1, pos);
+      const w1 = edgeFunction(v1, v2, pos);
+      const w2 = edgeFunction(v2, v0, pos);
 
       if (w0 < 0 || w1 < 0 || w2 < 0) continue;
 
@@ -94,9 +119,9 @@ const triangleEdge = (p0: Vector3, p1: Vector3, p2: Vector3) => {
       const bcy = w2 * invArea;
       const bcz = w0 * invArea;
 
-      interpCol.x = bcx * c0.x + bcy * c1.x + bcz * c2.x;
-      interpCol.y = bcx * c0.y + bcy * c1.y + bcz * c2.y;
-      interpCol.z = bcx * c0.z + bcy * c1.z + bcz * c2.z;
+      interpCol.x = bcx * cols[0].x + bcy * cols[1].x + bcz * cols[2].x;
+      interpCol.y = bcx * cols[0].y + bcy * cols[1].y + bcz * cols[2].y;
+      interpCol.z = bcx * cols[0].z + bcy * cols[1].z + bcz * cols[2].z;
 
       setPixel(pos.x, pos.y, imageDim, interpCol, frameBuffer);
     }
@@ -110,8 +135,8 @@ const draw = () => {
   const start = performance.now();
 
   // Fill triangle with edge algorithm
-  // triangleEdge(p0, p1, p2);
-  triangleScanline(p0, p1, p2);
+  // triangleEdge(verts);
+  triangleScanline(verts);
 
   rasterDuration = performance.now() - start;
 
