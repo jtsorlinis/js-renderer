@@ -46,8 +46,8 @@ const triangleScanline = (verts: Vector3[]) => {
   const botHalfHeight = verts[i2].y - verts[i1].y;
 
   // Calculate inverse slopes
-  const d02 = (verts[i2].x - verts[i0].x) / height;
   const d01 = (verts[i1].x - verts[i0].x) / topHalfHeight;
+  const d02 = (verts[i2].x - verts[i0].x) / height;
   const d12 = (verts[i2].x - verts[i1].x) / botHalfHeight;
 
   // Loop through each row of the triangle
