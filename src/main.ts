@@ -29,49 +29,44 @@ const c0 = new Vector3(1, 0, 0);
 const c1 = new Vector3(0, 1, 0);
 const c2 = new Vector3(0, 0, 1);
 
-const edgeFunction = (a: Vector3, b: Vector3, c: Vector3) => {
-  return (c.x - a.x) * (a.y - b.y) - (c.y - a.y) * (a.x - b.x);
-};
-
+// Scanline algorithm
 const triangleScanline = (p0: Vector3, p1: Vector3, p2: Vector3) => {
-  const verts = [p0, p1, p2].sort((a, b) => a.y - b.y);
-
-  const height = verts[2].y - verts[0].y;
+  // Sort vertices by y
+  if (p0.y > p1.y) [p0, p1] = [p1, p0];
+  if (p0.y > p2.y) [p0, p2] = [p2, p0];
+  if (p1.y > p2.y) [p1, p2] = [p2, p1];
 
   // Split triangle into top and bottom half
-  let segmentHeight = verts[1].y - verts[0].y;
+  const height = p2.y - p0.y;
+  const topHalfHeight = p1.y - p0.y;
+  const bottomHalfHeight = p2.y - p1.y;
 
-  let invSlope0 = (verts[2].x - verts[0].x) / height;
-  let invSlope1 = (verts[1].x - verts[0].x) / segmentHeight;
-  if (invSlope0 > invSlope1) {
-    [invSlope0, invSlope1] = [invSlope1, invSlope0];
-  }
+  // Calculate inverse slopes
+  const invSlope0 = (p2.x - p0.x) / height;
+  const invSlope1 = (p1.x - p0.x) / topHalfHeight;
+  const invSlope2 = (p2.x - p1.x) / bottomHalfHeight;
 
-  let xStart = verts[0].x;
-  let xEnd = verts[0].x;
-  for (let y = verts[0].y; y <= verts[1].y; y++) {
-    xStart += invSlope0;
-    xEnd += invSlope1;
+  // Loop through each row of the triangle
+  for (let y = 0; y <= height; y++) {
+    const secondHalf = y > topHalfHeight;
+    let xStart = p0.x + y * invSlope0;
+    let xEnd = secondHalf
+      ? p1.x + (y - topHalfHeight) * invSlope2
+      : p0.x + y * invSlope1;
+    if (xStart > xEnd) {
+      const temp = xStart;
+      xStart = xEnd;
+      xEnd = temp;
+    }
     for (let x = xStart; x <= xEnd; x++) {
-      setPixel(~~x, ~~y, imageDim, c0, frameBuffer);
+      setPixel(~~x, p0.y + ~~y, imageDim, c0, frameBuffer);
     }
   }
+};
 
-  // Bottom half
-  segmentHeight = verts[2].y - verts[1].y;
-  invSlope0 = (verts[2].x - verts[1].x) / segmentHeight;
-  invSlope1 = (verts[2].x - verts[0].x) / height;
-  if (invSlope0 < invSlope1) {
-    [invSlope0, invSlope1] = [invSlope1, invSlope0];
-  }
-
-  for (let y = verts[1].y; y <= verts[2].y; y++) {
-    for (let x = xStart; x <= xEnd; x++) {
-      setPixel(~~x, ~~y, imageDim, c1, frameBuffer);
-    }
-    xStart += invSlope0;
-    xEnd += invSlope1;
-  }
+// Edge function for edge algorithm
+const edgeFunction = (a: Vector3, b: Vector3, c: Vector3) => {
+  return (c.x - a.x) * (a.y - b.y) - (c.y - a.y) * (a.x - b.x);
 };
 
 // Barycentric/Edge algorithm
