@@ -33,6 +33,48 @@ const edgeFunction = (a: Vector3, b: Vector3, c: Vector3) => {
   return (c.x - a.x) * (a.y - b.y) - (c.y - a.y) * (a.x - b.x);
 };
 
+const triangleScanline = (p0: Vector3, p1: Vector3, p2: Vector3) => {
+  const verts = [p0, p1, p2].sort((a, b) => a.y - b.y);
+
+  const height = verts[2].y - verts[0].y;
+
+  // Split triangle into top and bottom half
+  let segmentHeight = verts[1].y - verts[0].y;
+
+  let invSlope0 = (verts[2].x - verts[0].x) / height;
+  let invSlope1 = (verts[1].x - verts[0].x) / segmentHeight;
+  if (invSlope0 > invSlope1) {
+    [invSlope0, invSlope1] = [invSlope1, invSlope0];
+  }
+
+  let xStart = verts[0].x;
+  let xEnd = verts[0].x;
+  for (let y = verts[0].y; y <= verts[1].y; y++) {
+    xStart += invSlope0;
+    xEnd += invSlope1;
+    for (let x = xStart; x <= xEnd; x++) {
+      setPixel(~~x, ~~y, imageDim, c0, frameBuffer);
+    }
+  }
+
+  // Bottom half
+  segmentHeight = verts[2].y - verts[1].y;
+  invSlope0 = (verts[2].x - verts[1].x) / segmentHeight;
+  invSlope1 = (verts[2].x - verts[0].x) / height;
+  if (invSlope0 < invSlope1) {
+    [invSlope0, invSlope1] = [invSlope1, invSlope0];
+  }
+
+  for (let y = verts[1].y; y <= verts[2].y; y++) {
+    for (let x = xStart; x <= xEnd; x++) {
+      setPixel(~~x, ~~y, imageDim, c1, frameBuffer);
+    }
+    xStart += invSlope0;
+    xEnd += invSlope1;
+  }
+};
+
+// Barycentric/Edge algorithm
 const triangleEdge = (p0: Vector3, p1: Vector3, p2: Vector3) => {
   const bBoxMinX = Math.min(p0.x, p1.x, p2.x);
   const bBoxMaxX = Math.max(p0.x, p1.x, p2.x);
@@ -73,7 +115,8 @@ const draw = () => {
   const start = performance.now();
 
   // Fill triangle with edge algorithm
-  triangleEdge(p0, p1, p2);
+  // triangleEdge(p0, p1, p2);
+  triangleScanline(p0, p1, p2);
 
   rasterDuration = performance.now() - start;
 
