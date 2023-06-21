@@ -130,24 +130,42 @@ const triangleEdge = (verts: Vector3[]) => {
   const pos = new Vector3();
   const interpCol = new Vector3();
 
+  const topLeft = new Vector3(bBoxMinX, bBoxMinY);
+
+  const a01 = v0.y - v1.y;
+  const b01 = v1.x - v0.x;
+  const a12 = v1.y - v2.y;
+  const b12 = v2.x - v1.x;
+  const a20 = v2.y - v0.y;
+  const b20 = v0.x - v2.x;
+
+  let w0Row = edgeFunction(v0, v1, topLeft);
+  let w1Row = edgeFunction(v1, v2, topLeft);
+  let w2Row = edgeFunction(v2, v0, topLeft);
+
   for (pos.y = bBoxMinY; pos.y <= bBoxMaxY; pos.y++) {
+    let w0 = w0Row;
+    let w1 = w1Row;
+    let w2 = w2Row;
     for (pos.x = bBoxMinX; pos.x <= bBoxMaxX; pos.x++) {
-      const w0 = edgeFunction(v0, v1, pos);
-      const w1 = edgeFunction(v1, v2, pos);
-      const w2 = edgeFunction(v2, v0, pos);
+      if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
+        const bcx = w1 * invArea;
+        const bcy = w2 * invArea;
+        const bcz = w0 * invArea;
 
-      if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+        interpCol.x = bcx * cols[0].x + bcy * cols[1].x + bcz * cols[2].x;
+        interpCol.y = bcx * cols[0].y + bcy * cols[1].y + bcz * cols[2].y;
+        interpCol.z = bcx * cols[0].z + bcy * cols[1].z + bcz * cols[2].z;
 
-      const bcx = w1 * invArea;
-      const bcy = w2 * invArea;
-      const bcz = w0 * invArea;
-
-      interpCol.x = bcx * cols[0].x + bcy * cols[1].x + bcz * cols[2].x;
-      interpCol.y = bcx * cols[0].y + bcy * cols[1].y + bcz * cols[2].y;
-      interpCol.z = bcx * cols[0].z + bcy * cols[1].z + bcz * cols[2].z;
-
-      setPixel(pos.x, pos.y, imageDim, interpCol, frameBuffer);
+        setPixel(pos.x, pos.y, imageDim, interpCol, frameBuffer);
+      }
+      w0 += a01;
+      w1 += a12;
+      w2 += a20;
     }
+    w0Row += b01;
+    w1Row += b12;
+    w2Row += b20;
   }
 };
 
@@ -158,8 +176,8 @@ const draw = () => {
   const start = performance.now();
 
   // Fill triangle with edge algorithm
-  // triangleEdge(verts);
-  triangleScanline(verts);
+  triangleEdge(verts);
+  // triangleScanline(verts);
 
   rasterDuration = performance.now() - start;
 
