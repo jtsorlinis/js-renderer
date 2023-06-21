@@ -46,17 +46,17 @@ const triangleScanline = (verts: Vector3[]) => {
   const botHalfHeight = verts[i2].y - verts[i1].y;
 
   // Calculate inverse slopes
-  const invSlope0 = (verts[i2].x - verts[i0].x) / height;
-  const invSlope1 = (verts[i1].x - verts[i0].x) / topHalfHeight;
-  const invSlope2 = (verts[i2].x - verts[i1].x) / botHalfHeight;
+  const d02 = (verts[i2].x - verts[i0].x) / height;
+  const d01 = (verts[i1].x - verts[i0].x) / topHalfHeight;
+  const d12 = (verts[i2].x - verts[i1].x) / botHalfHeight;
 
   // Loop through each row of the triangle
   for (let y = 0; y <= height; y++) {
     const secondHalf = y > topHalfHeight;
-    let xStart = verts[i0].x + y * invSlope0;
+    let xStart = verts[i0].x + y * d02;
     let xEnd = secondHalf
-      ? verts[i1].x + (y - topHalfHeight) * invSlope2
-      : verts[i0].x + y * invSlope1;
+      ? verts[i1].x + (y - topHalfHeight) * d12
+      : verts[i0].x + y * d01;
     if (xStart > xEnd) {
       const temp = xStart;
       xStart = xEnd;
