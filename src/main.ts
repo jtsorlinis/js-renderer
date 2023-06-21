@@ -4,6 +4,7 @@ import { Vector2, Vector3 } from "./maths";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
+const scnalineCb = document.getElementById("scanlineCb") as HTMLInputElement;
 
 const ctx = canvas.getContext("2d");
 if (!ctx) {
@@ -19,12 +20,25 @@ const imageDim = new Vector2(canvas.width, canvas.height);
 const image = new ImageData(imageDim.x, imageDim.y);
 const frameBuffer = image.data;
 
-// triangle positions
-const verts = [
-  new Vector3(imageDim.x * 0.1, imageDim.y * 0.9, 0),
-  new Vector3(imageDim.x * 0.5, imageDim.y * 0.1, 0),
-  new Vector3(imageDim.x * 0.9, imageDim.y * 0.9, 0),
-];
+const genTri = (pos: Vector2, size: number) => {
+  const verts = [
+    new Vector3(pos.x - size / 2, pos.y + size / 2, 0),
+    new Vector3(pos.x, pos.y - size / 2, 0),
+    new Vector3(pos.x + size / 2, pos.y + size / 2, 0),
+  ];
+
+  return verts;
+};
+
+const tris: Vector3[][] = [];
+const noTris = 1000;
+for (let i = 0; i < noTris; i++) {
+  const tri = genTri(
+    new Vector2(~~(Math.random() * imageDim.x), ~~(Math.random() * imageDim.y)),
+    100
+  );
+  tris.push(tri);
+}
 
 // triangle colours
 const cols = [new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1)];
@@ -171,13 +185,14 @@ const triangleEdge = (verts: Vector3[]) => {
 
 let rasterDuration = 0;
 const draw = () => {
+  const rasterize = scnalineCb.checked ? triangleScanline : triangleEdge;
   clear(frameBuffer);
 
   const start = performance.now();
 
-  // Fill triangle with edge algorithm
-  triangleEdge(verts);
-  // triangleScanline(verts);
+  for (let tri of tris) {
+    rasterize(tri);
+  }
 
   rasterDuration = performance.now() - start;
 
