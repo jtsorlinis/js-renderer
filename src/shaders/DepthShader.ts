@@ -9,8 +9,6 @@ export interface Uniforms {
 export class DepthShader extends BaseShader {
   uniforms!: Uniforms;
 
-  vDepth = this.varying<number>();
-
   vertex = () => {
     const i = this.vertexId;
     const pos = this.uniforms.lightSpaceMat.multiplyPoint(
