@@ -82,7 +82,15 @@ export abstract class BaseShader {
     const x = ~~(uv.x * texture.width);
     const y = ~~((1 - uv.y) * texture.height);
     const index = x + y * texture.width;
-    return texture.data[index];
+    return texture.data[index].clone();
+  };
+
+  sampleNormal = (texture: Texture, uv: Vector2): Vector3 => {
+    const normal = this.sample(texture, uv);
+    normal.x = normal.x * 2 - 1;
+    normal.y = normal.y * 2 - 1;
+    normal.z = normal.z * 2 - 1;
+    return normal;
   };
 
   sampleDepth = (

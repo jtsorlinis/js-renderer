@@ -62,6 +62,6 @@ export class TexturedShader extends BaseShader {
     intensity *= shadow;
     const lighting = this.uniforms.lightCol.scale(intensity);
 
-    return col.multiply(lighting);
+    return col.multiplyInPlace(lighting);
   };
 }
