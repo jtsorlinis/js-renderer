@@ -35,6 +35,12 @@ export const triangle = (
   if (v0.z < 0 || v1.z < 0 || v2.z < 0) return;
   if (v0.z > 1 || v1.z > 1 || v2.z > 1) return;
 
+  // Clip triangles that are fully outside the viewport
+  if (v0.x < -1 && v1.x < -1 && v2.x < -1) return;
+  if (v0.x > 1 && v1.x > 1 && v2.x > 1) return;
+  if (v0.y < -1 && v1.y < -1 && v2.y < -1) return;
+  if (v0.y > 1 && v1.y > 1 && v2.y > 1) return;
+
   // Backface culling based on winding order
   const area = edgeFunction(v0, v1, v2);
   if (area <= 0) return;
