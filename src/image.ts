@@ -25,3 +25,20 @@ export const viewportTransform = (v: Vector4, imageDimensions: Vector2) => {
   const y = (-v.y + 1) * (imageDimensions.y * 0.5);
   return new Vector4(x, y, v.z, v.w);
 };
+
+export const barycentric = (p: Vector3, a: Vector3, b: Vector3, c: Vector3) => {
+  const v0x = b.x - a.x;
+  const v0y = b.y - a.y;
+  const v1x = c.x - a.x;
+  const v1y = c.y - a.y;
+  const v2x = p.x - a.x;
+  const v2y = p.y - a.y;
+
+  const denom = v0x * v1y - v1x * v0y;
+
+  const v = (v2x * v1y - v1x * v2y) / denom;
+  const w = (v0x * v2y - v2x * v0y) / denom;
+  const u = 1 - v - w;
+
+  return { u, v, w };
+};
