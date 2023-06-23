@@ -56,17 +56,9 @@ const triangleScanline = (verts: Vector3[]) => {
   const d02 = (verts[i2].x - verts[i0].x) / height;
   const d12 = (verts[i2].x - verts[i1].x) / botHalfHeight;
 
-  const c01x = (cols[i1].x - cols[i0].x) / topHalfHeight;
-  const c01y = (cols[i1].y - cols[i0].y) / topHalfHeight;
-  const c01z = (cols[i1].z - cols[i0].z) / topHalfHeight;
-
-  const c02x = (cols[i2].x - cols[i0].x) / height;
-  const c02y = (cols[i2].y - cols[i0].y) / height;
-  const c02z = (cols[i2].z - cols[i0].z) / height;
-
-  const c12x = (cols[i2].x - cols[i1].x) / botHalfHeight;
-  const c12y = (cols[i2].y - cols[i1].y) / botHalfHeight;
-  const c12z = (cols[i2].z - cols[i1].z) / botHalfHeight;
+  const c01 = cols[i1].subtract(cols[i0]).scaleInPlace(1 / topHalfHeight);
+  const c02 = cols[i2].subtract(cols[i0]).scaleInPlace(1 / height);
+  const c12 = cols[i2].subtract(cols[i1]).scaleInPlace(1 / botHalfHeight);
 
   // Loop through each row of the triangle
   for (let y = 0; y <= height; y++) {
@@ -76,40 +68,22 @@ const triangleScanline = (verts: Vector3[]) => {
       ? verts[i1].x + (y - topHalfHeight) * d12
       : verts[i0].x + y * d01;
 
-    let colStartX = cols[i0].x + y * c02x;
-    let colStartY = cols[i0].y + y * c02y;
-    let colStartZ = cols[i0].z + y * c02z;
-
-    let colEndX = secondHalf
-      ? cols[i1].x + (y - topHalfHeight) * c12x
-      : cols[i0].x + y * c01x;
-    let colEndY = secondHalf
-      ? cols[i1].y + (y - topHalfHeight) * c12y
-      : cols[i0].y + y * c01y;
-    let colEndZ = secondHalf
-      ? cols[i1].z + (y - topHalfHeight) * c12z
-      : cols[i0].z + y * c01z;
+    let colStart = cols[i0].add(c02.scale(y));
+    let colEnd = secondHalf
+      ? cols[i1].add(c12.scale(y - topHalfHeight))
+      : cols[i0].add(c01.scale(y));
 
     if (xStart > xEnd) {
-      for (let x = xEnd; x <= xStart; x++) {
-        const t = (x - xStart) / (xEnd - xStart);
-        const col = new Vector3(
-          colStartX + (colEndX - colStartX) * t,
-          colStartY + (colEndY - colStartY) * t,
-          colStartZ + (colEndZ - colStartZ) * t
-        );
-        setPixel(~~x, verts[i0].y + ~~y, imageDim, col, frameBuffer);
-      }
-    } else {
-      for (let x = xStart; x <= xEnd; x++) {
-        const t = (x - xStart) / (xEnd - xStart);
-        const col = new Vector3(
-          colStartX + (colEndX - colStartX) * t,
-          colStartY + (colEndY - colStartY) * t,
-          colStartZ + (colEndZ - colStartZ) * t
-        );
-        setPixel(~~x, verts[i0].y + ~~y, imageDim, col, frameBuffer);
-      }
+      [xStart, xEnd] = [xEnd, xStart];
+      [colStart, colEnd] = [colEnd, colStart];
+    }
+
+    const colLen = colEnd.subtract(colStart);
+
+    for (let x = xStart; x <= xEnd; x++) {
+      const t = (x - xStart) / (xEnd - xStart);
+      const col = colStart.add(colLen.scale(t));
+      setPixel(~~x, verts[i0].y + ~~y, imageDim, col, frameBuffer);
     }
   }
 };
@@ -138,16 +112,13 @@ const triangleEdge = (verts: Vector3[]) => {
 
   const topLeft = new Vector3(bBoxMinX, bBoxMinY);
 
-  const a01 = v0.y - v1.y;
-  const b01 = v1.x - v0.x;
-  const a12 = v1.y - v2.y;
-  const b12 = v2.x - v1.x;
-  const a20 = v2.y - v0.y;
-  const b20 = v0.x - v2.x;
-
   let w0Row = edgeFunction(v0, v1, topLeft);
   let w1Row = edgeFunction(v1, v2, topLeft);
   let w2Row = edgeFunction(v2, v0, topLeft);
+
+  const w0Step = new Vector2(v0.y - v1.y, v1.x - v0.x);
+  const w1Step = new Vector2(v1.y - v2.y, v2.x - v1.x);
+  const w2Step = new Vector2(v2.y - v0.y, v0.x - v2.x);
 
   for (pos.y = bBoxMinY; pos.y <= bBoxMaxY; pos.y++) {
     let w0 = w0Row;
@@ -165,13 +136,13 @@ const triangleEdge = (verts: Vector3[]) => {
 
         setPixel(pos.x, pos.y, imageDim, interpCol, frameBuffer);
       }
-      w0 += a01;
-      w1 += a12;
-      w2 += a20;
+      w0 += w0Step.x;
+      w1 += w1Step.x;
+      w2 += w2Step.x;
     }
-    w0Row += b01;
-    w1Row += b12;
-    w2Row += b20;
+    w0Row += w0Step.y;
+    w1Row += w1Step.y;
+    w2Row += w2Step.y;
   }
 };
 
