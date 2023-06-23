@@ -7,18 +7,18 @@ export interface Uniforms {
   mvp: Matrix4;
   normalMat: Matrix4;
   lightDir: Vector3;
+  mLightDir: Vector3;
   lightCol: Vector3;
   texture: Texture;
+  normalTexture: Texture;
   lightSpaceMat: Matrix4;
   shadowMap: DepthTexture;
 }
 
-export class TexturedShader extends BaseShader {
+export class NormalMappedShader extends BaseShader {
   // Uniforms
   uniforms!: Uniforms;
 
-  // Varyings
-  vNormal = this.varying<Vector3>();
   vUV = this.varying<Vector2>();
   vLightSpacePos = this.varying<Vector4>();
 
@@ -26,15 +26,12 @@ export class TexturedShader extends BaseShader {
     const model = this.uniforms.model;
     const i = this.vertexId;
     const pos = this.uniforms.mvp.multiplyPoint(model.vertices[i]);
-    const normal = this.uniforms.normalMat
-      .multiplyDirection(model.normals[i])
-      .normalize();
+
     const lightSpacePos = this.uniforms.lightSpaceMat.multiplyPoint(
       model.vertices[i]
     );
 
     // Pass varyings to fragment shader
-    this.v2f(this.vNormal, normal);
     this.v2f(this.vUV, model.uvs[i]);
     this.v2f(this.vLightSpacePos, lightSpacePos);
 
@@ -43,7 +40,6 @@ export class TexturedShader extends BaseShader {
 
   fragment = () => {
     // Get interpolated values
-    const normal = this.interpolateVec3(this.vNormal).normalize();
     const uv = this.interpolateVec2Persp(this.vUV);
     const lightSpacePos = this.interpolateVec4Persp(this.vLightSpacePos);
 
@@ -56,9 +52,10 @@ export class TexturedShader extends BaseShader {
 
     // Sample texture
     const col = this.sample(this.uniforms.texture, uv);
+    const norm = this.sampleNormal(this.uniforms.normalTexture, uv);
 
     // Calculate lighting
-    let intensity = -normal.dot(this.uniforms.lightDir);
+    let intensity = -norm.dot(this.uniforms.mLightDir);
     intensity *= shadow;
     const lighting = this.uniforms.lightCol.scale(intensity);
 

@@ -14,9 +14,11 @@ import { TexturedShader } from "./shaders/Textured";
 import { FlatShader } from "./shaders/Flat";
 import { BaseShader } from "./shaders/BaseShader";
 import { DepthShader } from "./shaders/DepthShader";
+import { NormalMappedShader } from "./shaders/NormalMapped";
 
 import modelFile from "./models/head.obj?raw";
 import diffuseTex from "./models/head_diffuse.png";
+import normalTex from "./models/head_normal_w.png";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
@@ -54,13 +56,16 @@ let orthoSize = 1.5;
 let model = loadObj(modelFile, true);
 let texture = new Texture();
 await texture.setData(diffuseTex);
+let normalTexture = new Texture();
+await normalTexture.setData(normalTex);
 trisText.innerText = (model.vertices.length / 3).toFixed(0);
 let modelPos = new Vector3(0, 0, 0);
-let modelRotation = new Vector3(0, Math.PI / 2, 0);
+let modelRotation = new Vector3(0, Math.PI, 0);
 let modelScale = new Vector3(1, 1, 1);
 
 // Setup shaders
 const shaders = {
+  normalMapped: new NormalMappedShader(),
   textured: new TexturedShader(),
   smooth: new SmoothShader(),
   flat: new FlatShader(),
@@ -79,12 +84,14 @@ const draw = () => {
 
   // Setup model and normal matrices
   const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
+  const invModelMat = modelMat.invert();
   const normalMat = modelMat.invert().transpose();
 
   // Setup light matrices
   const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), lightDir, Vector3.Up);
   const lightProjMat = Matrix4.Ortho(orthoSize, aspectRatio);
   const lightSpaceMat = modelMat.multiply(lightViewMat.multiply(lightProjMat));
+  const mLightDir = invModelMat.multiplyDirection(lightDir);
 
   // Setup view and projection matrices
   const camForward = camPos.add(Vector3.Forward);
@@ -102,7 +109,11 @@ const draw = () => {
 
   // If the model has no texture or UVs, don't try to draw it textured
   const hasTexAndUVs = texture.data.length && model.uvs.length;
-  if (!hasTexAndUVs && shadingDd.value.includes("textured")) {
+  if (
+    !hasTexAndUVs &&
+    (shadingDd.value.includes("textured") ||
+      shadingDd.value.includes("normalMapped"))
+  ) {
     shadingDd.value = "smooth";
     shader = shaders.smooth;
   }
@@ -114,8 +125,10 @@ const draw = () => {
     mvp,
     normalMat,
     lightDir,
+    mLightDir,
     lightCol,
     texture,
+    normalTexture,
     lightSpaceMat,
     shadowMap,
   };
@@ -199,6 +212,7 @@ fileInput.onchange = async () => {
   const data = await file.text();
   model = loadObj(data, true);
   texture = new Texture();
+  normalTexture = new Texture();
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
   modelRotation.set(0, Math.PI / 2, 0);
   modelPos.set(0, 0, 0);
