@@ -85,8 +85,34 @@ export abstract class BaseShader {
     return texture.data[index].clone();
   };
 
+  sampleBilinear = (texture: Texture, uv: Vector2): Vector3 => {
+    const x = uv.x * texture.width;
+    const y = (1 - uv.y) * texture.height;
+    const x1 = ~~x;
+    const y1 = ~~y;
+    const x2 = x1 + 1;
+    const y2 = y1 + 1;
+    const dx = x - x1;
+    const dy = y - y1;
+    const c1 = texture.data[x1 + y1 * texture.width].clone();
+    const c2 = texture.data[x2 + y1 * texture.width].clone();
+    const c3 = texture.data[x1 + y2 * texture.width].clone();
+    const c4 = texture.data[x2 + y2 * texture.width].clone();
+    const c12 = c1.scaleInPlace(1 - dx).addInPlace(c2.scaleInPlace(dx));
+    const c34 = c3.scaleInPlace(1 - dx).addInPlace(c4.scaleInPlace(dx));
+    return c12.scaleInPlace(1 - dy).addInPlace(c34.scaleInPlace(dy));
+  };
+
   sampleNormal = (texture: Texture, uv: Vector2): Vector3 => {
     const normal = this.sample(texture, uv);
+    normal.x = normal.x * 2 - 1;
+    normal.y = normal.y * 2 - 1;
+    normal.z = normal.z * 2 - 1;
+    return normal;
+  };
+
+  sampleNormalBilinear = (texture: Texture, uv: Vector2): Vector3 => {
+    const normal = this.sampleBilinear(texture, uv);
     normal.x = normal.x * 2 - 1;
     normal.y = normal.y * 2 - 1;
     normal.z = normal.z * 2 - 1;
