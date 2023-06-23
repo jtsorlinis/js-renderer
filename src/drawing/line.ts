@@ -14,15 +14,15 @@ export const line = (
   if (start.z < -1 || end.z < -1) return;
   if (start.z > 1 || end.z > 1) return;
 
+  // Clip lines that are fully outside the viewport
+  if (start.x < -1 && end.x < -1) return;
+  if (start.x > 1 && end.x > 1) return;
+  if (start.y < -1 && end.y < -1) return;
+  if (start.y > 1 && end.y > 1) return;
+
   // Viewport transform
   start = viewportTransform(start, imageDim);
   end = viewportTransform(end, imageDim);
-
-  // Don't draw if line is completely off screen
-  if (start.x < 0 && end.x < 0) return;
-  if (start.y < 0 && end.y < 0) return;
-  if (start.x > imageDim.x && end.x > imageDim.x) return;
-  if (start.y > imageDim.y && end.y > imageDim.y) return;
 
   // Round to nearest pixel
   let s = start.truncate();
