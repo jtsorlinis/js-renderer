@@ -30,15 +30,7 @@ const genTri = (pos: Vector2, size: number) => {
   return verts;
 };
 
-const tris: Vector3[][] = [];
-const noTris = 1000;
-for (let i = 0; i < noTris; i++) {
-  const tri = genTri(
-    new Vector2(~~(Math.random() * imageDim.x), ~~(Math.random() * imageDim.y)),
-    100
-  );
-  tris.push(tri);
-}
+const tri = genTri(new Vector2(1000, 800), 1400);
 
 // triangle colours
 const cols = [new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1)];
@@ -133,10 +125,10 @@ const triangleEdge = (verts: Vector3[]) => {
   const v1 = verts[1];
   const v2 = verts[2];
 
-  const bBoxMinX = Math.min(v0.x, v1.x, v2.x);
-  const bBoxMaxX = Math.max(v0.x, v1.x, v2.x);
-  const bBoxMinY = Math.min(v0.y, v1.y, v2.y);
-  const bBoxMaxY = Math.max(v0.y, v1.y, v2.y);
+  const bBoxMinX = ~~Math.min(v0.x, v1.x, v2.x);
+  const bBoxMaxX = ~~Math.max(v0.x, v1.x, v2.x);
+  const bBoxMinY = ~~Math.min(v0.y, v1.y, v2.y);
+  const bBoxMaxY = ~~Math.max(v0.y, v1.y, v2.y);
 
   const area = edgeFunction(v0, v1, v2);
   const invArea = 1 / area;
@@ -190,13 +182,17 @@ const draw = () => {
 
   const start = performance.now();
 
-  for (let tri of tris) {
-    rasterize(tri);
-  }
+  rasterize(tri);
 
   rasterDuration = performance.now() - start;
 
   ctx.putImageData(image, 0, 0);
+};
+
+document.onkeydown = (e) => {
+  if (e.key === " ") {
+    scnalineCb.checked = !scnalineCb.checked;
+  }
 };
 
 const loop = () => {
