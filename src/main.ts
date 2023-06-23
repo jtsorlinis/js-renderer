@@ -1,5 +1,5 @@
 import "./style.css";
-import { clear, setPixel } from "./drawing";
+import { clear, setPixel } from "./image";
 import { Vector2, Vector3 } from "./maths";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;

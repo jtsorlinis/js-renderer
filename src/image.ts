@@ -1,5 +1,4 @@
-import { Vector2, Vector3, Vector4 } from "../maths";
-import { DepthTexture } from "./Texture";
+import { Vector2, Vector3, Vector4 } from "./maths";
 
 export const setPixel = (
   x: number,
@@ -19,10 +18,6 @@ export const clear = (buffer: Uint8ClampedArray) => {
   for (let i = 3; i < buffer.length; i += 4) {
     buffer[i] = 255;
   }
-};
-
-export const clearDepthTexture = (texture: DepthTexture, val: number) => {
-  texture.data.fill(val);
 };
 
 export const viewportTransform = (v: Vector4, imageDimensions: Vector2) => {
