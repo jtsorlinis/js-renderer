@@ -85,6 +85,13 @@ export class Vector3 {
     return new Vector3(this.x + v.x, this.y + v.y, this.z + v.z);
   }
 
+  public addInPlace(v: Vector3) {
+    this.x += v.x;
+    this.y += v.y;
+    this.z += v.z;
+    return this;
+  }
+
   public addScalar(s: number) {
     return new Vector3(this.x + s, this.y + s, this.z + s);
   }
