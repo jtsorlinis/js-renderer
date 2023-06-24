@@ -90,13 +90,10 @@ export const triangle = (
         zBuffer.data[index] = P.z;
 
         // Get perspective correct barycentric coordinates
-        bcClip.u = bc.u * invW0;
-        bcClip.v = bc.v * invW1;
-        bcClip.w = bc.w * invW2;
-        const invSum = 1 / (bcClip.u + bcClip.v + bcClip.w);
-        bcClip.u *= invSum;
-        bcClip.v *= invSum;
-        bcClip.w *= invSum;
+        const invSum = 1 / (bc.u * invW0 + bc.v * invW1 + bc.w * invW2);
+        bcClip.u = bc.u * invW0 * invSum;
+        bcClip.v = bc.v * invW1 * invSum;
+        bcClip.w = 1 - bcClip.u - bcClip.v;
 
         // Fragment shader
         shader.bc = bc;
