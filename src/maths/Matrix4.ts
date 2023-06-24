@@ -23,29 +23,44 @@ export class Matrix4 {
     return m;
   }
 
-  // ZXY rotation order
-  public static RotateEuler(r: Vector3) {
+  public static RotateX(angle: number) {
     const m = Matrix4.Identity();
-    const cx = Math.cos(r.x);
-    const sx = Math.sin(r.x);
-    const cy = Math.cos(r.y);
-    const sy = Math.sin(r.y);
-    const cz = Math.cos(r.z);
-    const sz = Math.sin(r.z);
-
-    m.m[0] = cz * cy - sz * sx * sy;
-    m.m[1] = -sz * cx;
-    m.m[2] = cz * sy + sz * sx * cy;
-
-    m.m[4] = sz * cy + cz * sx * sy;
-    m.m[5] = cx * cz;
-    m.m[6] = sz * sy - cz * sx * cy;
-
-    m.m[8] = -cx * sy;
-    m.m[9] = sx;
-    m.m[10] = cx * cy;
-
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
+    m.m[5] = c;
+    m.m[6] = s;
+    m.m[9] = -s;
+    m.m[10] = c;
     return m;
+  }
+
+  public static RotateY(angle: number) {
+    const m = Matrix4.Identity();
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
+    m.m[0] = c;
+    m.m[2] = -s;
+    m.m[8] = s;
+    m.m[10] = c;
+    return m;
+  }
+
+  public static RotateZ(angle: number) {
+    const m = Matrix4.Identity();
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
+    m.m[0] = c;
+    m.m[1] = s;
+    m.m[4] = -s;
+    m.m[5] = c;
+    return m;
+  }
+
+  // YXZ rotation order (Yaw, Pitch, Roll)
+  public static RotateYXZ(r: Vector3) {
+    return Matrix4.RotateZ(r.z)
+      .multiply(Matrix4.RotateX(r.x))
+      .multiply(Matrix4.RotateY(r.y));
   }
 
   public static Translate(t: Vector3) {
@@ -58,7 +73,7 @@ export class Matrix4 {
 
   public static TRS(t: Vector3, r: Vector3, s: Vector3) {
     return Matrix4.Scale(s)
-      .multiply(Matrix4.RotateEuler(r))
+      .multiply(Matrix4.RotateYXZ(r))
       .multiply(Matrix4.Translate(t));
   }
 
