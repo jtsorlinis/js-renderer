@@ -60,7 +60,7 @@ let normalTexture = new Texture();
 await normalTexture.setData(normalTex);
 trisText.innerText = (model.vertices.length / 3).toFixed(0);
 let modelPos = new Vector3(0, 0, 0);
-let modelRotation = new Vector3(0, Math.PI / 2, 0);
+let modelRotation = new Vector3(0, -Math.PI / 2, 0);
 let modelScale = new Vector3(1, 1, 1);
 
 // Setup shaders
@@ -74,7 +74,7 @@ let shader: BaseShader;
 const depthShader = new DepthShader();
 
 const update = (dt: number) => {
-  modelRotation.y += dt / 5;
+  modelRotation.y -= dt / 5;
 };
 
 const draw = () => {
@@ -185,8 +185,8 @@ const loop = () => {
 canvas.onmousemove = (e) => {
   if (e.buttons === 1) {
     // left mouse button
-    modelRotation.y += e.movementX / 250;
-    modelRotation.x -= e.movementY / 250;
+    modelRotation.y -= e.movementX / 250;
+    modelRotation.x += e.movementY / 250;
   } else if (e.buttons === 2 || e.buttons === 4) {
     // right mouse button
     modelPos.x += e.movementX / 250;
@@ -214,7 +214,7 @@ fileInput.onchange = async () => {
   texture = new Texture();
   normalTexture = new Texture();
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
-  modelRotation.set(0, Math.PI / 2, 0);
+  modelRotation.set(0, -Math.PI / 2, 0);
   modelPos.set(0, 0, 0);
 };
 
