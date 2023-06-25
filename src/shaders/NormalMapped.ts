@@ -7,9 +7,9 @@ export interface Uniforms {
   mvp: Matrix4;
   normalMat: Matrix4;
   lightDir: Vector3;
-  mLightDir: Vector3;
   lightCol: Vector3;
   texture: Texture;
+  mLightDir: Vector3;
   normalTexture: Texture;
   lightSpaceMat: Matrix4;
   shadowMap: DepthTexture;

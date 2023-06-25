@@ -34,6 +34,7 @@ export class SmoothShader extends BaseShader {
     // Get interpolated values
     const normal = this.interpolateVec3(this.vNormal).normalize();
 
+    // Calculate lighting
     const intensity = -normal.dot(this.uniforms.lightDir);
     return this.uniforms.lightCol.scale(intensity);
   };
