@@ -99,7 +99,7 @@ const draw = () => {
   const projMat = orthographicCb.checked
     ? Matrix4.Ortho(orthoSize, aspectRatio)
     : Matrix4.Perspective(60, aspectRatio);
-  const mvp = modelMat.multiply(viewMat.multiply(projMat));
+  const mvp = modelMat.multiply(viewMat).multiply(projMat);
 
   // Set shader based on dropdown
   if (shadingDd.value !== "wireframe") {
