@@ -10,7 +10,7 @@ export interface Uniforms {
   camPos: Vector3;
 }
 
-const specStr = 0.5;
+const specStr = 0.2;
 const ambient = 0.1;
 
 export class FlatShader extends BaseShader {

@@ -13,7 +13,7 @@ export interface Uniforms {
   texture: Texture;
 }
 
-const specStr = 0.5;
+const specStr = 0.2;
 const ambient = 0.1;
 export class TexturedShader extends BaseShader {
   // Uniforms
