@@ -116,4 +116,8 @@ export class Vector3 {
     this.y = y;
     this.z = z;
   }
+
+  public reflect(n: Vector3) {
+    return this.subtract(n.scale(2 * this.dot(n)));
+  }
 }

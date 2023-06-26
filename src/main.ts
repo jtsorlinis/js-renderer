@@ -45,7 +45,7 @@ const zBuffer = new DepthTexture(imageDim.x, imageDim.y);
 const shadowMap = new DepthTexture(imageDim.x, imageDim.y);
 
 // Setup light
-const lightDir = new Vector3(0, 0, 1);
+const lightDir = new Vector3(0, -1, 1).normalized();
 const lightCol = new Vector3(1, 1, 1);
 
 // Setup camera
@@ -91,7 +91,8 @@ const draw = () => {
   const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), lightDir, Vector3.Up);
   const lightProjMat = Matrix4.Ortho(orthoSize, aspectRatio);
   const lightSpaceMat = modelMat.multiply(lightViewMat.multiply(lightProjMat));
-  const mLightDir = invModelMat.multiplyDirection(lightDir);
+  const mLightDir = invModelMat.multiplyDirection(lightDir).normalize();
+  const mCamPos = invModelMat.multiplyPoint(camPos).xyz;
 
   // Setup view and projection matrices
   const camForward = camPos.add(Vector3.Forward);
@@ -104,7 +105,6 @@ const draw = () => {
   // Set shader based on dropdown
   if (shadingDd.value !== "wireframe") {
     shader = shaders[shadingDd.value.split("-")[0] as keyof typeof shaders];
-    lightDir.y = shadingDd.value.includes("shadows") ? -1 : 0;
   }
 
   // If the model has no texture or UVs, don't try to draw it textured
@@ -122,11 +122,14 @@ const draw = () => {
   depthShader.uniforms = { model, lightSpaceMat };
   shader.uniforms = {
     model,
+    modelMat,
     mvp,
     normalMat,
     lightDir,
     mLightDir,
     lightCol,
+    camPos,
+    mCamPos,
     texture,
     normalTexture,
     lightSpaceMat,

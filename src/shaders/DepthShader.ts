@@ -10,11 +10,9 @@ export class DepthShader extends BaseShader {
   uniforms!: Uniforms;
 
   vertex = () => {
-    const i = this.vertexId;
-    const pos = this.uniforms.lightSpaceMat.multiplyPoint(
-      this.uniforms.model.vertices[i]
+    return this.uniforms.lightSpaceMat.multiplyPoint(
+      this.uniforms.model.vertices[this.vertexId]
     );
-    return pos;
   };
 
   fragment = () => {};

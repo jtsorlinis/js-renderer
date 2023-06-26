@@ -136,7 +136,7 @@ export class Matrix4 {
 
   // Perspective division is normally automatically done by the GPU, but we need to do it manually
   // prettier-ignore
-  public multiplyPoint(v: Vector4) {
+  public multiplyPoint(v: Vector3) {
     const invW = 1 / (this.m[3] * v.x + this.m[7] * v.y + this.m[11] * v.z + this.m[15])
     const result = new Vector4();
     result.x = (this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12]) * invW;

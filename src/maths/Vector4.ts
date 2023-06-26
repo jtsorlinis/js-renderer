@@ -17,6 +17,10 @@ export class Vector4 {
     this.w = w ?? 0;
   }
 
+  get xyz() {
+    return new Vector3(this.x, this.y, this.z);
+  }
+
   truncate() {
     return new Vector4(~~this.x, ~~this.y, ~~this.z, ~~this.w);
   }
