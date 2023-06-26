@@ -37,7 +37,7 @@ export class TexturedShader extends BaseShader {
   fragment = () => {
     // Get interpolated values
     const normal = this.interpolateVec3(this.vNormal).normalize();
-    const uv = this.interpolateVec2Persp(this.vUV);
+    const uv = this.interpolateVec2(this.vUV);
 
     // Sample texture
     const col = this.sample(this.uniforms.texture, uv);
