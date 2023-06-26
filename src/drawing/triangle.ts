@@ -59,11 +59,6 @@ export const triangle = (
   let maxX = ~~Math.min(imageDim.x, Math.max(p0.x, p1.x, p2.x));
   let maxY = ~~Math.min(imageDim.y, Math.max(p0.y, p1.y, p2.y));
 
-  // Calculate inverse vertex depths
-  const invW0 = 1 / v0.w;
-  const invW1 = 1 / v1.w;
-  const invW2 = 1 / v2.w;
-
   // Loop over pixels in bounding box
   for (P.y = minY; P.y <= maxY; P.y++) {
     for (P.x = minX; P.x <= maxX; P.x++) {
@@ -90,14 +85,13 @@ export const triangle = (
         zBuffer.data[index] = P.z;
 
         // Get perspective correct barycentric coordinates
-        const invSum = 1 / (bc.u * invW0 + bc.v * invW1 + bc.w * invW2);
-        bcClip.u = bc.u * invW0 * invSum;
-        bcClip.v = bc.v * invW1 * invSum;
+        P.w = 1 / (p0.w * bc.u + p1.w * bc.v + p2.w * bc.w);
+        bcClip.u = bc.u * P.w * p0.w;
+        bcClip.v = bc.v * P.w * p1.w;
         bcClip.w = 1 - bcClip.u - bcClip.v;
 
         // Fragment shader
-        shader.bc = bc;
-        shader.bcClip = bcClip;
+        shader.bc = bcClip;
         shader.fragPos = P;
         const frag = shader.fragment();
 

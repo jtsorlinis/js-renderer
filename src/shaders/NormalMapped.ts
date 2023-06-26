@@ -40,8 +40,8 @@ export class NormalMappedShader extends BaseShader {
 
   fragment = () => {
     // Get interpolated values
-    const uv = this.interpolateVec2Persp(this.vUV);
-    const lightSpacePos = this.interpolateVec4Persp(this.vLightSpacePos);
+    const uv = this.interpolateVec2(this.vUV);
+    const lightSpacePos = this.interpolateVec4(this.vLightSpacePos);
 
     // Calculate shadow
     lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
