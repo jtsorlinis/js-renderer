@@ -29,12 +29,11 @@ export class FlatShader extends BaseShader {
     const worldPos = this.uniforms.mvp.multiplyPoint(model.vertices[i]);
 
     // Calculate lighting
-    const lightDir = this.uniforms.lightDir.normalized();
     const viewDir = this.uniforms.camPos.subtract(worldPos.xyz).normalize();
-    const reflectDir = lightDir.reflect(normal);
+    const reflectDir = this.uniforms.lightDir.reflect(normal);
     const spec = Math.pow(Math.max(viewDir.dot(reflectDir), 0), 32) * specStr;
 
-    const diffuse = Math.max(-normal.dot(lightDir), 0);
+    const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
 
     this.lighting = diffuse + spec + ambient;
 

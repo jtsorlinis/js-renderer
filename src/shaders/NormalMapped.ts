@@ -62,12 +62,11 @@ export class NormalMappedShader extends BaseShader {
     const normal = this.sampleNormal(this.uniforms.normalTexture, uv);
 
     // Calculate lighting
-    const mLightDir = this.uniforms.mLightDir.normalized();
     const viewDir = this.uniforms.mCamPos.subtract(modelPos).normalize();
-    const reflectDir = mLightDir.reflect(normal);
+    const reflectDir = this.uniforms.mLightDir.reflect(normal);
     const spec = Math.pow(Math.max(viewDir.dot(reflectDir), 0), 32) * specStr;
 
-    let diffuse = Math.max(-normal.dot(mLightDir), 0);
+    let diffuse = Math.max(-normal.dot(this.uniforms.mLightDir), 0);
     diffuse *= shadow;
 
     const lighting = this.uniforms.lightCol.scale(diffuse + spec + ambient);
