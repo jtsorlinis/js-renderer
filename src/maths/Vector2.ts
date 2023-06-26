@@ -40,7 +40,9 @@ export class Vector2 {
     return new Vector2(this.x * s, this.y * s);
   }
 
-  public translate(v: Vector2) {
-    return new Vector2(this.x + v.x, this.y + v.y);
+  public scaleInPlace(s: number) {
+    this.x *= s;
+    this.y *= s;
+    return this;
   }
 }
