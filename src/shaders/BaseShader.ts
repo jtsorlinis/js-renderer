@@ -60,7 +60,7 @@ export abstract class BaseShader {
     normal.x = normal.x * 2 - 1;
     normal.y = normal.y * 2 - 1;
     normal.z = normal.z * 2 - 1;
-    return normal;
+    return normal.normalize();
   };
 
   sampleDepth = (
