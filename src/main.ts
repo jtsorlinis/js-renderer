@@ -33,8 +33,8 @@ if (!ctx) {
 }
 
 // Set canvas size
-canvas.width = 800;
-canvas.height = 600;
+canvas.width = 1200;
+canvas.height = 800;
 const imageDim = new Vector2(canvas.width, canvas.height);
 const aspectRatio = imageDim.x / imageDim.y;
 
