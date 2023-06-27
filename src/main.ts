@@ -54,10 +54,8 @@ let orthoSize = 1.5;
 
 // Model
 let model = loadObj(modelFile, true);
-let texture = new Texture();
-await texture.setData(diffuseTex);
-let normalTexture = new Texture();
-await normalTexture.setData(normalTex);
+let texture = await Texture.Load(diffuseTex);
+let normalTexture = await Texture.Load(normalTex);
 trisText.innerText = (model.vertices.length / 3).toFixed(0);
 let modelPos = new Vector3(0, 0, 0);
 let modelRotation = new Vector3(0, -Math.PI / 2, 0);
@@ -214,8 +212,8 @@ fileInput.onchange = async () => {
   if (!file) return;
   const data = await file.text();
   model = loadObj(data, true);
-  texture = new Texture();
-  normalTexture = new Texture();
+  texture.data = [];
+  normalTexture.data = [];
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
   modelRotation.set(0, -Math.PI / 2, 0);
   modelPos.set(0, 0, 0);
