@@ -17,13 +17,13 @@ export class Texture {
   width: number;
   height: number;
 
-  constructor() {
-    this.data = [];
-    this.width = 0;
-    this.height = 0;
+  private constructor(data: Vector3[], width: number, height: number) {
+    this.data = data;
+    this.width = width;
+    this.height = height;
   }
 
-  setData = async (imageURL: string) => {
+  static Load = async (imageURL: string) => {
     const img = new Image();
     img.src = imageURL;
     await img.decode();
@@ -34,13 +34,9 @@ export class Texture {
     }
     offScreenCtx.drawImage(img, 0, 0);
     const imageData = offScreenCtx.getImageData(0, 0, img.width, img.height);
-
-    this.data = [];
-    this.width = imageData.width;
-    this.height = imageData.height;
-
+    const data = [];
     for (let i = 0; i < imageData.data.length; i += 4) {
-      this.data.push(
+      data.push(
         new Vector3(
           imageData.data[i] / 255,
           imageData.data[i + 1] / 255,
@@ -48,5 +44,7 @@ export class Texture {
         )
       );
     }
+
+    return new Texture(data, img.width, img.height);
   };
 }
