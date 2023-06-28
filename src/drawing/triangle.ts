@@ -1,5 +1,5 @@
-import { DepthTexture, setPixel, viewportTransform } from ".";
-import { Vector2, Vector4 } from "../maths";
+import { DepthTexture, Framebuffer } from ".";
+import { Vector4 } from "../maths";
 import { BaseShader } from "../shaders/BaseShader";
 
 export interface Barycentric {
@@ -22,8 +22,7 @@ const bcClip: Barycentric = { u: 0, v: 0, w: 0 };
 export const triangle = (
   verts: Vector4[],
   shader: BaseShader,
-  buffer: Uint8ClampedArray,
-  imageDim: Vector2,
+  buffer: Framebuffer,
   zBuffer: DepthTexture
 ) => {
   // Extract vertex positions
@@ -46,9 +45,9 @@ export const triangle = (
   if (area <= 0) return;
 
   // Scale from [-1, 1] to [0, width] and [0, height]]
-  const p0 = viewportTransform(v0, imageDim);
-  const p1 = viewportTransform(v1, imageDim);
-  const p2 = viewportTransform(v2, imageDim);
+  const p0 = buffer.viewportTransform(v0);
+  const p1 = buffer.viewportTransform(v1);
+  const p2 = buffer.viewportTransform(v2);
 
   // Calculate inverse signed area of triangle in screen space
   const invAreaSs = 1 / edgeFunction(p2, p1, p0);
@@ -56,8 +55,8 @@ export const triangle = (
   // Calculate bounding box
   let minX = ~~Math.max(0, Math.min(p0.x, p1.x, p2.x));
   let minY = ~~Math.max(0, Math.min(p0.y, p1.y, p2.y));
-  let maxX = ~~Math.min(imageDim.x, Math.max(p0.x, p1.x, p2.x));
-  let maxY = ~~Math.min(imageDim.y, Math.max(p0.y, p1.y, p2.y));
+  let maxX = ~~Math.min(buffer.width, Math.max(p0.x, p1.x, p2.x));
+  let maxY = ~~Math.min(buffer.height, Math.max(p0.y, p1.y, p2.y));
 
   // Loop over pixels in bounding box
   for (P.y = minY; P.y <= maxY; P.y++) {
@@ -79,7 +78,7 @@ export const triangle = (
       P.z = p0.z * bc.u + p1.z * bc.v + p2.z * bc.w;
 
       // Check pixel'z depth against z buffer, if pixel is closer, draw it
-      const index = P.x + P.y * imageDim.x;
+      const index = P.x + P.y * buffer.width;
       if (P.z < zBuffer.data[index]) {
         // Update z buffer with new depth
         zBuffer.data[index] = P.z;
@@ -99,7 +98,7 @@ export const triangle = (
         if (!frag) continue;
 
         // Set final pixel colour
-        setPixel(P.x, P.y, imageDim, frag, buffer);
+        buffer.setPixel(P.x, P.y, frag);
       }
     }
   }
