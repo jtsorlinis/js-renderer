@@ -10,6 +10,10 @@ export class DepthTexture {
     this.width = width;
     this.height = height;
   }
+
+  clear(val: number) {
+    this.data.fill(val);
+  }
 }
 
 export class Texture {

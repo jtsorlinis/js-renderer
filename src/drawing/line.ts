@@ -1,15 +1,10 @@
-import { viewportTransform, setPixel } from ".";
-import { Vector2, Vector3, Vector4 } from "../maths";
+import { Framebuffer } from ".";
+import { Vector3, Vector4 } from "../maths";
 
 const WHITE = new Vector3(1, 1, 1);
 
 // Bresenham's line algorithm
-export const line = (
-  start: Vector4,
-  end: Vector4,
-  buffer: Uint8ClampedArray,
-  imageDim: Vector2
-) => {
+export const line = (start: Vector4, end: Vector4, buffer: Framebuffer) => {
   // Clip near and far planes
   if (start.z < -1 || end.z < -1) return;
   if (start.z > 1 || end.z > 1) return;
@@ -21,8 +16,8 @@ export const line = (
   if (start.y > 1 && end.y > 1) return;
 
   // Viewport transform
-  start = viewportTransform(start, imageDim);
-  end = viewportTransform(end, imageDim);
+  start = buffer.viewportTransform(start);
+  end = buffer.viewportTransform(end);
 
   // Round to nearest pixel
   let s = start.truncate();
@@ -35,8 +30,8 @@ export const line = (
   let err = dx - dy;
 
   while (true) {
-    if (s.x >= 0 && s.x < imageDim.x && s.y >= 0 && s.y < imageDim.y) {
-      setPixel(s.x, s.y, imageDim, WHITE, buffer);
+    if (s.x >= 0 && s.x < buffer.width && s.y >= 0 && s.y < buffer.height) {
+      buffer.setPixel(s.x, s.y, WHITE);
     }
 
     if (s.x === e.x && s.y === e.y) break;

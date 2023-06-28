@@ -1,13 +1,6 @@
 import "./style.css";
-import { Matrix4, Vector2, Vector3, Vector4 } from "./maths";
-import {
-  DepthTexture,
-  Texture,
-  clear,
-  clearDepthTexture,
-  line,
-  triangle,
-} from "./drawing";
+import { Matrix4, Vector3, Vector4 } from "./maths";
+import { DepthTexture, Framebuffer, Texture, line, triangle } from "./drawing";
 import { loadObj } from "./utils/objLoader";
 import { SmoothShader } from "./shaders/Smooth";
 import { TexturedShader } from "./shaders/Textured";
@@ -35,14 +28,13 @@ if (!ctx) {
 // Set canvas size
 canvas.width = 1200;
 canvas.height = 800;
-const imageDim = new Vector2(canvas.width, canvas.height);
-const aspectRatio = imageDim.x / imageDim.y;
+const aspectRatio = canvas.width / canvas.height;
 
 // Setup canvas and buffers
-const image = new ImageData(imageDim.x, imageDim.y);
-const frameBuffer = image.data;
-const zBuffer = new DepthTexture(imageDim.x, imageDim.y);
-const shadowMap = new DepthTexture(imageDim.x, imageDim.y);
+const image = new ImageData(canvas.width, canvas.height);
+const frameBuffer = new Framebuffer(image);
+const zBuffer = new DepthTexture(canvas.width, canvas.height);
+const shadowMap = new DepthTexture(canvas.width, canvas.height);
 
 // Setup light
 const lightDir = new Vector3(0, -1, 1).normalized();
@@ -58,7 +50,7 @@ let texture = await Texture.Load(diffuseTex);
 let normalTexture = await Texture.Load(normalTex);
 trisText.innerText = (model.vertices.length / 3).toFixed(0);
 let modelPos = new Vector3(0, 0, 0);
-let modelRotation = new Vector3(0, -Math.PI / 2, 0);
+let modelRotation = new Vector3(0, -Math.PI, 0);
 let modelScale = new Vector3(1, 1, 1);
 
 // Setup shaders
@@ -72,13 +64,13 @@ let shader: BaseShader;
 const depthShader = new DepthShader();
 
 const update = (dt: number) => {
-  modelRotation.y -= dt / 5;
+  // modelRotation.y -= dt / 5;
 };
 
 const draw = () => {
-  clear(frameBuffer);
-  clearDepthTexture(zBuffer, 1000);
-  clearDepthTexture(shadowMap, 1000);
+  frameBuffer.clear();
+  zBuffer.clear(1000);
+  shadowMap.clear(1000);
 
   // Setup model and normal matrices
   const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
@@ -145,7 +137,7 @@ const draw = () => {
         triVerts[j] = depthShader.vertex();
       }
 
-      triangle(triVerts, depthShader, frameBuffer, imageDim, shadowMap);
+      triangle(triVerts, depthShader, frameBuffer, shadowMap);
     }
   }
 
@@ -159,14 +151,14 @@ const draw = () => {
 
     // Draw wireframe
     if (shadingDd.value === "wireframe") {
-      line(triVerts[0], triVerts[1], frameBuffer, imageDim);
-      line(triVerts[1], triVerts[2], frameBuffer, imageDim);
-      line(triVerts[2], triVerts[0], frameBuffer, imageDim);
+      line(triVerts[0], triVerts[1], frameBuffer);
+      line(triVerts[1], triVerts[2], frameBuffer);
+      line(triVerts[2], triVerts[0], frameBuffer);
       continue;
     }
 
     // Draw filled
-    triangle(triVerts, shader, frameBuffer, imageDim, zBuffer);
+    triangle(triVerts, shader, frameBuffer, zBuffer);
   }
   ctx.putImageData(image, 0, 0);
 };
