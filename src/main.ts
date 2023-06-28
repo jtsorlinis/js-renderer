@@ -50,7 +50,7 @@ let texture = await Texture.Load(diffuseTex);
 let normalTexture = await Texture.Load(normalTex);
 trisText.innerText = (model.vertices.length / 3).toFixed(0);
 let modelPos = new Vector3(0, 0, 0);
-let modelRotation = new Vector3(0, -Math.PI, 0);
+let modelRotation = new Vector3(0, -Math.PI / 2, 0);
 let modelScale = new Vector3(1, 1, 1);
 
 // Setup shaders
@@ -64,7 +64,7 @@ let shader: BaseShader;
 const depthShader = new DepthShader();
 
 const update = (dt: number) => {
-  // modelRotation.y -= dt / 5;
+  modelRotation.y -= dt / 5;
 };
 
 const draw = () => {
