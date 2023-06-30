@@ -26,8 +26,8 @@ if (!ctx) {
 }
 
 // Set canvas size
-canvas.width = 1200;
-canvas.height = 800;
+canvas.width = 800;
+canvas.height = 600;
 const aspectRatio = canvas.width / canvas.height;
 
 // Setup canvas and buffers
