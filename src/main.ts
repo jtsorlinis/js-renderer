@@ -166,12 +166,12 @@ const draw = () => {
 let prevTime = 0;
 const loop = () => {
   const now = performance.now();
-  const dtms = now - prevTime;
-  const dt = dtms / 1000;
-  fpsText.innerText = dtms.toFixed(0);
+  const deltaTime = (now - prevTime) / 1000;
   prevTime = now;
-  update(dt);
+  update(deltaTime);
   draw();
+  const actualFrameTime = performance.now() - now;
+  fpsText.innerText = actualFrameTime.toFixed(0);
   requestAnimationFrame(loop);
 };
 
