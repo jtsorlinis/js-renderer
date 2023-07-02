@@ -25,32 +25,29 @@ export const triangle = (
   buffer: Framebuffer,
   zBuffer: DepthTexture
 ) => {
-  // Extract vertex positions
-  let v0 = verts[0];
-  let v1 = verts[1];
-  let v2 = verts[2];
+  // Scale from [-1, 1] to [0, width] and [0, height]]
+  const p0 = buffer.viewportTransform(verts[0]);
+  const p1 = buffer.viewportTransform(verts[1]);
+  const p2 = buffer.viewportTransform(verts[2]);
 
-  // Clip near and far planes
-  if (v0.z < 0 || v1.z < 0 || v2.z < 0) return;
-  if (v0.z > 1 || v1.z > 1 || v2.z > 1) return;
-
-  // Clip triangles that are fully outside the viewport
-  if (v0.x < -1 && v1.x < -1 && v2.x < -1) return;
-  if (v0.x > 1 && v1.x > 1 && v2.x > 1) return;
-  if (v0.y < -1 && v1.y < -1 && v2.y < -1) return;
-  if (v0.y > 1 && v1.y > 1 && v2.y > 1) return;
+  // Calculate inverse signed area of triangle
+  const invArea = 1 / edgeFunction(p2, p1, p0);
 
   // Backface culling based on winding order
-  const area = edgeFunction(v0, v1, v2);
-  if (area <= 0) return;
+  if (invArea <= 0) return;
 
-  // Scale from [-1, 1] to [0, width] and [0, height]]
-  const p0 = buffer.viewportTransform(v0);
-  const p1 = buffer.viewportTransform(v1);
-  const p2 = buffer.viewportTransform(v2);
+  // // Clip near and far planes
+  if (p0.z < 0 || p1.z < 0 || p2.z < 0) return;
+  if (p0.z > 1 || p1.z > 1 || p2.z > 1) return;
 
-  // Calculate inverse signed area of triangle in screen space
-  const invAreaSs = 1 / edgeFunction(p2, p1, p0);
+  // Clip triangles that are fully outside the viewport
+  if (
+    (p0.x < 0 && p1.x < 0 && p2.x < 0) ||
+    (p0.x > buffer.width && p1.x > buffer.width && p2.x > buffer.width) ||
+    (p0.y < 0 && p1.y < 0 && p2.y < 0) ||
+    (p0.y > buffer.height && p1.y > buffer.height && p2.y > buffer.height)
+  )
+    return;
 
   // Calculate bounding box
   let minX = ~~Math.max(0, Math.min(p0.x, p1.x, p2.x));
@@ -70,8 +67,8 @@ export const triangle = (
       if (w0 < 0 || w1 < 0 || w2 < 0) continue;
 
       // Calculate barycentric coordinates of point using edge functions
-      bc.u = w0 * invAreaSs;
-      bc.v = w1 * invAreaSs;
+      bc.u = w0 * invArea;
+      bc.v = w1 * invArea;
       bc.w = 1 - bc.u - bc.v;
 
       // Interpolate depth to get z value at pixel
