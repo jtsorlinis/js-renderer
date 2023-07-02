@@ -70,7 +70,10 @@ device.queue.copyExternalImageToTexture(
   { width: normalSource.width, height: normalSource.height }
 );
 
-const sampler = device.createSampler();
+const sampler = device.createSampler({
+  magFilter: "linear",
+  minFilter: "linear",
+});
 
 const module = device.createShaderModule({
   code: shader,
@@ -119,6 +122,11 @@ const pipeline = device.createRenderPipeline({
     module,
     entryPoint: "fragment",
     targets: [{ format }],
+  },
+  primitive: {
+    topology: "triangle-list",
+    frontFace: "cw",
+    cullMode: "back",
   },
 });
 
