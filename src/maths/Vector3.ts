@@ -1,3 +1,5 @@
+import { Vector4 } from ".";
+
 export class Vector3 {
   x: number;
   y: number;
@@ -23,6 +25,14 @@ export class Vector3 {
     this.x = x ?? 0;
     this.y = y ?? 0;
     this.z = z ?? 0;
+  }
+
+  public toArray() {
+    return [this.x, this.y, this.z];
+  }
+
+  public extend(w: number) {
+    return new Vector4(this.x, this.y, this.z, w);
   }
 
   public cross(v: Vector3) {

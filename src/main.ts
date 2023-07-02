@@ -78,15 +78,14 @@ const draw = () => {
   const normalMat = modelMat.invert().transpose();
 
   // Setup light matrices
-  const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), lightDir, Vector3.Up);
+  const lightViewMat = Matrix4.LookTo(lightDir.scale(-5), lightDir, Vector3.Up);
   const lightProjMat = Matrix4.Ortho(orthoSize, aspectRatio);
   const lightSpaceMat = modelMat.multiply(lightViewMat.multiply(lightProjMat));
   const mLightDir = invModelMat.multiplyDirection(lightDir).normalize();
   const mCamPos = invModelMat.multiplyPoint(camPos).xyz;
 
   // Setup view and projection matrices
-  const camForward = camPos.add(Vector3.Forward);
-  const viewMat = Matrix4.LookAt(camPos, camForward, Vector3.Up);
+  const viewMat = Matrix4.LookTo(camPos, Vector3.Forward, Vector3.Up);
   const projMat = orthographicCb.checked
     ? Matrix4.Ortho(orthoSize, aspectRatio)
     : Matrix4.Perspective(60, aspectRatio);
