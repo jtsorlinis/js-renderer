@@ -8,7 +8,8 @@ struct V2f {
   @builtin(position) pos : vec4f,
   @location(0) norm : vec3f,
   @location(1) uv : vec2f,
-  @location(2) modelPos : vec3f
+  @location(2) modelPos : vec3f,
+  @location(3) lightSpacePos : vec3f
 }
 
 struct Uniforms {
@@ -16,6 +17,7 @@ struct Uniforms {
   view : mat4x4f,
   proj : mat4x4f,
   norm : mat4x4f,
+  lightMVP : mat4x4f,
   camPos : vec3f,
   mLightDir : vec3f,
   mCamPos : vec3f
@@ -25,7 +27,7 @@ struct Uniforms {
 @group(0) @binding(1) var texSampler: sampler;
 @group(0) @binding(2) var diffuseTex: texture_2d<f32>;
 @group(0) @binding(3) var normalTex: texture_2d<f32>;
-
+@group(0) @binding(4) var shadowMap: texture_depth_2d;
  
  @vertex 
  fn vertex(
@@ -38,6 +40,8 @@ struct Uniforms {
   o.norm = (uniforms.norm * vec4f(v.norm,0)).xyz;
   o.uv = v.uv;
   o.modelPos = v.pos.xyz;
+  let lightSpacePos = uniforms.lightMVP * v.pos;
+  o.lightSpacePos = vec3f(lightSpacePos.xy * vec2f(0.5, -0.5) + 0.5, lightSpacePos.z);
   return o;
 }
 
@@ -46,9 +50,18 @@ fn fragment(i: V2f) -> @location(0) vec4f {
   let norm = textureSample(normalTex, texSampler, i.uv).xyz * 2 - 1;
   let viewDir = normalize(uniforms.mCamPos - i.modelPos);
   let reflectDir = reflect(uniforms.mLightDir, norm);
-  let diffuse = max(0,-dot(norm, uniforms.mLightDir));
+  var diffuse = max(0,-dot(norm, uniforms.mLightDir));
   let specular = pow(max(0, dot(viewDir, reflectDir)), 32) * .2;
+
+  // Shadows
+  let depth = textureSample(shadowMap, texSampler, i.lightSpacePos.xy);
+  if (i.lightSpacePos.z - 0.00001 > depth) {
+    diffuse *= 0;
+  }
+
   let lighting = diffuse + specular + 0.1;
   let col = textureSample(diffuseTex, texSampler, i.uv);
+
+  
   return col * lighting;
 }
