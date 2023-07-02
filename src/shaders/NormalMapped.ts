@@ -37,6 +37,10 @@ export class NormalMappedShader extends BaseShader {
       model.vertices[i]
     );
 
+    // Scale from [-1, 1] to [0, 1]
+    lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
+    lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
+
     // Pass varyings to fragment shader
     this.v2f(this.vUV, model.uvs[i]);
     this.v2f(this.vLightSpacePos, lightSpacePos);
@@ -52,8 +56,6 @@ export class NormalMappedShader extends BaseShader {
     const lightSpacePos = this.interpolateVec4(this.vLightSpacePos);
 
     // Calculate shadow
-    lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
-    lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
     const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
     const shadow = lightSpacePos.z - shadowBias > depth ? 0 : 1;
 
