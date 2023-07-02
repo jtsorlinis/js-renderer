@@ -1,5 +1,6 @@
 import "../style.css";
 import shader from "./shader.wgsl?raw";
+import shadowShader from "./shadow.wgsl?raw";
 import { loadObj } from "../utils/objLoader";
 import head from "../models/head.obj?raw";
 import headDiffuse from "../models/head_diffuse.png";
@@ -79,6 +80,10 @@ const module = device.createShaderModule({
   code: shader,
 });
 
+const shadowModule = device.createShaderModule({
+  code: shadowShader,
+});
+
 // Load model
 const vertexStride = 10;
 const model = loadObj(head);
@@ -95,6 +100,30 @@ const vertexBuffer = device.createBuffer({
   usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
 });
 device.queue.writeBuffer(vertexBuffer, 0, vertexData);
+
+// Create shadow pipeline
+const shadowPipeline = device.createRenderPipeline({
+  layout: "auto",
+  depthStencil: {
+    format: "depth24plus",
+    depthWriteEnabled: true,
+    depthCompare: "less",
+  },
+  vertex: {
+    module: shadowModule,
+    entryPoint: "vertex",
+    buffers: [
+      {
+        arrayStride: vertexStride * 4,
+        attributes: [
+          { shaderLocation: 0, offset: 0, format: "float32x4" }, // position
+          { shaderLocation: 1, offset: 16, format: "float32x3" }, // norm
+          { shaderLocation: 2, offset: 28, format: "float32x2" }, // uv
+        ],
+      },
+    ],
+  },
+});
 
 // Create pipeline
 const pipeline = device.createRenderPipeline({
@@ -140,8 +169,18 @@ const depthTexture = device.createTexture({
   usage: GPUTextureUsage.RENDER_ATTACHMENT,
 });
 
+// Create shadow depth texture
+const shadowDepthTexture = device.createTexture({
+  size: {
+    width: canvas.width,
+    height: canvas.height,
+  },
+  format: "depth24plus",
+  usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+});
+
 // Create uniform buffer
-const uniforms = new Float32Array((16 + 4) * 4);
+const uniforms = new Float32Array((20 + 3) * 4);
 const uniformBuffer = device.createBuffer({
   size: uniforms.byteLength,
   usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
@@ -155,7 +194,13 @@ const uniformBindGroup = device.createBindGroup({
     { binding: 1, resource: sampler },
     { binding: 2, resource: diffuseTexture.createView() },
     { binding: 3, resource: normalTexture.createView() },
+    { binding: 4, resource: shadowDepthTexture.createView() },
   ],
+});
+
+const shadowBindGroup = device.createBindGroup({
+  layout: shadowPipeline.getBindGroupLayout(0),
+  entries: [{ binding: 0, resource: { buffer: uniformBuffer } }],
 });
 
 const pos = new Vector3(0, 0, 0);
@@ -171,6 +216,9 @@ const update = (dt: number) => {
 
 const draw = () => {
   const modelMat = Matrix4.TRS(pos, rot, scale);
+  const lightViewMat = Matrix4.LookTo(lightDir.scale(-5), lightDir, Vector3.Up);
+  const lightProjMat = Matrix4.Ortho(1.5, aspectRatio);
+  const lightSpaceMat = modelMat.multiply(lightViewMat.multiply(lightProjMat));
   const invModelMat = modelMat.invert();
   const camForward = camPos.add(new Vector3(0, 0, 1));
   const viewMat = Matrix4.LookAt(camPos, camForward, Vector3.Up);
@@ -183,17 +231,35 @@ const draw = () => {
   uniforms.set(viewMat.toArray(), 16);
   uniforms.set(projMat.toArray(), 32);
   uniforms.set(normalMat.toArray(), 48);
-  uniforms.set(camPos.toArray(), 64);
-  uniforms.set(mLightDir.toArray(), 68);
-  uniforms.set(mCamPos.toArray(), 72);
+  uniforms.set(lightSpaceMat.toArray(), 64);
+  uniforms.set(camPos.toArray(), 80);
+  uniforms.set(mLightDir.toArray(), 84);
+  uniforms.set(mCamPos.toArray(), 88);
   device.queue.writeBuffer(uniformBuffer, 0, uniforms);
-  const encoder = device.createCommandEncoder();
-  const textureView = ctx.getCurrentTexture().createView();
 
+  const encoder = device.createCommandEncoder();
+
+  // Shadow pass
+  const shadowPass = encoder.beginRenderPass({
+    colorAttachments: [],
+    depthStencilAttachment: {
+      view: shadowDepthTexture.createView(),
+      depthLoadOp: "clear",
+      depthStoreOp: "store",
+      depthClearValue: 1.0,
+    },
+  });
+  shadowPass.setPipeline(shadowPipeline);
+  shadowPass.setBindGroup(0, shadowBindGroup);
+  shadowPass.setVertexBuffer(0, vertexBuffer);
+  shadowPass.draw(model.vertices.length);
+  shadowPass.end();
+
+  // Main pass
   const pass = encoder.beginRenderPass({
     colorAttachments: [
       {
-        view: textureView,
+        view: ctx.getCurrentTexture().createView(),
         clearValue: [0, 0, 0, 1],
         loadOp: "clear",
         storeOp: "store",
