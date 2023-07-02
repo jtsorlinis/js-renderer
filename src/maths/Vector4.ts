@@ -17,6 +17,10 @@ export class Vector4 {
     this.w = w ?? 0;
   }
 
+  public toArray() {
+    return [this.x, this.y, this.z, this.w];
+  }
+
   get xyz() {
     return new Vector3(this.x, this.y, this.z);
   }

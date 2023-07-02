@@ -7,6 +7,10 @@ export class Vector2 {
     this.y = y ?? 0;
   }
 
+  public toArray() {
+    return [this.x, this.y];
+  }
+
   public add(v: Vector2) {
     return new Vector2(this.x + v.x, this.y + v.y);
   }
