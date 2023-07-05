@@ -51,7 +51,8 @@ export class SmoothShader extends BaseShader {
     spec *= specStr;
 
     const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
+    const combined = diffuse + spec + ambient;
 
-    return this.uniforms.lightCol.scale(diffuse + spec + ambient);
+    return this.uniforms.lightCol.scale(combined * 0.8);
   };
 }
