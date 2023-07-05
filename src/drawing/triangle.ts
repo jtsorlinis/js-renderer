@@ -69,7 +69,7 @@ export const triangle = (
       // Calculate barycentric coordinates of point using edge functions
       bc.u = w0 * invArea;
       bc.v = w1 * invArea;
-      bc.w = 1 - bc.u - bc.v;
+      bc.w = w2 * invArea;
 
       // Interpolate depth to get z value at pixel
       P.z = p0.z * bc.u + p1.z * bc.v + p2.z * bc.w;
@@ -84,7 +84,7 @@ export const triangle = (
         P.w = 1 / (p0.w * bc.u + p1.w * bc.v + p2.w * bc.w);
         bcClip.u = bc.u * P.w * p0.w;
         bcClip.v = bc.v * P.w * p1.w;
-        bcClip.w = 1 - bcClip.u - bcClip.v;
+        bcClip.w = bc.w * P.w * p2.w;
 
         // Fragment shader
         shader.bc = bcClip;

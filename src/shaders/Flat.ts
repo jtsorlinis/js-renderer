@@ -39,6 +39,7 @@ export class FlatShader extends BaseShader {
     const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
 
     this.lighting = diffuse + spec + ambient;
+    this.lighting *= 0.8;
 
     return this.uniforms.mvp.multiplyPoint(model.vertices[i]);
   };
