@@ -18,7 +18,8 @@ export interface Uniforms {
 }
 
 const shadowBias = 0.0001;
-const specStr = 0.2;
+const specStr = 0.25;
+const shininess = 16;
 const ambient = 0.1;
 
 export class NormalMappedShader extends BaseShader {
@@ -65,13 +66,15 @@ export class NormalMappedShader extends BaseShader {
 
     // Calculate lighting
     const viewDir = this.uniforms.mCamPos.subtract(modelPos).normalize();
-    const reflectDir = this.uniforms.mLightDir.reflect(normal);
-    const spec = Math.pow(Math.max(viewDir.dot(reflectDir), 0), 32) * specStr;
+    const halfWayDir = viewDir.subtract(this.uniforms.mLightDir).normalize();
+
+    let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
+    spec *= specStr;
 
     let diffuse = Math.max(-normal.dot(this.uniforms.mLightDir), 0);
-    diffuse *= shadow;
 
-    const lighting = this.uniforms.lightCol.scale(diffuse + spec + ambient);
+    const combined = (diffuse + spec) * shadow + ambient;
+    const lighting = this.uniforms.lightCol.scale(combined);
 
     return colour.multiplyInPlace(lighting);
   };
