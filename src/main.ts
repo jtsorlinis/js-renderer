@@ -37,7 +37,7 @@ const zBuffer = new DepthTexture(canvas.width, canvas.height);
 const shadowMap = new DepthTexture(canvas.width, canvas.height);
 
 // Setup light
-const lightDir = new Vector3(0, -1, 1).normalized();
+const lightDir = new Vector3(0, -1, 1).normalize();
 const lightCol = new Vector3(1, 1, 1);
 
 // Setup camera
