@@ -108,37 +108,34 @@ const triangleEdge = (verts: Vector3[]) => {
   const invArea = 1 / area;
 
   const pos = new Vector3();
+  const bc = new Vector3();
   const interpCol = new Vector3();
 
   const topLeft = new Vector3(bBoxMinX, bBoxMinY);
 
-  let w0Row = edgeFunction(v0, v1, topLeft);
-  let w1Row = edgeFunction(v1, v2, topLeft);
-  let w2Row = edgeFunction(v2, v0, topLeft);
+  let w0Row = edgeFunction(v1, v2, topLeft) * invArea;
+  let w1Row = edgeFunction(v2, v0, topLeft) * invArea;
+  let w2Row = edgeFunction(v0, v1, topLeft) * invArea;
 
-  const w0Step = new Vector2(v0.y - v1.y, v1.x - v0.x);
-  const w1Step = new Vector2(v1.y - v2.y, v2.x - v1.x);
-  const w2Step = new Vector2(v2.y - v0.y, v0.x - v2.x);
+  const w0Step = new Vector2(v1.y - v2.y, v2.x - v1.x).scaleInPlace(invArea);
+  const w1Step = new Vector2(v2.y - v0.y, v0.x - v2.x).scaleInPlace(invArea);
+  const w2Step = new Vector2(v0.y - v1.y, v1.x - v0.x).scaleInPlace(invArea);
 
   for (pos.y = bBoxMinY; pos.y <= bBoxMaxY; pos.y++) {
-    let w0 = w0Row;
-    let w1 = w1Row;
-    let w2 = w2Row;
+    bc.x = w0Row;
+    bc.y = w1Row;
+    bc.z = w2Row;
     for (pos.x = bBoxMinX; pos.x <= bBoxMaxX; pos.x++) {
-      if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
-        const bcx = w1 * invArea;
-        const bcy = w2 * invArea;
-        const bcz = w0 * invArea;
-
-        interpCol.x = bcx * cols[0].x + bcy * cols[1].x + bcz * cols[2].x;
-        interpCol.y = bcx * cols[0].y + bcy * cols[1].y + bcz * cols[2].y;
-        interpCol.z = bcx * cols[0].z + bcy * cols[1].z + bcz * cols[2].z;
+      if (bc.x >= 0 && bc.y >= 0 && bc.z >= 0) {
+        interpCol.x = bc.x * cols[0].x + bc.y * cols[1].x + bc.z * cols[2].x;
+        interpCol.y = bc.x * cols[0].y + bc.y * cols[1].y + bc.z * cols[2].y;
+        interpCol.z = bc.x * cols[0].z + bc.y * cols[1].z + bc.z * cols[2].z;
 
         setPixel(pos.x, pos.y, imageDim, interpCol, frameBuffer);
       }
-      w0 += w0Step.x;
-      w1 += w1Step.x;
-      w2 += w2Step.x;
+      bc.x += w0Step.x;
+      bc.y += w1Step.x;
+      bc.z += w2Step.x;
     }
     w0Row += w0Step.y;
     w1Row += w1Step.y;
