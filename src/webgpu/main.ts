@@ -204,7 +204,7 @@ const shadowBindGroup = device.createBindGroup({
 });
 
 const pos = new Vector3(0, 0, 0);
-const rot = new Vector3(0, 3.14, 0);
+const rot = new Vector3(0, -Math.PI / 2, 0);
 const scale = new Vector3(1, 1, 1);
 const camPos = new Vector3(0, 0, -2.5);
 const lightDir = new Vector3(0, -1, 1);
