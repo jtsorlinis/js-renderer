@@ -1,5 +1,5 @@
 import { DepthTexture, Framebuffer } from ".";
-import { Vector4 } from "../maths";
+import { Vector2, Vector3, Vector4 } from "../maths";
 import { BaseShader } from "../shaders/BaseShader";
 
 export interface Barycentric {
@@ -55,48 +55,61 @@ export const triangle = (
   let maxX = ~~Math.min(buffer.width, Math.max(p0.x, p1.x, p2.x));
   let maxY = ~~Math.min(buffer.height, Math.max(p0.y, p1.y, p2.y));
 
+  // Calculate barycentric coordinates for first pixel
+  const minPos = new Vector4(minX, minY);
+  let w0Row = edgeFunction(p2, p1, minPos) * invArea;
+  let w1Row = edgeFunction(p0, p2, minPos) * invArea;
+  let w2Row = edgeFunction(p1, p0, minPos) * invArea;
+
+  // Calculate barycentric coordinate steps
+  const w0Step = new Vector2(p1.y - p2.y, p2.x - p1.x).scale(invArea);
+  const w1Step = new Vector2(p2.y - p0.y, p0.x - p2.x).scale(invArea);
+  const w2Step = new Vector2(p0.y - p1.y, p1.x - p0.x).scale(invArea);
+
   // Loop over pixels in bounding box
   for (P.y = minY; P.y <= maxY; P.y++) {
+    // Reset barycentric coordinates for this row
+    bc.u = w0Row;
+    bc.v = w1Row;
+    bc.w = w2Row;
+
     for (P.x = minX; P.x <= maxX; P.x++) {
-      // Check if pixel is inside triangle using edge functions
-      const w0 = edgeFunction(p2, p1, P);
-      const w1 = edgeFunction(p0, p2, P);
-      const w2 = edgeFunction(p1, p0, P);
+      // Check if pixel is inside triangle
+      if (bc.u >= 0 && bc.v >= 0 && bc.w >= 0) {
+        // Interpolate depth to get z value at pixel
+        P.z = p0.z * bc.u + p1.z * bc.v + p2.z * bc.w;
 
-      // Skip pixel if outside triangle
-      if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+        // Check pixel'z depth against z buffer, if pixel is closer, draw it
+        const index = P.x + P.y * buffer.width;
+        if (P.z < zBuffer.data[index]) {
+          // Update z buffer with new depth
+          zBuffer.data[index] = P.z;
 
-      // Calculate barycentric coordinates of point using edge functions
-      bc.u = w0 * invArea;
-      bc.v = w1 * invArea;
-      bc.w = w2 * invArea;
+          // Get perspective correct barycentric coordinates
+          P.w = 1 / (p0.w * bc.u + p1.w * bc.v + p2.w * bc.w);
+          bcClip.u = bc.u * P.w * p0.w;
+          bcClip.v = bc.v * P.w * p1.w;
+          bcClip.w = bc.w * P.w * p2.w;
 
-      // Interpolate depth to get z value at pixel
-      P.z = p0.z * bc.u + p1.z * bc.v + p2.z * bc.w;
+          // Fragment shader
+          shader.bc = bcClip;
+          shader.fragPos = P;
+          const frag = shader.fragment();
 
-      // Check pixel'z depth against z buffer, if pixel is closer, draw it
-      const index = P.x + P.y * buffer.width;
-      if (P.z < zBuffer.data[index]) {
-        // Update z buffer with new depth
-        zBuffer.data[index] = P.z;
-
-        // Get perspective correct barycentric coordinates
-        P.w = 1 / (p0.w * bc.u + p1.w * bc.v + p2.w * bc.w);
-        bcClip.u = bc.u * P.w * p0.w;
-        bcClip.v = bc.v * P.w * p1.w;
-        bcClip.w = bc.w * P.w * p2.w;
-
-        // Fragment shader
-        shader.bc = bcClip;
-        shader.fragPos = P;
-        const frag = shader.fragment();
-
-        // If pixel is discarded, skip it
-        if (!frag) continue;
-
-        // Set final pixel colour
-        buffer.setPixel(P.x, P.y, frag);
+          // If fragment shader returns a colour, set pixel
+          if (frag) {
+            buffer.setPixel(P.x, P.y, frag);
+          }
+        }
       }
+      // Step to next pixel
+      bc.u += w0Step.x;
+      bc.v += w1Step.x;
+      bc.w += w2Step.x;
     }
+    // Step to next row
+    w0Row += w0Step.y;
+    w1Row += w1Step.y;
+    w2Row += w2Step.y;
   }
 };
