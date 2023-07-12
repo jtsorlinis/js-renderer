@@ -48,10 +48,15 @@ struct Uniforms {
 @fragment 
 fn fragment(i: V2f) -> @location(0) vec4f {
   let norm = textureSample(normalTex, texSampler, i.uv).xyz * 2 - 1;
+
+  // Diffuse
+  var diffuse = max(0,-dot(norm, uniforms.mLightDir));
+
+  // Specular
   let viewDir = normalize(uniforms.mCamPos - i.modelPos);
   let reflectDir = reflect(uniforms.mLightDir, norm);
-  var diffuse = max(0,-dot(norm, uniforms.mLightDir));
-  let specular = pow(max(0, dot(viewDir, reflectDir)), 32) * .2;
+  let halfDir = normalize(viewDir - uniforms.mLightDir);
+  let specular = pow(max(0, dot(norm, halfDir)), 16) * 0.25;
 
   // Shadows
   let depth = textureSample(shadowMap, texSampler, i.lightSpacePos.xy);
