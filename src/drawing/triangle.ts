@@ -1,5 +1,5 @@
 import { DepthTexture, Framebuffer } from ".";
-import { Vector2, Vector3, Vector4 } from "../maths";
+import { Vector2, Vector4 } from "../maths";
 import { BaseShader } from "../shaders/BaseShader";
 
 export interface Barycentric {
