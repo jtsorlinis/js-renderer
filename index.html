@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Software Renderer</title>
+    <script type="module" crossorigin src="/js-renderer/assets/index-7550fb31.js"></script>
+    <link rel="stylesheet" href="/js-renderer/assets/index-e31e7510.css">
+  </head>
+  <body>
+    <div id="app"></div>
+    <canvas id="canvas"></canvas>
+    <label><input type="checkbox" id="orthoCb" />Orthographic</label>
+    &emsp;
+    <label>
+      Shading:
+      <select id="shadingDd">
+        <option value="normalMapped-shadows">Shadows</option>
+        <option value="normalMapped">Normals</option>
+        <option value="textured">Textured</option>
+        <option value="smooth">Smooth</option>
+        <option value="flat">Flat</option>
+        <option value="wireframe">Wireframe</option>
+      </select>
+    </label>
+    &emsp;
+    <input type="file" id="fileInput" accept=".obj" />
+    <hr />
+    <div>
+      <span>Triangles: <span id="tris">00</span></span>
+      &emsp;
+      <span>Frametime: <span id="fps">00</span>ms</span>
+    </div>
+    
+  </body>
+</html>
