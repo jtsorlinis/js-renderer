@@ -1,4 +1,4 @@
-# TypeScript CPU-Based Software Renderer
+# TypeScript CPU Software Renderer
 
 **Experience it here: https://jtsorlinis.github.io/js-renderer/**
 
