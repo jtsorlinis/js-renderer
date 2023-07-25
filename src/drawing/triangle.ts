@@ -62,9 +62,9 @@ export const triangle = (
   let w2Row = edgeFunction(p1, p0, minPos) * invArea;
 
   // Calculate barycentric coordinate steps
-  const w0Step = new Vector2(p1.y - p2.y, p2.x - p1.x).scale(invArea);
-  const w1Step = new Vector2(p2.y - p0.y, p0.x - p2.x).scale(invArea);
-  const w2Step = new Vector2(p0.y - p1.y, p1.x - p0.x).scale(invArea);
+  const w0Step = new Vector2(p1.y - p2.y, p2.x - p1.x).scaleInPlace(invArea);
+  const w1Step = new Vector2(p2.y - p0.y, p0.x - p2.x).scaleInPlace(invArea);
+  const w2Step = new Vector2(p0.y - p1.y, p1.x - p0.x).scaleInPlace(invArea);
 
   // Loop over pixels in bounding box
   for (P.y = minY; P.y <= maxY; P.y++) {
