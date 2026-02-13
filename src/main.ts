@@ -8,6 +8,7 @@ import { FlatShader } from "./shaders/Flat";
 import { BaseShader } from "./shaders/BaseShader";
 import { DepthShader } from "./shaders/DepthShader";
 import { NormalMappedShader } from "./shaders/NormalMapped";
+import { resolveShadingSelection } from "./renderSettings";
 
 import modelFile from "./models/head.obj?raw";
 import diffuseTex from "./models/head_diffuse.png";
@@ -16,6 +17,9 @@ import normalTex from "./models/head_normal_t.png";
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
 const ROTATION_SPEED = 5;
+const ROTATE_SENSITIVITY = 250;
+const PAN_SENSITIVITY = 250;
+const ZOOM_SENSITIVITY = 100;
 
 // UI handles
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -83,32 +87,18 @@ const resetModelTransform = () => {
 };
 
 const getRenderSettings = (): RenderSettings => {
-  // Keep shader choice valid if the active mesh has no UVs/textures.
-  let shading = shadingDd.value;
-  const hasTexAndUVs = texture.data.length > 0 && model.uvs.length > 0;
-
-  if (
-    !hasTexAndUVs &&
-    (shading.includes("textured") || shading.includes("normalMapped"))
-  ) {
-    shading = "smooth";
-    shadingDd.value = shading;
+  const selection = resolveShadingSelection(
+    shadingDd.value,
+    texture.data.length > 0 && model.uvs.length > 0,
+  );
+  if (selection.normalizedValue !== shadingDd.value) {
+    shadingDd.value = selection.normalizedValue;
   }
-
-  switch (shading) {
-    case "normalMapped-shadows":
-      return { shaderKey: "normalMapped", wireframe: false, useShadows: true };
-    case "normalMapped":
-      return { shaderKey: "normalMapped", wireframe: false, useShadows: false };
-    case "textured":
-      return { shaderKey: "textured", wireframe: false, useShadows: false };
-    case "smooth":
-      return { shaderKey: "smooth", wireframe: false, useShadows: false };
-    case "flat":
-      return { shaderKey: "flat", wireframe: false, useShadows: false };
-    default:
-      return { shaderKey: "smooth", wireframe: true, useShadows: false };
-  }
+  return {
+    shaderKey: selection.material,
+    wireframe: selection.wireframe,
+    useShadows: selection.useShadows,
+  };
 };
 
 const renderMesh = (
@@ -211,21 +201,21 @@ const loop = () => {
 
 canvas.onmousemove = (e) => {
   if (e.buttons === 1) {
-    modelRotation.y -= e.movementX / 250;
-    modelRotation.x += e.movementY / 250;
+    modelRotation.y -= e.movementX / ROTATE_SENSITIVITY;
+    modelRotation.x += e.movementY / ROTATE_SENSITIVITY;
   } else if (e.buttons === 2 || e.buttons === 4) {
-    modelPos.x += e.movementX / 250;
-    modelPos.y -= e.movementY / 250;
+    modelPos.x += e.movementX / PAN_SENSITIVITY;
+    modelPos.y -= e.movementY / PAN_SENSITIVITY;
   }
 };
 
 canvas.onwheel = (e) => {
   e.preventDefault();
   if (orthographicCb.checked) {
-    orthoSize += e.deltaY / 100;
+    orthoSize += e.deltaY / ZOOM_SENSITIVITY;
     orthoSize = Math.max(0.01, orthoSize);
   } else {
-    camPos.z -= e.deltaY / 100;
+    camPos.z -= e.deltaY / ZOOM_SENSITIVITY;
   }
 };
 

@@ -14,6 +14,7 @@ export interface Uniforms {
 const specStr = 0.25;
 const shininess = 16;
 const ambient = 0.1;
+const smoothScale = 0.8;
 
 export class SmoothShader extends BaseShader {
   // Uniforms are set per draw call.
@@ -48,13 +49,10 @@ export class SmoothShader extends BaseShader {
     // Blinn-Phong lighting on a flat white material.
     const viewDir = this.uniforms.camPos.subtract(worldPos.xyz).normalize();
     const halfWayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
-
     let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
     spec *= specStr;
-
     const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
-    const combined = diffuse + spec + ambient;
-
-    return this.uniforms.lightCol.scale(combined * 0.8);
+    const litAmount = diffuse + spec + ambient;
+    return this.uniforms.lightCol.scale(litAmount * smoothScale);
   };
 }

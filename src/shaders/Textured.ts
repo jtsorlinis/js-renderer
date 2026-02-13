@@ -16,6 +16,7 @@ export interface Uniforms {
 const specStr = 0.25;
 const shininess = 16;
 const ambient = 0.1;
+
 export class TexturedShader extends BaseShader {
   // Uniforms are set once per draw call.
   uniforms!: Uniforms;
@@ -55,12 +56,9 @@ export class TexturedShader extends BaseShader {
     // Basic Blinn-Phong lighting in world space.
     const viewDir = this.uniforms.camPos.subtract(worldPos.xyz).normalize();
     const halfWayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
-
     let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
     spec *= specStr;
-
     const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
-
     const lighting = this.uniforms.lightCol.scale(diffuse + spec + ambient);
 
     return col.multiplyInPlace(lighting);

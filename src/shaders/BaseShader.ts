@@ -48,10 +48,19 @@ export abstract class BaseShader {
     return new Vector4(x, y, z, w);
   };
 
+  private toTexelCoord = (
+    uv: Vector2 | Vector3 | Vector4,
+    width: number,
+    height: number,
+  ) => {
+    const x = Math.max(0, Math.min(width - 1, ~~(uv.x * width)));
+    const y = Math.max(0, Math.min(height - 1, ~~((1 - uv.y) * height)));
+    return { x, y };
+  };
+
   sample = (texture: Texture, uv: Vector2): Vector3 => {
-    const x = ~~(uv.x * texture.width);
-    const y = ~~((1 - uv.y) * texture.height);
-    const index = x + y * texture.width;
+    const texel = this.toTexelCoord(uv, texture.width, texture.height);
+    const index = texel.x + texel.y * texture.width;
     return texture.data[index].clone();
   };
 
@@ -59,9 +68,8 @@ export abstract class BaseShader {
     depthTexture: DepthTexture,
     uv: Vector2 | Vector3 | Vector4,
   ) => {
-    const x = ~~(uv.x * depthTexture.width);
-    const y = ~~((1 - uv.y) * depthTexture.height);
-    const index = x + y * depthTexture.width;
+    const texel = this.toTexelCoord(uv, depthTexture.width, depthTexture.height);
+    const index = texel.x + texel.y * depthTexture.width;
     return depthTexture.data[index];
   };
 }
