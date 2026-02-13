@@ -18,7 +18,8 @@ export interface Uniforms {
 }
 
 const shadowBias = 0.0001;
-const specStr = 0.2;
+const specStr = 0.25;
+const shininess = 16;
 const ambient = 0.1;
 
 export class NormalMappedShader extends BaseShader {
@@ -27,50 +28,73 @@ export class NormalMappedShader extends BaseShader {
 
   vUV = this.varying<Vector2>();
   vLightSpacePos = this.varying<Vector4>();
-  vModelPos = this.varying<Vector3>();
+  vLightDirTangent = this.varying<Vector3>();
+  vViewDirTangent = this.varying<Vector3>();
 
   vertex = (): Vector4 => {
     const model = this.uniforms.model;
     const i = this.vertexId;
+    const normal = model.normals[i];
+    const tangent = model.tangents[i];
+    const bitangent = model.bitangents[i];
 
-    const lightSpacePos = this.uniforms.lightSpaceMat.multiplyPoint(
-      model.vertices[i]
+    // Calculate light direction and view direction in tangent space
+    const modelPos = model.vertices[i];
+    const lightDirTangent = new Vector3(
+      tangent.dot(this.uniforms.mLightDir),
+      bitangent.dot(this.uniforms.mLightDir),
+      normal.dot(this.uniforms.mLightDir),
     );
+
+    // Calculate view direction in tangent space
+    const viewDir = this.uniforms.mCamPos.subtract(modelPos).normalize();
+    const viewDirTangent = new Vector3(
+      tangent.dot(viewDir),
+      bitangent.dot(viewDir),
+      normal.dot(viewDir),
+    );
+
+    // Calculate light space position for shadow mapping
+    const lightSpacePos = this.uniforms.lightSpaceMat.multiplyPoint(modelPos);
+
+    // Scale from [-1, 1] to [0, 1]
+    lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
+    lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
 
     // Pass varyings to fragment shader
     this.v2f(this.vUV, model.uvs[i]);
     this.v2f(this.vLightSpacePos, lightSpacePos);
-    this.v2f(this.vModelPos, model.vertices[i]);
+    this.v2f(this.vLightDirTangent, lightDirTangent);
+    this.v2f(this.vViewDirTangent, viewDirTangent);
 
-    return this.uniforms.mvp.multiplyPoint(model.vertices[i]);
+    // Return clip space position
+    return this.uniforms.mvp.multiplyPoint(modelPos);
   };
 
   fragment = () => {
     // Get interpolated values
-    const modelPos = this.interpolateVec3(this.vModelPos);
     const uv = this.interpolateVec2(this.vUV);
     const lightSpacePos = this.interpolateVec4(this.vLightSpacePos);
+    const lightDir = this.interpolateVec3(this.vLightDirTangent).normalize();
+    const viewDir = this.interpolateVec3(this.vViewDirTangent).normalize();
 
     // Calculate shadow
-    lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
-    lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
     const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
     const shadow = lightSpacePos.z - shadowBias > depth ? 0 : 1;
 
     // Sample texture
     const colour = this.sample(this.uniforms.texture, uv);
-    const normal = this.sampleNormal(this.uniforms.normalTexture, uv);
+    const normal = this.sample(this.uniforms.normalTexture, uv);
 
     // Calculate lighting
-    const viewDir = this.uniforms.mCamPos.subtract(modelPos).normalize();
-    const reflectDir = this.uniforms.mLightDir.reflect(normal);
-    const spec = Math.pow(Math.max(viewDir.dot(reflectDir), 0), 32) * specStr;
+    const halfWayDir = viewDir.subtract(lightDir).normalize();
+    let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
+    spec *= specStr;
+    let diffuse = Math.max(-normal.dot(lightDir), 0);
+    const combined = (diffuse + spec) * shadow + ambient;
+    const lighting = this.uniforms.lightCol.scale(combined);
 
-    let diffuse = Math.max(-normal.dot(this.uniforms.mLightDir), 0);
-    diffuse *= shadow;
-
-    const lighting = this.uniforms.lightCol.scale(diffuse + spec + ambient);
-
+    // Return final color
     return colour.multiplyInPlace(lighting);
   };
 }

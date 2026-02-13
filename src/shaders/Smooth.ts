@@ -11,7 +11,8 @@ export interface Uniforms {
   camPos: Vector3;
 }
 
-const specStr = 0.2;
+const specStr = 0.25;
+const shininess = 16;
 const ambient = 0.1;
 
 export class SmoothShader extends BaseShader {
@@ -44,11 +45,14 @@ export class SmoothShader extends BaseShader {
 
     // Calculate lighting
     const viewDir = this.uniforms.camPos.subtract(worldPos.xyz).normalize();
-    const reflectDir = this.uniforms.lightDir.reflect(normal);
-    const spec = Math.pow(Math.max(viewDir.dot(reflectDir), 0), 32) * specStr;
+    const halfWayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
+
+    let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
+    spec *= specStr;
 
     const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
+    const combined = diffuse + spec + ambient;
 
-    return this.uniforms.lightCol.scale(diffuse + spec + ambient);
+    return this.uniforms.lightCol.scale(combined * 0.8);
   };
 }

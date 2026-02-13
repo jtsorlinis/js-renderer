@@ -27,7 +27,7 @@ export class Texture {
     this.height = height;
   }
 
-  static Load = async (imageURL: string) => {
+  static Load = async (imageURL: string, isNormalMap = false) => {
     const img = new Image();
     img.src = imageURL;
     await img.decode();
@@ -40,13 +40,22 @@ export class Texture {
     const imageData = offScreenCtx.getImageData(0, 0, img.width, img.height);
     const data = [];
     for (let i = 0; i < imageData.data.length; i += 4) {
-      data.push(
-        new Vector3(
-          imageData.data[i] / 255,
-          imageData.data[i + 1] / 255,
-          imageData.data[i + 2] / 255
-        )
-      );
+      if (isNormalMap) {
+        const normal = new Vector3(
+          (imageData.data[i] / 255) * 2 - 1,
+          (imageData.data[i + 1] / 255) * 2 - 1,
+          (imageData.data[i + 2] / 255) * 2 - 1
+        ).normalize();
+        data.push(normal);
+      } else {
+        data.push(
+          new Vector3(
+            imageData.data[i] / 255,
+            imageData.data[i + 1] / 255,
+            imageData.data[i + 2] / 255
+          )
+        );
+      }
     }
 
     return new Texture(data, img.width, img.height);
