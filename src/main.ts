@@ -11,7 +11,7 @@ import { NormalMappedShader } from "./shaders/NormalMapped";
 
 import modelFile from "./models/head.obj?raw";
 import diffuseTex from "./models/head_diffuse.png";
-import normalTex from "./models/head_normal_w.png";
+import normalTex from "./models/head_normal_t.png";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
@@ -47,7 +47,7 @@ let orthoSize = 1.5;
 // Model
 let model = loadObj(modelFile, true);
 let texture = await Texture.Load(diffuseTex);
-let normalTexture = await Texture.Load(normalTex);
+let normalTexture = await Texture.Load(normalTex, true);
 trisText.innerText = (model.vertices.length / 3).toFixed(0);
 let modelPos = new Vector3(0, 0, 0);
 let modelRotation = new Vector3(0, -Math.PI / 2, 0);
