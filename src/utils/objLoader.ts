@@ -1,10 +1,24 @@
 import { Vector2, Vector3 } from "../maths";
 
+const getFallbackTangent = (normal: Vector3) => {
+  const reference = Math.abs(normal.y) < 0.999 ? Vector3.Up : Vector3.Forward;
+  let tangent = reference.cross(normal);
+  if (tangent.lengthSq() < 0.00000001) {
+    tangent = new Vector3(1, 0, 0).cross(normal);
+  }
+  if (tangent.lengthSq() < 0.00000001) {
+    tangent = new Vector3(1, 0, 0);
+  }
+  return tangent.normalize();
+};
+
 export const loadObj = (file: string, normalize = false) => {
   const vertices: Vector3[] = [];
   let normals: Vector3[] = [];
   const uvs: Vector2[] = [];
   const faceNormals: Vector3[] = [];
+  const tangents: Vector3[] = [];
+  const bitangents: Vector3[] = [];
 
   const tempVerts: Vector3[] = [];
   const tempUVs: Vector2[] = [];
@@ -133,5 +147,83 @@ export const loadObj = (file: string, normalize = false) => {
     normals = faceNormals;
   }
 
-  return { vertices, normals, faceNormals, uvs };
+  // Normalise once at load time so shaders can use these directly
+  for (let i = 0; i < normals.length; i++) {
+    normals[i] = normals[i].normalized();
+  }
+
+  // Generate tangent basis for tangent-space normal mapping
+  if (uvs.length === vertices.length) {
+    for (let i = 0; i < vertices.length; i += 3) {
+      const v0 = vertices[i];
+      const v1 = vertices[i + 1];
+      const v2 = vertices[i + 2];
+
+      const uv0 = uvs[i];
+      const uv1 = uvs[i + 1];
+      const uv2 = uvs[i + 2];
+
+      const edge1 = v1.subtract(v0);
+      const edge2 = v2.subtract(v0);
+      const deltaUV1 = uv1.subtract(uv0);
+      const deltaUV2 = uv2.subtract(uv0);
+      const det = deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y;
+
+      let faceTangent: Vector3;
+      let faceBitangent: Vector3;
+
+      if (Math.abs(det) > 0.000001) {
+        const invDet = 1 / det;
+        faceTangent = edge1
+          .scale(deltaUV2.y)
+          .subtract(edge2.scale(deltaUV1.y))
+          .scale(invDet);
+        faceBitangent = edge2
+          .scale(deltaUV1.x)
+          .subtract(edge1.scale(deltaUV2.x))
+          .scale(invDet);
+      } else {
+        const fallbackNormal = normals[i];
+        faceTangent = getFallbackTangent(fallbackNormal);
+        faceBitangent = fallbackNormal.cross(faceTangent).normalize();
+      }
+
+      for (let j = 0; j < 3; j++) {
+        const normal = normals[i + j];
+
+        let tangent = faceTangent.subtract(normal.scale(normal.dot(faceTangent)));
+        if (tangent.lengthSq() < 0.00000001) {
+          tangent = getFallbackTangent(normal);
+        } else {
+          tangent = tangent.normalize();
+        }
+
+        let bitangent = faceBitangent.subtract(
+          normal.scale(normal.dot(faceBitangent))
+        );
+        if (bitangent.lengthSq() < 0.00000001) {
+          bitangent = normal.cross(tangent).normalize();
+        } else {
+          bitangent = bitangent.normalize();
+        }
+
+        if (normal.cross(tangent).dot(bitangent) < 0) {
+          bitangent = bitangent.scale(-1);
+        }
+
+        tangents.push(tangent);
+        bitangents.push(bitangent);
+      }
+    }
+  } else {
+    for (let i = 0; i < vertices.length; i++) {
+      const normal = normals[i];
+      const tangent = getFallbackTangent(normal);
+      const bitangent = normal.cross(tangent).normalize();
+      tangents.push(tangent);
+      bitangents.push(bitangent);
+    }
+  }
+
+  return { vertices, normals, faceNormals, uvs, tangents, bitangents };
 };
