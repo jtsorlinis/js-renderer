@@ -1,11 +1,44 @@
 import "../style.css";
 import shader from "./shader.wgsl?raw";
 import shadowShader from "./shadow.wgsl?raw";
+import wireframeShader from "./wireframe.wgsl?raw";
 import { loadObj } from "../utils/objLoader";
 import head from "../models/head.obj?raw";
 import headDiffuse from "../models/head_diffuse.png";
 import headNormal from "../models/head_normal_t.png";
 import { Matrix4, Vector3 } from "../maths";
+
+const MODEL_VERTEX_STRIDE = 15;
+const MODEL_VERTEX_STRIDE_BYTES = MODEL_VERTEX_STRIDE * Float32Array.BYTES_PER_ELEMENT;
+const WIREFRAME_VERTEX_STRIDE = 4;
+const WIREFRAME_VERTEX_STRIDE_BYTES =
+  WIREFRAME_VERTEX_STRIDE * Float32Array.BYTES_PER_ELEMENT;
+const UNIFORM_FLOATS = (16 + 5) * 4;
+
+const U = {
+  model: 0,
+  mvp: 16,
+  normal: 32,
+  lightMvp: 48,
+  camPos: 64,
+  lightDir: 68,
+  modelLightDir: 72,
+  modelCamPos: 76,
+  settings: 80,
+} as const;
+
+const renderModes = {
+  normalMapped: 0,
+  textured: 1,
+  smooth: 2,
+  flat: 3,
+} as const;
+
+type RenderSettings = {
+  mode: (typeof renderModes)[keyof typeof renderModes];
+  useShadows: boolean;
+  wireframe: boolean;
+};
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
@@ -18,7 +51,6 @@ canvas.height = 800;
 
 const adapter = await navigator.gpu?.requestAdapter();
 const device = await adapter?.requestDevice();
-
 if (!device) {
   throw new Error("WebGPU is not supported");
 }
@@ -27,136 +59,102 @@ const ctx = canvas.getContext("webgpu");
 if (!ctx) {
   throw new Error("WebGPU is not supported");
 }
+
 const format = navigator.gpu.getPreferredCanvasFormat();
 ctx.configure({ device, format });
 
-const diffuseImage = new Image();
-diffuseImage.src = headDiffuse;
-await diffuseImage.decode();
-const diffuseSource = await createImageBitmap(diffuseImage, {
-  colorSpaceConversion: "none",
-});
+const loadTextureFromImage = async (src: string) => {
+  const image = new Image();
+  image.src = src;
+  await image.decode();
 
-const diffuseTexture = device.createTexture({
-  format: "rgba8unorm",
-  size: [diffuseSource.width, diffuseSource.height],
-  usage:
-    GPUTextureUsage.COPY_DST |
-    GPUTextureUsage.TEXTURE_BINDING |
-    GPUTextureUsage.RENDER_ATTACHMENT,
-});
+  const source = await createImageBitmap(image, {
+    colorSpaceConversion: "none",
+  });
 
-device.queue.copyExternalImageToTexture(
-  { source: diffuseSource, flipY: true },
-  { texture: diffuseTexture },
-  { width: diffuseSource.width, height: diffuseSource.height },
-);
+  const texture = device.createTexture({
+    format: "rgba8unorm",
+    size: [source.width, source.height],
+    usage:
+      GPUTextureUsage.COPY_DST |
+      GPUTextureUsage.TEXTURE_BINDING |
+      GPUTextureUsage.RENDER_ATTACHMENT,
+  });
 
-const normalImage = new Image();
-normalImage.src = headNormal;
-await normalImage.decode();
-const normalSource = await createImageBitmap(normalImage, {
-  colorSpaceConversion: "none",
-});
+  device.queue.copyExternalImageToTexture(
+    { source, flipY: true },
+    { texture },
+    { width: source.width, height: source.height },
+  );
 
-const normalTexture = device.createTexture({
-  format: "rgba8unorm",
-  size: [normalSource.width, normalSource.height],
-  usage:
-    GPUTextureUsage.COPY_DST |
-    GPUTextureUsage.TEXTURE_BINDING |
-    GPUTextureUsage.RENDER_ATTACHMENT,
-});
+  return texture;
+};
 
-device.queue.copyExternalImageToTexture(
-  { source: normalSource, flipY: true },
-  { texture: normalTexture },
-  { width: normalSource.width, height: normalSource.height },
-);
+const createDepthTexture = (usage: GPUTextureUsageFlags) => {
+  return device.createTexture({
+    size: {
+      width: canvas.width,
+      height: canvas.height,
+    },
+    format: "depth24plus",
+    usage,
+  });
+};
+
+const [diffuseTexture, normalTexture] = await Promise.all([
+  loadTextureFromImage(headDiffuse),
+  loadTextureFromImage(headNormal),
+]);
 
 const sampler = device.createSampler({
   magFilter: "nearest",
   minFilter: "nearest",
 });
 
-const module = device.createShaderModule({
-  code: shader,
-});
+const shaderModule = device.createShaderModule({ code: shader });
+const shadowModule = device.createShaderModule({ code: shadowShader });
+const wireframeModule = device.createShaderModule({ code: wireframeShader });
 
-const shadowModule = device.createShaderModule({
-  code: shadowShader,
-});
-
-const wireframeModule = device.createShaderModule({
-  code: `
-struct Uniforms {
-  model : mat4x4f,
-  view : mat4x4f,
-  proj : mat4x4f,
-  norm : mat4x4f,
-  lightMVP : mat4x4f,
-  camPos : vec3f,
-  lightDir : vec3f,
-  mLightDir : vec3f,
-  mCamPos : vec3f,
-  settings : vec4f,
-}
-
-@group(0) @binding(0) var<uniform> uniforms: Uniforms;
-
-@vertex
-fn vertex(@location(0) position: vec4f) -> @builtin(position) vec4f {
-  return uniforms.proj * uniforms.view * uniforms.model * position;
-}
-
-@fragment
-fn fragment() -> @location(0) vec4f {
-  return vec4f(1.0, 1.0, 1.0, 1.0);
-}
-  `,
-});
-
-// Load model
-const vertexStride = 15;
 const model = loadObj(head);
 trisText.innerText = (model.vertices.length / 3).toFixed(0);
-const vertexData = new Float32Array(model.vertices.length * vertexStride);
 
+const modelVertexData = new Float32Array(model.vertices.length * MODEL_VERTEX_STRIDE);
 for (let i = 0; i < model.vertices.length; i++) {
-  vertexData.set(model.vertices[i].extend(1).toArray(), i * vertexStride);
-  vertexData.set(model.normals[i].toArray(), i * vertexStride + 4);
-  vertexData.set(model.uvs[i].toArray(), i * vertexStride + 7);
-  vertexData.set(model.tangents[i].toArray(), i * vertexStride + 9);
-  vertexData.set(model.bitangents[i].toArray(), i * vertexStride + 12);
+  modelVertexData.set(model.vertices[i].extend(1).toArray(), i * MODEL_VERTEX_STRIDE);
+  modelVertexData.set(model.normals[i].toArray(), i * MODEL_VERTEX_STRIDE + 4);
+  modelVertexData.set(model.uvs[i].toArray(), i * MODEL_VERTEX_STRIDE + 7);
+  modelVertexData.set(model.tangents[i].toArray(), i * MODEL_VERTEX_STRIDE + 9);
+  modelVertexData.set(model.bitangents[i].toArray(), i * MODEL_VERTEX_STRIDE + 12);
 }
 
 const wireframeVertexCount = (model.vertices.length / 3) * 6;
-const wireframeVertexData = new Float32Array(wireframeVertexCount * vertexStride);
+const wireframeVertexData = new Float32Array(
+  wireframeVertexCount * WIREFRAME_VERTEX_STRIDE,
+);
 
-const copyVertex = (srcVertexIndex: number, dstVertexIndex: number) => {
-  const srcOffset = srcVertexIndex * vertexStride;
-  const dstOffset = dstVertexIndex * vertexStride;
+let wireframeOffset = 0;
+const pushWireframeVertex = (vertexIndex: number) => {
   wireframeVertexData.set(
-    vertexData.subarray(srcOffset, srcOffset + vertexStride),
-    dstOffset,
+    model.vertices[vertexIndex].extend(1).toArray(),
+    wireframeOffset,
   );
+  wireframeOffset += WIREFRAME_VERTEX_STRIDE;
 };
 
-let dstVertex = 0;
 for (let i = 0; i < model.vertices.length; i += 3) {
-  copyVertex(i, dstVertex++);
-  copyVertex(i + 1, dstVertex++);
-  copyVertex(i + 1, dstVertex++);
-  copyVertex(i + 2, dstVertex++);
-  copyVertex(i + 2, dstVertex++);
-  copyVertex(i, dstVertex++);
+  pushWireframeVertex(i);
+  pushWireframeVertex(i + 1);
+  pushWireframeVertex(i + 1);
+  pushWireframeVertex(i + 2);
+  pushWireframeVertex(i + 2);
+  pushWireframeVertex(i);
 }
 
 const vertexBuffer = device.createBuffer({
-  size: vertexData.byteLength,
+  size: modelVertexData.byteLength,
   usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
 });
-device.queue.writeBuffer(vertexBuffer, 0, vertexData);
+device.queue.writeBuffer(vertexBuffer, 0, modelVertexData);
 
 const wireframeVertexBuffer = device.createBuffer({
   size: wireframeVertexData.byteLength,
@@ -164,7 +162,6 @@ const wireframeVertexBuffer = device.createBuffer({
 });
 device.queue.writeBuffer(wireframeVertexBuffer, 0, wireframeVertexData);
 
-// Create shadow pipeline
 const shadowPipeline = device.createRenderPipeline({
   layout: "auto",
   depthStencil: {
@@ -177,16 +174,13 @@ const shadowPipeline = device.createRenderPipeline({
     entryPoint: "vertex",
     buffers: [
       {
-        arrayStride: vertexStride * 4,
-        attributes: [
-          { shaderLocation: 0, offset: 0, format: "float32x4" }, // position
-        ],
+        arrayStride: MODEL_VERTEX_STRIDE_BYTES,
+        attributes: [{ shaderLocation: 0, offset: 0, format: "float32x4" }],
       },
     ],
   },
 });
 
-// Create pipeline
 const pipeline = device.createRenderPipeline({
   layout: "auto",
   depthStencil: {
@@ -195,23 +189,23 @@ const pipeline = device.createRenderPipeline({
     depthCompare: "less",
   },
   vertex: {
-    module,
+    module: shaderModule,
     entryPoint: "vertex",
     buffers: [
       {
-        arrayStride: vertexStride * 4,
+        arrayStride: MODEL_VERTEX_STRIDE_BYTES,
         attributes: [
-          { shaderLocation: 0, offset: 0, format: "float32x4" }, // position
-          { shaderLocation: 1, offset: 16, format: "float32x3" }, // norm
-          { shaderLocation: 2, offset: 28, format: "float32x2" }, // uv
-          { shaderLocation: 3, offset: 36, format: "float32x3" }, // tangent
-          { shaderLocation: 4, offset: 48, format: "float32x3" }, // bitangent
+          { shaderLocation: 0, offset: 0, format: "float32x4" },
+          { shaderLocation: 1, offset: 16, format: "float32x3" },
+          { shaderLocation: 2, offset: 28, format: "float32x2" },
+          { shaderLocation: 3, offset: 36, format: "float32x3" },
+          { shaderLocation: 4, offset: 48, format: "float32x3" },
         ],
       },
     ],
   },
   fragment: {
-    module,
+    module: shaderModule,
     entryPoint: "fragment",
     targets: [{ format }],
   },
@@ -229,7 +223,7 @@ const wireframePipeline = device.createRenderPipeline({
     entryPoint: "vertex",
     buffers: [
       {
-        arrayStride: vertexStride * 4,
+        arrayStride: WIREFRAME_VERTEX_STRIDE_BYTES,
         attributes: [{ shaderLocation: 0, offset: 0, format: "float32x4" }],
       },
     ],
@@ -246,34 +240,17 @@ const wireframePipeline = device.createRenderPipeline({
   },
 });
 
-// Create z-buffer texture
-const depthTexture = device.createTexture({
-  size: {
-    width: canvas.width,
-    height: canvas.height,
-  },
-  format: "depth24plus",
-  usage: GPUTextureUsage.RENDER_ATTACHMENT,
-});
+const depthTexture = createDepthTexture(GPUTextureUsage.RENDER_ATTACHMENT);
+const shadowDepthTexture = createDepthTexture(
+  GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+);
 
-// Create shadow depth texture
-const shadowDepthTexture = device.createTexture({
-  size: {
-    width: canvas.width,
-    height: canvas.height,
-  },
-  format: "depth24plus",
-  usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
-});
-
-// Create uniform buffer
-const uniforms = new Float32Array((20 + 5) * 4);
+const uniforms = new Float32Array(UNIFORM_FLOATS);
 const uniformBuffer = device.createBuffer({
   size: uniforms.byteLength,
   usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
 });
 
-// Create bind group
 const uniformBindGroup = device.createBindGroup({
   layout: pipeline.getBindGroupLayout(0),
   entries: [
@@ -303,14 +280,7 @@ const lightDir = new Vector3(0, -1, 1).normalize();
 const aspectRatio = canvas.width / canvas.height;
 let orthoSize = 1.5;
 
-const renderModes = {
-  normalMapped: 0,
-  textured: 1,
-  smooth: 2,
-  flat: 3,
-} as const;
-
-const getRenderSettings = () => {
+const getRenderSettings = (): RenderSettings => {
   let shading = shadingDd.value;
   const hasTexAndUVs = model.uvs.length > 0;
 
@@ -322,31 +292,28 @@ const getRenderSettings = () => {
     shadingDd.value = shading;
   }
 
-  if (shading === "normalMapped-shadows") {
-    return {
-      mode: renderModes.normalMapped,
-      useShadows: true,
-      isWireframe: false,
-    };
+  switch (shading) {
+    case "normalMapped-shadows":
+      return {
+        mode: renderModes.normalMapped,
+        useShadows: true,
+        wireframe: false,
+      };
+    case "normalMapped":
+      return {
+        mode: renderModes.normalMapped,
+        useShadows: false,
+        wireframe: false,
+      };
+    case "textured":
+      return { mode: renderModes.textured, useShadows: false, wireframe: false };
+    case "smooth":
+      return { mode: renderModes.smooth, useShadows: false, wireframe: false };
+    case "flat":
+      return { mode: renderModes.flat, useShadows: false, wireframe: false };
+    default:
+      return { mode: renderModes.smooth, useShadows: false, wireframe: true };
   }
-  if (shading === "normalMapped") {
-    return {
-      mode: renderModes.normalMapped,
-      useShadows: false,
-      isWireframe: false,
-    };
-  }
-  if (shading === "textured") {
-    return { mode: renderModes.textured, useShadows: false, isWireframe: false };
-  }
-  if (shading === "smooth") {
-    return { mode: renderModes.smooth, useShadows: false, isWireframe: false };
-  }
-  if (shading === "flat") {
-    return { mode: renderModes.flat, useShadows: false, isWireframe: false };
-  }
-
-  return { mode: renderModes.smooth, useShadows: false, isWireframe: true };
 };
 
 const update = (dt: number) => {
@@ -355,31 +322,32 @@ const update = (dt: number) => {
 
 const draw = () => {
   const renderSettings = getRenderSettings();
+
   const modelMat = Matrix4.TRS(pos, rot, scale);
   const lightViewMat = Matrix4.LookTo(lightDir.scale(-5), lightDir, Vector3.Up);
   const lightProjMat = Matrix4.Ortho(orthoSize, aspectRatio);
   const lightSpaceMat = modelMat.multiply(lightViewMat.multiply(lightProjMat));
   const invModelMat = modelMat.invert();
   const viewMat = Matrix4.LookTo(camPos, Vector3.Forward, Vector3.Up);
-  const normalMat = modelMat.invert().transpose();
   const projMat = orthographicCb.checked
     ? Matrix4.Ortho(orthoSize, aspectRatio)
     : Matrix4.Perspective(60, aspectRatio);
+  const mvp = modelMat.multiply(viewMat).multiply(projMat);
+  const normalMat = modelMat.invert().transpose();
   const mLightDir = invModelMat.multiplyDirection(lightDir).normalize();
   const mCamPos = invModelMat.multiplyPoint(camPos).xyz;
 
-  uniforms.set(modelMat.toArray(), 0);
-  uniforms.set(viewMat.toArray(), 16);
-  uniforms.set(projMat.toArray(), 32);
-  uniforms.set(normalMat.toArray(), 48);
-  uniforms.set(lightSpaceMat.toArray(), 64);
-  uniforms.set(camPos.toArray(), 80);
-  uniforms.set(lightDir.toArray(), 84);
-  uniforms.set(mLightDir.toArray(), 88);
-  uniforms.set(mCamPos.toArray(), 92);
+  uniforms.set(modelMat.toArray(), U.model);
+  uniforms.set(mvp.toArray(), U.mvp);
+  uniforms.set(normalMat.toArray(), U.normal);
+  uniforms.set(lightSpaceMat.toArray(), U.lightMvp);
+  uniforms.set(camPos.toArray(), U.camPos);
+  uniforms.set(lightDir.toArray(), U.lightDir);
+  uniforms.set(mLightDir.toArray(), U.modelLightDir);
+  uniforms.set(mCamPos.toArray(), U.modelCamPos);
   uniforms.set(
     [renderSettings.mode, renderSettings.useShadows ? 1 : 0, 0, 0],
-    96,
+    U.settings,
   );
   device.queue.writeBuffer(uniformBuffer, 0, uniforms);
 
@@ -402,32 +370,25 @@ const draw = () => {
     shadowPass.end();
   }
 
-  if (renderSettings.isWireframe) {
-    const wirePass = encoder.beginRenderPass({
-      colorAttachments: [
-        {
-          view: ctx.getCurrentTexture().createView(),
-          clearValue: [0, 0, 0, 1],
-          loadOp: "clear",
-          storeOp: "store",
-        },
-      ],
+  const colorAttachment: GPURenderPassColorAttachment = {
+    view: ctx.getCurrentTexture().createView(),
+    clearValue: [0, 0, 0, 1],
+    loadOp: "clear",
+    storeOp: "store",
+  };
+
+  if (renderSettings.wireframe) {
+    const wireframePass = encoder.beginRenderPass({
+      colorAttachments: [colorAttachment],
     });
-    wirePass.setPipeline(wireframePipeline);
-    wirePass.setBindGroup(0, wireframeBindGroup);
-    wirePass.setVertexBuffer(0, wireframeVertexBuffer);
-    wirePass.draw(wireframeVertexCount);
-    wirePass.end();
+    wireframePass.setPipeline(wireframePipeline);
+    wireframePass.setBindGroup(0, wireframeBindGroup);
+    wireframePass.setVertexBuffer(0, wireframeVertexBuffer);
+    wireframePass.draw(wireframeVertexCount);
+    wireframePass.end();
   } else {
-    const pass = encoder.beginRenderPass({
-      colorAttachments: [
-        {
-          view: ctx.getCurrentTexture().createView(),
-          clearValue: [0, 0, 0, 1],
-          loadOp: "clear",
-          storeOp: "store",
-        },
-      ],
+    const mainPass = encoder.beginRenderPass({
+      colorAttachments: [colorAttachment],
       depthStencilAttachment: {
         view: depthTexture.createView(),
         depthLoadOp: "clear",
@@ -435,16 +396,14 @@ const draw = () => {
         depthClearValue: 1.0,
       },
     });
-
-    pass.setPipeline(pipeline);
-    pass.setBindGroup(0, uniformBindGroup);
-    pass.setVertexBuffer(0, vertexBuffer);
-    pass.draw(model.vertices.length);
-    pass.end();
+    mainPass.setPipeline(pipeline);
+    mainPass.setBindGroup(0, uniformBindGroup);
+    mainPass.setVertexBuffer(0, vertexBuffer);
+    mainPass.draw(model.vertices.length);
+    mainPass.end();
   }
 
-  const commandBuffer = encoder.finish();
-  device.queue.submit([commandBuffer]);
+  device.queue.submit([encoder.finish()]);
 };
 
 let prevTime = 0;
@@ -454,18 +413,15 @@ const loop = () => {
   prevTime = now;
   update(deltaTime);
   draw();
-  const actualFrameTime = performance.now() - now;
-  fpsText.innerText = actualFrameTime.toFixed(1);
+  fpsText.innerText = (performance.now() - now).toFixed(1);
   requestAnimationFrame(loop);
 };
 
 canvas.onmousemove = (e) => {
   if (e.buttons === 1) {
-    // left mouse button
     rot.y -= e.movementX / 250;
     rot.x += e.movementY / 250;
   } else if (e.buttons === 2 || e.buttons === 4) {
-    // right mouse button
     pos.x += e.movementX / 250;
     pos.y -= e.movementY / 250;
   }

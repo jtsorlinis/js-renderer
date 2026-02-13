@@ -9,6 +9,14 @@
   <body>
     <div id="app"></div>
     <canvas id="canvas"></canvas>
+    <label>
+      Renderer:
+      <select id="rendererDd">
+        <option value="software">Software</option>
+        <option value="webgpu">WebGPU</option>
+      </select>
+    </label>
+    &emsp;
     <label><input type="checkbox" id="orthoCb" />Orthographic</label>
     &emsp;
     <label>
@@ -30,6 +38,6 @@
       &emsp;
       <span>Frametime: <span id="fps">00</span>ms</span>
     </div>
-    <script type="module" src="/src/webgpu/main.ts"></script>
+    <script type="module" src="/src/rendererEntry.ts"></script>
   </body>
 </html>

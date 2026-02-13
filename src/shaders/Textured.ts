@@ -17,15 +17,16 @@ const specStr = 0.25;
 const shininess = 16;
 const ambient = 0.1;
 export class TexturedShader extends BaseShader {
-  // Uniforms
+  // Uniforms are set once per draw call.
   uniforms!: Uniforms;
 
-  // Varyings
+  // Varyings are interpolated per pixel in fragment().
   vNormal = this.varying<Vector3>();
   vWorldPos = this.varying<Vector4>();
   vUV = this.varying<Vector2>();
 
   vertex = (): Vector4 => {
+    // Load source vertex data.
     const model = this.uniforms.model;
     const i = this.vertexId;
     const worldPos = this.uniforms.modelMat.multiplyPoint(model.vertices[i]);
@@ -33,24 +34,25 @@ export class TexturedShader extends BaseShader {
       .multiplyDirection(model.normals[i])
       .normalize();
 
-    // Pass varyings to fragment shader
+    // Emit per-vertex values to be interpolated over the triangle.
     this.v2f(this.vNormal, normal);
     this.v2f(this.vWorldPos, worldPos);
     this.v2f(this.vUV, model.uvs[i]);
 
+    // Return clip-space position.
     return this.uniforms.mvp.multiplyPoint(model.vertices[i]);
   };
 
   fragment = () => {
-    // Get interpolated values
+    // Read interpolated values at this pixel.
     const normal = this.interpolateVec3(this.vNormal).normalize();
     const worldPos = this.interpolateVec4(this.vWorldPos);
     const uv = this.interpolateVec2(this.vUV);
 
-    // Sample texture
+    // Sample albedo texture.
     const col = this.sample(this.uniforms.texture, uv);
 
-    // Calculate lighting
+    // Basic Blinn-Phong lighting in world space.
     const viewDir = this.uniforms.camPos.subtract(worldPos.xyz).normalize();
     const halfWayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
 
