@@ -27,7 +27,8 @@ struct Uniforms {
 @group(0) @binding(1) var texSampler: sampler;
 @group(0) @binding(2) var diffuseTex: texture_2d<f32>;
 @group(0) @binding(3) var normalTex: texture_2d<f32>;
-@group(0) @binding(4) var shadowMap: texture_depth_2d;
+@group(0) @binding(4) var shadowSampler: sampler_comparison;
+@group(0) @binding(5) var shadowMap: texture_depth_2d;
  
  @vertex 
  fn vertex(
@@ -59,10 +60,13 @@ fn fragment(i: V2f) -> @location(0) vec4f {
   let specular = pow(max(0, dot(norm, halfDir)), 16) * 0.25;
 
   // Shadows
-  let depth = textureSample(shadowMap, texSampler, i.lightSpacePos.xy);
-  if (i.lightSpacePos.z - 0.00001 > depth) {
-    diffuse *= 0;
-  }
+  let shadow = textureSampleCompare(
+    shadowMap,
+    shadowSampler,
+    i.lightSpacePos.xy,
+    i.lightSpacePos.z - 0.00001,
+  );
+  diffuse *= shadow;
 
   let lighting = diffuse + specular + 0.1;
   let col = textureSample(diffuseTex, texSampler, i.uv);

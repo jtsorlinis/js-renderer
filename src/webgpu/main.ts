@@ -46,7 +46,7 @@ const diffuseTexture = device.createTexture({
 device.queue.copyExternalImageToTexture(
   { source: diffuseSource, flipY: true },
   { texture: diffuseTexture },
-  { width: diffuseSource.width, height: diffuseSource.height }
+  { width: diffuseSource.width, height: diffuseSource.height },
 );
 
 const normalImage = new Image();
@@ -68,12 +68,15 @@ const normalTexture = device.createTexture({
 device.queue.copyExternalImageToTexture(
   { source: normalSource, flipY: true },
   { texture: normalTexture },
-  { width: normalSource.width, height: normalSource.height }
+  { width: normalSource.width, height: normalSource.height },
 );
 
 const sampler = device.createSampler({
   magFilter: "linear",
   minFilter: "linear",
+});
+const shadowSampler = device.createSampler({
+  compare: "less-equal",
 });
 
 const module = device.createShaderModule({
@@ -194,7 +197,8 @@ const uniformBindGroup = device.createBindGroup({
     { binding: 1, resource: sampler },
     { binding: 2, resource: diffuseTexture.createView() },
     { binding: 3, resource: normalTexture.createView() },
-    { binding: 4, resource: shadowDepthTexture.createView() },
+    { binding: 4, resource: shadowSampler },
+    { binding: 5, resource: shadowDepthTexture.createView() },
   ],
 });
 
