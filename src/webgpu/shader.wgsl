@@ -1,6 +1,11 @@
 const MODE_NORMAL_MAPPED: i32 = 0;
 const MODE_TEXTURED: i32 = 1;
 const MODE_SMOOTH: i32 = 2;
+const SHADOW_BIAS: f32 = 0.0001;
+const SPEC_STRENGTH: f32 = 0.25;
+const SHININESS: f32 = 16.0;
+const AMBIENT: f32 = 0.1;
+const SHADE_SCALE: f32 = 0.8;
 
 struct Vertex {
   @location(0) pos : vec4f,
@@ -48,7 +53,7 @@ fn shadowFactor(lightSpacePos: vec3f) -> f32 {
     ),
   );
   let depth = textureLoad(shadowMap, shadowCoord, 0);
-  return select(0.0, 1.0, lightSpacePos.z - 0.0001 <= depth);
+  return select(0.0, 1.0, lightSpacePos.z - SHADOW_BIAS <= depth);
 }
 
 @vertex
@@ -107,23 +112,23 @@ fn fragment(i: V2f) -> @location(0) vec4f {
     }
     case MODE_SMOOTH: {
       normal = normalize(i.worldNorm);
-      shadeScale = 0.8;
+      shadeScale = SHADE_SCALE;
     }
     default: {
       normal = normalize(cross(dpdx(i.worldPos), dpdy(i.worldPos)));
-      shadeScale = 0.8;
+      shadeScale = SHADE_SCALE;
     }
   }
 
   let diffuse = max(0.0, -dot(normal, lightDir));
   let halfDir = normalize(viewDir - lightDir);
-  let specular = pow(max(0.0, dot(normal, halfDir)), 16.0) * 0.25;
+  let specular = pow(max(0.0, dot(normal, halfDir)), SHININESS) * SPEC_STRENGTH;
 
   var shadow = 1.0;
   if (useShadows) {
     shadow = shadowFactor(i.lightSpacePos);
   }
 
-  let lighting = ((diffuse + specular) * shadow + 0.1) * shadeScale;
+  let lighting = ((diffuse + specular) * shadow + AMBIENT) * shadeScale;
   return vec4f(albedo * lighting, 1.0);
 }

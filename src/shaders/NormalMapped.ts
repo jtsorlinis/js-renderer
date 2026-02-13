@@ -93,9 +93,10 @@ export class NormalMappedShader extends BaseShader {
     const halfWayDir = viewDir.subtract(lightDir).normalize();
     let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
     spec *= specStr;
-    let diffuse = Math.max(-normal.dot(lightDir), 0);
-    const combined = (diffuse + spec) * shadow + ambient;
-    const lighting = this.uniforms.lightCol.scale(combined);
+    const diffuse = Math.max(-normal.dot(lightDir), 0);
+    const lighting = this.uniforms.lightCol.scale(
+      (diffuse + spec) * shadow + ambient,
+    );
 
     // Final lit color.
     return colour.multiplyInPlace(lighting);

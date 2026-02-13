@@ -7,6 +7,7 @@ import head from "../models/head.obj?raw";
 import headDiffuse from "../models/head_diffuse.png";
 import headNormal from "../models/head_normal_t.png";
 import { Matrix4, Vector3 } from "../maths";
+import { resolveShadingSelection } from "../renderSettings";
 
 const MODEL_VERTEX_STRIDE = 15;
 const MODEL_VERTEX_STRIDE_BYTES = MODEL_VERTEX_STRIDE * Float32Array.BYTES_PER_ELEMENT;
@@ -14,6 +15,10 @@ const WIREFRAME_VERTEX_STRIDE = 4;
 const WIREFRAME_VERTEX_STRIDE_BYTES =
   WIREFRAME_VERTEX_STRIDE * Float32Array.BYTES_PER_ELEMENT;
 const UNIFORM_FLOATS = (16 + 5) * 4;
+const ROTATION_SPEED = 5;
+const ROTATE_SENSITIVITY = 250;
+const PAN_SENSITIVITY = 250;
+const ZOOM_SENSITIVITY = 100;
 
 const U = {
   model: 0,
@@ -281,43 +286,19 @@ const aspectRatio = canvas.width / canvas.height;
 let orthoSize = 1.5;
 
 const getRenderSettings = (): RenderSettings => {
-  let shading = shadingDd.value;
-  const hasTexAndUVs = model.uvs.length > 0;
-
-  if (
-    !hasTexAndUVs &&
-    (shading.includes("textured") || shading.includes("normalMapped"))
-  ) {
-    shading = "smooth";
-    shadingDd.value = shading;
+  const selection = resolveShadingSelection(shadingDd.value, model.uvs.length > 0);
+  if (selection.normalizedValue !== shadingDd.value) {
+    shadingDd.value = selection.normalizedValue;
   }
-
-  switch (shading) {
-    case "normalMapped-shadows":
-      return {
-        mode: renderModes.normalMapped,
-        useShadows: true,
-        wireframe: false,
-      };
-    case "normalMapped":
-      return {
-        mode: renderModes.normalMapped,
-        useShadows: false,
-        wireframe: false,
-      };
-    case "textured":
-      return { mode: renderModes.textured, useShadows: false, wireframe: false };
-    case "smooth":
-      return { mode: renderModes.smooth, useShadows: false, wireframe: false };
-    case "flat":
-      return { mode: renderModes.flat, useShadows: false, wireframe: false };
-    default:
-      return { mode: renderModes.smooth, useShadows: false, wireframe: true };
-  }
+  return {
+    mode: renderModes[selection.material],
+    useShadows: selection.useShadows,
+    wireframe: selection.wireframe,
+  };
 };
 
 const update = (dt: number) => {
-  rot.y -= dt / 5;
+  rot.y -= dt / ROTATION_SPEED;
 };
 
 const draw = () => {
@@ -419,21 +400,21 @@ const loop = () => {
 
 canvas.onmousemove = (e) => {
   if (e.buttons === 1) {
-    rot.y -= e.movementX / 250;
-    rot.x += e.movementY / 250;
+    rot.y -= e.movementX / ROTATE_SENSITIVITY;
+    rot.x += e.movementY / ROTATE_SENSITIVITY;
   } else if (e.buttons === 2 || e.buttons === 4) {
-    pos.x += e.movementX / 250;
-    pos.y -= e.movementY / 250;
+    pos.x += e.movementX / PAN_SENSITIVITY;
+    pos.y -= e.movementY / PAN_SENSITIVITY;
   }
 };
 
 canvas.onwheel = (e) => {
   e.preventDefault();
   if (orthographicCb.checked) {
-    orthoSize += e.deltaY / 100;
+    orthoSize += e.deltaY / ZOOM_SENSITIVITY;
     orthoSize = Math.max(0.01, orthoSize);
   } else {
-    camPos.z -= e.deltaY / 100;
+    camPos.z -= e.deltaY / ZOOM_SENSITIVITY;
   }
 };
 

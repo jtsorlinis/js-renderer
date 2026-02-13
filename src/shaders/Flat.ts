@@ -13,6 +13,7 @@ export interface Uniforms {
 const specStr = 0.25;
 const shininess = 16;
 const ambient = 0.1;
+const smoothScale = 0.8;
 
 export class FlatShader extends BaseShader {
   // Uniforms are set once per draw call.
@@ -33,14 +34,10 @@ export class FlatShader extends BaseShader {
     // Compute lighting once in vertex stage for this face.
     const viewDir = this.uniforms.camPos.subtract(worldPos.xyz).normalize();
     const halfWayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
-
     let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
     spec *= specStr;
-
     const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
-
-    this.lighting = diffuse + spec + ambient;
-    this.lighting *= 0.8;
+    this.lighting = (diffuse + spec + ambient) * smoothScale;
 
     // Return clip-space position.
     return this.uniforms.mvp.multiplyPoint(model.vertices[i]);
