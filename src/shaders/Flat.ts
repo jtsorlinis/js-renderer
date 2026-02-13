@@ -15,13 +15,14 @@ const shininess = 16;
 const ambient = 0.1;
 
 export class FlatShader extends BaseShader {
-  // Uniforms
+  // Uniforms are set once per draw call.
   uniforms!: Uniforms;
 
-  // No interpolation needed for flat shading
+  // Flat shading stores one lighting value for the whole triangle.
   lighting = 0;
 
   vertex = (): Vector4 => {
+    // Use face normal so every pixel in this triangle gets identical lighting.
     const model = this.uniforms.model;
     const i = this.vertexId;
     const normal = this.uniforms.normalMat
@@ -29,7 +30,7 @@ export class FlatShader extends BaseShader {
       .normalize();
     const worldPos = this.uniforms.mvp.multiplyPoint(model.vertices[i]);
 
-    // Calculate lighting
+    // Compute lighting once in vertex stage for this face.
     const viewDir = this.uniforms.camPos.subtract(worldPos.xyz).normalize();
     const halfWayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
 
@@ -41,6 +42,7 @@ export class FlatShader extends BaseShader {
     this.lighting = diffuse + spec + ambient;
     this.lighting *= 0.8;
 
+    // Return clip-space position.
     return this.uniforms.mvp.multiplyPoint(model.vertices[i]);
   };
 

@@ -1,3 +1,7 @@
+const MODE_NORMAL_MAPPED: i32 = 0;
+const MODE_TEXTURED: i32 = 1;
+const MODE_SMOOTH: i32 = 2;
+
 struct Vertex {
   @location(0) pos : vec4f,
   @location(1) norm : vec3f,
@@ -18,8 +22,7 @@ struct V2f {
 
 struct Uniforms {
   model : mat4x4f,
-  view : mat4x4f,
-  proj : mat4x4f,
+  mvp : mat4x4f,
   norm : mat4x4f,
   lightMVP : mat4x4f,
   camPos : vec3f,
@@ -51,7 +54,8 @@ fn shadowFactor(lightSpacePos: vec3f) -> f32 {
 @vertex
 fn vertex(v: Vertex) -> V2f {
   var o: V2f;
-  o.pos = uniforms.proj * uniforms.view * uniforms.model * v.pos;
+
+  o.pos = uniforms.mvp * v.pos;
   o.uv = v.uv;
 
   let worldPos = uniforms.model * v.pos;
@@ -65,6 +69,7 @@ fn vertex(v: Vertex) -> V2f {
   let b = normalize(cross(n, t)) * bSign;
   let modelPos = v.pos.xyz;
   let viewDir = normalize(uniforms.mCamPos - modelPos);
+
   o.lightDirTS = vec3f(
     dot(t, uniforms.mLightDir),
     dot(b, uniforms.mLightDir),
@@ -74,34 +79,40 @@ fn vertex(v: Vertex) -> V2f {
 
   let lightSpacePos = uniforms.lightMVP * v.pos;
   o.lightSpacePos = vec3f(lightSpacePos.xy * vec2f(0.5, -0.5) + 0.5, lightSpacePos.z);
+
   return o;
 }
 
 @fragment
 fn fragment(i: V2f) -> @location(0) vec4f {
-  let mode = i32(uniforms.settings.x);
+  let mode = i32(round(uniforms.settings.x));
   let useShadows = uniforms.settings.y > 0.5;
 
   var normal = vec3f(0.0, 0.0, 1.0);
   var lightDir = normalize(uniforms.lightDir);
   var viewDir = normalize(uniforms.camPos - i.worldPos);
-  var colour = vec3f(1.0);
+  var albedo = vec3f(1.0);
   var shadeScale = 1.0;
 
-  if (mode == 0) {
-    normal = normalize(textureSample(normalTex, texSampler, i.uv).xyz * 2.0 - 1.0);
-    lightDir = normalize(i.lightDirTS);
-    viewDir = normalize(i.viewDirTS);
-    colour = textureSample(diffuseTex, texSampler, i.uv).xyz;
-  } else if (mode == 1) {
-    normal = normalize(i.worldNorm);
-    colour = textureSample(diffuseTex, texSampler, i.uv).xyz;
-  } else if (mode == 2) {
-    normal = normalize(i.worldNorm);
-    shadeScale = 0.8;
-  } else {
-    normal = normalize(cross(dpdx(i.worldPos), dpdy(i.worldPos)));
-    shadeScale = 0.8;
+  switch mode {
+    case MODE_NORMAL_MAPPED: {
+      normal = normalize(textureSample(normalTex, texSampler, i.uv).xyz * 2.0 - 1.0);
+      lightDir = normalize(i.lightDirTS);
+      viewDir = normalize(i.viewDirTS);
+      albedo = textureSample(diffuseTex, texSampler, i.uv).xyz;
+    }
+    case MODE_TEXTURED: {
+      normal = normalize(i.worldNorm);
+      albedo = textureSample(diffuseTex, texSampler, i.uv).xyz;
+    }
+    case MODE_SMOOTH: {
+      normal = normalize(i.worldNorm);
+      shadeScale = 0.8;
+    }
+    default: {
+      normal = normalize(cross(dpdx(i.worldPos), dpdy(i.worldPos)));
+      shadeScale = 0.8;
+    }
   }
 
   let diffuse = max(0.0, -dot(normal, lightDir));
@@ -114,5 +125,5 @@ fn fragment(i: V2f) -> @location(0) vec4f {
   }
 
   let lighting = ((diffuse + specular) * shadow + 0.1) * shadeScale;
-  return vec4f(colour * lighting, 1.0);
+  return vec4f(albedo * lighting, 1.0);
 }
