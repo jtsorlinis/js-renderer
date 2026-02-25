@@ -4,16 +4,18 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "deploy": "tsc && vite build && gh-pages -d dist"
+    "dev": "tsx src/main.ts",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "typescript": "^5.9.3",
-    "vite": "^7.3.1"
+    "@types/node": "^24.4.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
-    "gh-pages": "^6.3.0"
+    "canvas": "^3.2.0",
+    "gh-pages": "^6.3.0",
+    "terminal-image": "^4.1.2"
   }
 }

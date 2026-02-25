@@ -1,12 +1,18 @@
 import { Vector3, Vector4 } from "../maths";
 
+export interface ImageDataLike {
+  width: number;
+  height: number;
+  data: Uint8ClampedArray;
+}
+
 export class Framebuffer {
   width: number;
   height: number;
   totalPixels: number;
   data: Uint8ClampedArray;
 
-  constructor(imageData: ImageData) {
+  constructor(imageData: ImageDataLike) {
     this.width = imageData.width;
     this.height = imageData.height;
     this.totalPixels = this.width * this.height;

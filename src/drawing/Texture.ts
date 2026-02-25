@@ -1,3 +1,4 @@
+import { createCanvas, loadImage } from "canvas";
 import { Vector3 } from "../maths";
 
 export class DepthTexture {
@@ -27,18 +28,16 @@ export class Texture {
     this.height = height;
   }
 
-  static Load = async (imageURL: string, isNormalMap = false) => {
-    const img = new Image();
-    img.src = imageURL;
-    await img.decode();
-    const offScreenCanvas = new OffscreenCanvas(img.width, img.height);
+  static Load = async (imagePath: string, isNormalMap = false) => {
+    const img = await loadImage(imagePath);
+    const offScreenCanvas = createCanvas(img.width, img.height);
     const offScreenCtx = offScreenCanvas.getContext("2d");
     if (!offScreenCtx) {
       throw new Error("Could not get texture context");
     }
-    offScreenCtx.drawImage(img, 0, 0);
+    offScreenCtx.drawImage(img, 0, 0, img.width, img.height);
     const imageData = offScreenCtx.getImageData(0, 0, img.width, img.height);
-    const data = [];
+    const data: Vector3[] = [];
     for (let i = 0; i < imageData.data.length; i += 4) {
       if (isNormalMap) {
         const normal = new Vector3(

@@ -1,20 +1,27 @@
-# TypeScript CPU Software Renderer
+# TypeScript CPU Software Renderer (Terminal)
 
-**Experience it here: https://jtsorlinis.github.io/js-renderer/**
+This project now renders the software rasterizer directly inside a terminal using:
+- `node-canvas` for image buffers
+- `terminal-image` for terminal display
 
-This project introduces a pure TypeScript rendering engine designed for 3D rendering directly in the browser, all without reliance on WebGL or similar hardware-accelerated APIs.
+## Run
 
-I developed this engine to deepen my understanding of rasterisation, rendering, and the fundamental workings of GPUs.
+```bash
+npm install
+npm run dev
+```
 
-Initially, I considered using scanline rasterisation, given its potential efficiency in single-threaded CPU scenarios. However, I ultimately chose edge equations. This approach aligns more closely with methods used by actual GPUs and is easier to understand.
+## Defaults
 
-As a companion to this renderer, I've created a tutorial on rasterisation, which includes some of the techniques used in this engine: https://jtsorlinis.github.io/rendering-tutorial/
+- FPS starts at `15` (use keyboard controls to change it live)
+- Initial shading mode is `normalMapped-shadows`
+- The app requests terminal window maximize on startup (terminals may ignore it)
+- On quit (`q`) or `Ctrl+C`, the app requests restore to the original window size
 
-## Features
-- Wireframe rendering
-- Perspective and Orthographic projection
-- Vertex attribute interpolation
-- Texture and Normal mapping (Excludes filtering to prioritize speed)
-- Shadow mapping
-- OBJ model loading
-- Basic frustum and backface culling
+## Keyboard Controls
+
+- `↑` increase FPS
+- `↓` decrease FPS
+- `←` previous shading mode
+- `→` next shading mode
+- `q` quit
