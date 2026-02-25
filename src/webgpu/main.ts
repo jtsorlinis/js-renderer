@@ -10,7 +10,8 @@ import { Matrix4, Vector3 } from "../maths";
 import { resolveShadingSelection } from "../renderSettings";
 
 const MODEL_VERTEX_STRIDE = 15;
-const MODEL_VERTEX_STRIDE_BYTES = MODEL_VERTEX_STRIDE * Float32Array.BYTES_PER_ELEMENT;
+const MODEL_VERTEX_STRIDE_BYTES =
+  MODEL_VERTEX_STRIDE * Float32Array.BYTES_PER_ELEMENT;
 const WIREFRAME_VERTEX_STRIDE = 4;
 const WIREFRAME_VERTEX_STRIDE_BYTES =
   WIREFRAME_VERTEX_STRIDE * Float32Array.BYTES_PER_ELEMENT;
@@ -51,8 +52,8 @@ const trisText = document.getElementById("tris") as HTMLSpanElement;
 const orthographicCb = document.getElementById("orthoCb") as HTMLInputElement;
 const shadingDd = document.getElementById("shadingDd") as HTMLSelectElement;
 
-canvas.width = 1200;
-canvas.height = 800;
+canvas.width = 1600;
+canvas.height = 1200;
 
 const adapter = await navigator.gpu?.requestAdapter();
 const device = await adapter?.requestDevice();
@@ -123,13 +124,21 @@ const wireframeModule = device.createShaderModule({ code: wireframeShader });
 const model = loadObj(head);
 trisText.innerText = (model.vertices.length / 3).toFixed(0);
 
-const modelVertexData = new Float32Array(model.vertices.length * MODEL_VERTEX_STRIDE);
+const modelVertexData = new Float32Array(
+  model.vertices.length * MODEL_VERTEX_STRIDE,
+);
 for (let i = 0; i < model.vertices.length; i++) {
-  modelVertexData.set(model.vertices[i].extend(1).toArray(), i * MODEL_VERTEX_STRIDE);
+  modelVertexData.set(
+    model.vertices[i].extend(1).toArray(),
+    i * MODEL_VERTEX_STRIDE,
+  );
   modelVertexData.set(model.normals[i].toArray(), i * MODEL_VERTEX_STRIDE + 4);
   modelVertexData.set(model.uvs[i].toArray(), i * MODEL_VERTEX_STRIDE + 7);
   modelVertexData.set(model.tangents[i].toArray(), i * MODEL_VERTEX_STRIDE + 9);
-  modelVertexData.set(model.bitangents[i].toArray(), i * MODEL_VERTEX_STRIDE + 12);
+  modelVertexData.set(
+    model.bitangents[i].toArray(),
+    i * MODEL_VERTEX_STRIDE + 12,
+  );
 }
 
 const wireframeVertexCount = (model.vertices.length / 3) * 6;
@@ -286,7 +295,10 @@ const aspectRatio = canvas.width / canvas.height;
 let orthoSize = 1.5;
 
 const getRenderSettings = (): RenderSettings => {
-  const selection = resolveShadingSelection(shadingDd.value, model.uvs.length > 0);
+  const selection = resolveShadingSelection(
+    shadingDd.value,
+    model.uvs.length > 0,
+  );
   if (selection.normalizedValue !== shadingDd.value) {
     shadingDd.value = selection.normalizedValue;
   }
