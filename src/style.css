@@ -3,9 +3,9 @@
 }
 
 canvas {
-  object-fit: contain;
-  object-position: top left;
-  width: 100%;
+  display: block;
+  width: min(100%, calc(90vh * 4 / 3));
+  height: auto;
   max-height: 90vh;
   cursor: grab;
 }
