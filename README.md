@@ -11,10 +11,10 @@ Initially, I considered using scanline rasterisation, given its potential effici
 As a companion to this renderer, I've created a tutorial on rasterisation, which includes some of the techniques used in this engine: https://jtsorlinis.github.io/rendering-tutorial/
 
 ## Features
+
 - Wireframe rendering
 - Perspective and Orthographic projection
 - Vertex attribute interpolation
 - Texture and Normal mapping (Excludes filtering to prioritize speed)
 - Shadow mapping
-- OBJ model loading
 - Basic frustum and backface culling

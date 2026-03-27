@@ -10,9 +10,12 @@ import { DepthShader } from "./shaders/DepthShader";
 import { NormalMappedShader } from "./shaders/NormalMapped";
 import { resolveShadingSelection } from "./renderSettings";
 
-import modelFile from "./models/face.obj?raw";
-import diffuseTex from "./models/face_diffuse.png";
-import normalTex from "./models/face_normal.png";
+import dogModelFile from "./models/dog.obj?raw";
+import dogDiffuseTex from "./models/dog_diffuse.png";
+import dogNormalTex from "./models/dog_normal.png";
+import headModelFile from "./models/head.obj?raw";
+import headDiffuseTex from "./models/head_diffuse.png";
+import headNormalTex from "./models/head_normal.png";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
@@ -27,7 +30,7 @@ const fpsText = document.getElementById("fps") as HTMLSpanElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
 const orthographicCb = document.getElementById("orthoCb") as HTMLInputElement;
 const shadingDd = document.getElementById("shadingDd") as HTMLSelectElement;
-const fileInput = document.getElementById("fileInput") as HTMLInputElement;
+const modelDd = document.getElementById("modelDd") as HTMLSelectElement;
 
 const ctx = canvas.getContext("2d");
 if (!ctx) {
@@ -52,9 +55,38 @@ const camPos = new Vector3(0, 0, -3);
 let orthoSize = 1.5;
 
 // Mesh + textures
-let model = loadObj(modelFile, true);
-let texture = await Texture.Load(diffuseTex);
-let normalTexture = await Texture.Load(normalTex, true);
+type LoadedModel = ReturnType<typeof loadObj>;
+type ModelKey = "dog" | "head";
+type ModelOption = {
+  mesh: LoadedModel;
+  texture: Texture;
+  normalTexture: Texture;
+};
+
+const [dogTexture, dogNormalTexture, headTexture, headNormalTexture] =
+  await Promise.all([
+    Texture.Load(dogDiffuseTex),
+    Texture.Load(dogNormalTex, true),
+    Texture.Load(headDiffuseTex),
+    Texture.Load(headNormalTex, true),
+  ]);
+
+const modelOptions: Record<ModelKey, ModelOption> = {
+  dog: {
+    mesh: loadObj(dogModelFile, true),
+    texture: dogTexture,
+    normalTexture: dogNormalTexture,
+  },
+  head: {
+    mesh: loadObj(headModelFile, true),
+    texture: headTexture,
+    normalTexture: headNormalTexture,
+  },
+};
+
+let model = modelOptions.dog.mesh;
+let texture = modelOptions.dog.texture;
+let normalTexture = modelOptions.dog.normalTexture;
 
 let modelPos = new Vector3(0, 0, 0);
 let modelRotation = new Vector3(0, -Math.PI / 2, 0);
@@ -84,6 +116,15 @@ const updateTriangleCount = () => {
 const resetModelTransform = () => {
   modelRotation.set(0, -Math.PI / 2, 0);
   modelPos.set(0, 0, 0);
+};
+
+const setModel = (modelKey: ModelKey) => {
+  const selectedModel = modelOptions[modelKey];
+  model = selectedModel.mesh;
+  texture = selectedModel.texture;
+  normalTexture = selectedModel.normalTexture;
+  updateTriangleCount();
+  resetModelTransform();
 };
 
 const getRenderSettings = (): RenderSettings => {
@@ -221,20 +262,8 @@ canvas.onwheel = (e) => {
 
 canvas.oncontextmenu = (e) => e.preventDefault();
 
-fileInput.onchange = async () => {
-  const file = fileInput.files?.[0];
-  if (!file) return;
-
-  const data = await file.text();
-  model = loadObj(data, true);
-
-  // Uploaded OBJ files may not have textures/UVs.
-  // Clearing these arrays allows getRenderSettings() to gracefully
-  // downgrade textured modes to smooth shading.
-  texture.data = [];
-  normalTexture.data = [];
-  updateTriangleCount();
-  resetModelTransform();
+modelDd.onchange = () => {
+  setModel(modelDd.value as ModelKey);
 };
 
 updateTriangleCount();
