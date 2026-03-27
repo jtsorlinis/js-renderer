@@ -8,34 +8,54 @@
   </head>
   <body>
     <div id="app"></div>
-    <canvas id="canvas"></canvas>
-    <label><input type="checkbox" id="orthoCb" />Orthographic</label>
-    &emsp;
-    <label>
-      Shading:
-      <select id="shadingDd">
-        <option value="normalMapped-shadows">Shadows</option>
-        <option value="normalMapped">Normals</option>
-        <option value="textured">Textured</option>
-        <option value="smooth">Smooth</option>
-        <option value="flat">Flat</option>
-        <option value="wireframe">Wireframe</option>
-      </select>
-    </label>
-    &emsp;
-    <label>
-      Model:
-      <select id="modelDd">
-        <option value="dog">Dog</option>
-        <option value="head">Head</option>
-      </select>
-    </label>
-    <hr />
-    <div>
-      <span>Triangles: <span id="tris">00</span></span>
-      &emsp;
-      <span>Frametime: <span id="fps">00</span>ms</span>
+
+    <div class="viewport">
+      <canvas id="canvas"></canvas>
     </div>
+
+    <aside class="sidebar">
+      <span class="title">Software Renderer</span>
+
+      <div class="section">
+        <label>
+          Model
+          <select id="modelDd">
+            <option value="dog">Dog</option>
+            <option value="head">Head</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="section">
+        <label>
+          Shading
+          <select id="shadingDd">
+            <option value="normalMapped-shadows">Shadows</option>
+            <option value="normalMapped">Normals</option>
+            <option value="textured">Textured</option>
+            <option value="smooth">Smooth</option>
+            <option value="flat">Flat</option>
+            <option value="wireframe">Wireframe</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="section">
+        <label><input type="checkbox" id="orthoCb" /> Orthographic</label>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-label">Triangles</span>
+          <span class="stat-value" id="tris">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Frame</span>
+          <span class="stat-value"><span id="fps">0</span> ms</span>
+        </div>
+      </div>
+    </aside>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
