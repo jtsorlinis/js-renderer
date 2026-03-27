@@ -10,9 +10,9 @@ import { DepthShader } from "./shaders/DepthShader";
 import { NormalMappedShader } from "./shaders/NormalMapped";
 import { resolveShadingSelection } from "./renderSettings";
 
-import modelFile from "./models/head.obj?raw";
-import diffuseTex from "./models/head_diffuse.png";
-import normalTex from "./models/head_normal_t.png";
+import modelFile from "./models/face.obj?raw";
+import diffuseTex from "./models/face_diffuse.png";
+import normalTex from "./models/face_normal.png";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
@@ -48,7 +48,7 @@ const shadowMap = new DepthTexture(canvas.width, canvas.height);
 const lightDir = new Vector3(0, -1, 1).normalize();
 const lightCol = new Vector3(1, 1, 1);
 
-const camPos = new Vector3(0, 0, -2.5);
+const camPos = new Vector3(0, 0, -3);
 let orthoSize = 1.5;
 
 // Mesh + textures
