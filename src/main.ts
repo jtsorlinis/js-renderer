@@ -41,6 +41,22 @@ canvas.width = CANVAS_WIDTH;
 canvas.height = CANVAS_HEIGHT;
 const aspectRatio = canvas.width / canvas.height;
 
+const viewport = canvas.parentElement!;
+const fitCanvas = () => {
+  const vw = viewport.clientWidth;
+  const vh = viewport.clientHeight;
+  let w = vw;
+  let h = w / aspectRatio;
+  if (h > vh) {
+    h = vh;
+    w = h * aspectRatio;
+  }
+  canvas.style.width = `${Math.floor(w)}px`;
+  canvas.style.height = `${Math.floor(h)}px`;
+};
+fitCanvas();
+window.addEventListener("resize", fitCanvas);
+
 // Software render targets
 const image = new ImageData(canvas.width, canvas.height);
 const frameBuffer = new Framebuffer(image);
@@ -51,7 +67,7 @@ const shadowMap = new DepthTexture(canvas.width, canvas.height);
 const lightDir = new Vector3(0, -1, 1).normalize();
 const lightCol = new Vector3(1, 1, 1);
 
-const camPos = new Vector3(0, 0, -3);
+const camPos = new Vector3(0, 0, -2.5);
 let orthoSize = 1.5;
 
 // Mesh + textures
