@@ -66,7 +66,7 @@ syncShadingButtons();
 shadingList.addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
   const button = target.closest(".shading-option") as HTMLButtonElement;
-  shadingSlider.value = button.dataset.shadingIndex || "0";
+  shadingSlider.value = button?.dataset.shadingIndex || shadingSlider.value;
   syncShadingButtons();
 });
 
