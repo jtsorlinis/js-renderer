@@ -23,7 +23,7 @@ export const triangle = (
   verts: Vector4[],
   shader: BaseShader,
   buffer: Framebuffer,
-  zBuffer: DepthTexture
+  zBuffer: DepthTexture,
 ) => {
   // Scale from [-1, 1] to [0, width] and [0, height]]
   const p0 = buffer.viewportTransform(verts[0]);
@@ -84,6 +84,11 @@ export const triangle = (
         if (P.z < zBuffer.data[index]) {
           // Update z buffer with new depth
           zBuffer.data[index] = P.z;
+
+          // Skip if no fragment shader is defined (e.g. depth pass)
+          if (!shader.fragment) {
+            continue;
+          }
 
           // Get perspective correct barycentric coordinates
           P.w = 1 / (p0.w * bc.u + p1.w * bc.v + p2.w * bc.w);

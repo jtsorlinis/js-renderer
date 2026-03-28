@@ -7,8 +7,8 @@ export interface Verts {
 export abstract class BaseShader {
   abstract uniforms?: { [key: string]: any };
 
-  abstract vertex(): Vector4;
-  abstract fragment(): Vector3 | void;
+  abstract vertex: () => Vector4;
+  abstract fragment: (() => Vector3 | undefined) | undefined;
 
   vertexId = 0;
   nthVert = 0;
@@ -68,7 +68,11 @@ export abstract class BaseShader {
     depthTexture: DepthTexture,
     uv: Vector2 | Vector3 | Vector4,
   ) => {
-    const texel = this.toTexelCoord(uv, depthTexture.width, depthTexture.height);
+    const texel = this.toTexelCoord(
+      uv,
+      depthTexture.width,
+      depthTexture.height,
+    );
     const index = texel.x + texel.y * depthTexture.width;
     return depthTexture.data[index];
   };
