@@ -29,13 +29,51 @@ const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
 const orthographicCb = document.getElementById("orthoCb") as HTMLInputElement;
-const shadingDd = document.getElementById("shadingDd") as HTMLSelectElement;
+const shadingList = document.getElementById("shadingList") as HTMLUListElement;
+const shadingSlider = document.getElementById(
+  "shadingSlider",
+) as HTMLInputElement;
 const modelDd = document.getElementById("modelDd") as HTMLSelectElement;
 
 const ctx = canvas.getContext("2d");
 if (!ctx) {
   throw new Error("Could not get canvas context");
 }
+
+const getShadingButton = () => {
+  return shadingList.querySelector<HTMLButtonElement>(
+    `[data-shading-index="${shadingSlider.value}"]`,
+  );
+};
+
+const setShadingValue = (value: string) => {
+  const button = shadingList.querySelector<HTMLButtonElement>(
+    `[data-shading-value="${value}"]`,
+  );
+  shadingSlider.value = button?.dataset.shadingIndex || "0";
+  syncShadingButtons();
+};
+
+const syncShadingButtons = () => {
+  const activeButton = getShadingButton();
+  const previousButton =
+    shadingList.querySelector<HTMLButtonElement>(".is-active");
+  previousButton?.classList.remove("is-active");
+  previousButton?.setAttribute("aria-pressed", "false");
+  activeButton?.classList.add("is-active");
+  activeButton?.setAttribute("aria-pressed", "true");
+};
+
+syncShadingButtons();
+
+shadingList.addEventListener("click", (event) => {
+  const target = event.target as HTMLElement;
+  const button = target.closest(".shading-option") as HTMLButtonElement;
+  shadingSlider.value = button.dataset.shadingIndex || "0";
+  syncShadingButtons();
+});
+
+shadingSlider.addEventListener("input", syncShadingButtons);
 
 canvas.width = CANVAS_WIDTH;
 canvas.height = CANVAS_HEIGHT;
@@ -144,12 +182,13 @@ const setModel = (modelKey: ModelKey) => {
 };
 
 const getRenderSettings = (): RenderSettings => {
+  const shadingValue = getShadingButton()?.dataset.shadingValue || "wireframe";
   const selection = resolveShadingSelection(
-    shadingDd.value,
+    shadingValue,
     texture.data.length > 0 && model.uvs.length > 0,
   );
-  if (selection.normalizedValue !== shadingDd.value) {
-    shadingDd.value = selection.normalizedValue;
+  if (selection.normalizedValue !== shadingValue) {
+    setShadingValue(selection.normalizedValue);
   }
   return {
     shaderKey: selection.material,

@@ -50,16 +50,25 @@ body {
   padding: 8px 0;
 }
 
-.section label {
+.section label,
+.section-heading {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--text-muted);
+  user-select: none;
+}
+
+.section label {
   display: flex;
   flex-direction: column;
   gap: 6px;
   cursor: pointer;
-  user-select: none;
+}
+
+.section-heading {
+  display: block;
+  margin-bottom: 8px;
 }
 
 /* checkbox label stays horizontal */
@@ -93,6 +102,84 @@ body {
 .section select:focus-visible {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.25);
+}
+
+.shading-picker {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.shading-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shading-option {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  background: rgba(15, 52, 96, 0.55);
+  color: var(--text);
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    transform 0.15s;
+}
+
+.shading-option:hover {
+  border-color: rgba(233, 69, 96, 0.55);
+  background: rgba(15, 52, 96, 0.9);
+}
+
+.shading-list li:has(.is-active) ~ li .shading-option {
+  border-color: rgba(233, 69, 96, 0.34);
+  background: linear-gradient(
+    135deg,
+    rgba(233, 69, 96, 0.14),
+    rgba(15, 52, 96, 0.82)
+  );
+  box-shadow: 0 0 0 1px rgba(233, 69, 96, 0.08);
+}
+
+.shading-option.is-active {
+  border-color: var(--accent);
+  background: linear-gradient(
+    135deg,
+    rgba(233, 69, 96, 0.28),
+    rgba(15, 52, 96, 0.95)
+  );
+  box-shadow: 0 0 0 1px rgba(233, 69, 96, 0.2);
+  transform: translateX(2px);
+}
+
+.shading-option:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.25);
+}
+
+.shading-slider {
+  margin: 0;
+  width: 18px;
+  min-height: 218px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  writing-mode: vertical-lr;
+  direction: rtl;
+}
+
+.shading-slider:focus-visible {
+  outline: none;
 }
 
 /* custom checkbox */
