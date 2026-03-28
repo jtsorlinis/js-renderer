@@ -13,8 +13,8 @@ export interface Uniforms {
 
 const specStr = 0.25;
 const shininess = 16;
-const ambient = 0.1;
-const smoothScale = 0.8;
+const ambient = 0.2;
+const lightScale = 0.75;
 
 export class SmoothShader extends BaseShader {
   // Uniforms are set per draw call.
@@ -53,6 +53,6 @@ export class SmoothShader extends BaseShader {
     spec *= specStr;
     const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
     const litAmount = diffuse + spec + ambient;
-    return this.uniforms.lightCol.scale(litAmount * smoothScale);
+    return this.uniforms.lightCol.scale(litAmount * lightScale);
   };
 }

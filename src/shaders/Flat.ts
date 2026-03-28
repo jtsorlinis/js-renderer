@@ -12,8 +12,8 @@ export interface Uniforms {
 
 const specStr = 0.25;
 const shininess = 16;
-const ambient = 0.1;
-const smoothScale = 0.8;
+const ambient = 0.2;
+const lightScale = 0.75;
 
 export class FlatShader extends BaseShader {
   // Uniforms are set once per draw call.
@@ -37,7 +37,7 @@ export class FlatShader extends BaseShader {
     let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
     spec *= specStr;
     const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
-    this.lighting = (diffuse + spec + ambient) * smoothScale;
+    this.lighting = (diffuse + spec + ambient) * lightScale;
 
     // Return clip-space position.
     return this.uniforms.mvp.multiplyPoint(model.vertices[i]);
