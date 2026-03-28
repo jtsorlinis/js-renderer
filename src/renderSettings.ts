@@ -1,4 +1,9 @@
-export type MaterialMode = "normalMapped" | "textured" | "smooth" | "flat";
+export type MaterialMode =
+  | "normalMapped"
+  | "textured"
+  | "smooth"
+  | "flat"
+  | "unlit";
 
 export type RenderSelection = {
   material: MaterialMode;
@@ -52,6 +57,13 @@ export const resolveShadingSelection = (
     case "flat":
       return {
         material: "flat",
+        wireframe: false,
+        useShadows: false,
+        normalizedValue: value,
+      };
+    case "unlit":
+      return {
+        material: "unlit",
         wireframe: false,
         useShadows: false,
         normalizedValue: value,
