@@ -5,6 +5,7 @@ import { loadObj } from "./utils/objLoader";
 import { SmoothShader } from "./shaders/Smooth";
 import { TexturedShader } from "./shaders/Textured";
 import { FlatShader } from "./shaders/Flat";
+import { UnlitShader } from "./shaders/Unlit";
 import { BaseShader } from "./shaders/BaseShader";
 import { DepthShader } from "./shaders/DepthShader";
 import { NormalMappedShader } from "./shaders/NormalMapped";
@@ -151,6 +152,7 @@ const shaders = {
   textured: new TexturedShader(),
   smooth: new SmoothShader(),
   flat: new FlatShader(),
+  unlit: new UnlitShader(),
 };
 
 type ShaderKey = keyof typeof shaders;
