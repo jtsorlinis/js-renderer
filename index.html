@@ -27,17 +27,89 @@
       </div>
 
       <div class="section">
-        <label>
-          Shading
-          <select id="shadingDd">
-            <option value="normalMapped-shadows">Shadows</option>
-            <option value="normalMapped">Normals</option>
-            <option value="textured">Textured</option>
-            <option value="smooth">Smooth</option>
-            <option value="flat">Flat</option>
-            <option value="wireframe">Wireframe</option>
-          </select>
-        </label>
+        <span class="section-heading">Shading</span>
+
+        <div class="shading-picker">
+          <ul class="shading-list" id="shadingList">
+            <li>
+              <button
+                type="button"
+                class="shading-option is-active"
+                data-shading-index="5"
+                data-shading-value="normalMapped-shadows"
+                aria-pressed="true"
+              >
+                Shadows
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="shading-option"
+                data-shading-index="4"
+                data-shading-value="normalMapped"
+                aria-pressed="false"
+              >
+                Normals
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="shading-option"
+                data-shading-index="3"
+                data-shading-value="textured"
+                aria-pressed="false"
+              >
+                Textured
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="shading-option"
+                data-shading-index="2"
+                data-shading-value="smooth"
+                aria-pressed="false"
+              >
+                Smooth
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="shading-option"
+                data-shading-index="1"
+                data-shading-value="flat"
+                aria-pressed="false"
+              >
+                Flat
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="shading-option"
+                data-shading-index="0"
+                data-shading-value="wireframe"
+                aria-pressed="false"
+              >
+                Wireframe
+              </button>
+            </li>
+          </ul>
+
+          <input
+            id="shadingSlider"
+            class="shading-slider"
+            type="range"
+            min="0"
+            max="5"
+            step="1"
+            value="5"
+            aria-label="Shading"
+          />
+        </div>
       </div>
 
       <div class="section">
