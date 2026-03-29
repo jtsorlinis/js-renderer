@@ -141,7 +141,7 @@ const [
 
 const modelOptions: Record<ModelKey, ModelOption> = {
   ball: {
-    mesh: loadObj(ballModelFile, true),
+    mesh: loadObj(ballModelFile, true, 0.8),
     texture: ballTexture,
     normalTexture: ballNormalTexture,
   },
