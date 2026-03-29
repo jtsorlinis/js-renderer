@@ -98,7 +98,11 @@ export class Matrix4 {
     return m;
   }
 
-  public static LookAt(eye: Vector3, target: Vector3, up: Vector3) {
+  public static LookAt(
+    eye: Vector3,
+    target: Vector3,
+    up: Vector3 = Vector3.Up,
+  ) {
     const z = target.subtract(eye).normalize();
     const x = up.cross(z).normalize();
     const y = z.cross(x).normalize();
