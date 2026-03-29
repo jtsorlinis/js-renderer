@@ -20,7 +20,7 @@
         <label>
           Model
           <select id="modelDd">
-            <option value="box">Box</option>
+            <option value="ball">Ball</option>
             <option value="dog">Dog</option>
             <option value="head">Head</option>
           </select>
@@ -36,7 +36,7 @@
               <button
                 type="button"
                 class="shading-option is-active"
-                data-shading-index="6"
+                data-shading-index="7"
                 data-shading-value="normalMapped-shadows"
                 aria-pressed="true"
               >
@@ -47,7 +47,7 @@
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="5"
+                data-shading-index="6"
                 data-shading-value="normalMapped"
                 aria-pressed="false"
               >
@@ -58,7 +58,7 @@
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="4"
+                data-shading-index="5"
                 data-shading-value="textured"
                 aria-pressed="false"
               >
@@ -69,18 +69,18 @@
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="3"
+                data-shading-index="4"
                 data-shading-value="smooth"
                 aria-pressed="false"
               >
-                Smoothing
+                Interpolation
               </button>
             </li>
             <li>
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="2"
+                data-shading-index="3"
                 data-shading-value="flat"
                 aria-pressed="false"
               >
@@ -91,11 +91,22 @@
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="1"
+                data-shading-index="2"
                 data-shading-value="unlit"
                 aria-pressed="false"
               >
                 Faces
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="shading-option"
+                data-shading-index="1"
+                data-shading-value="culledWireframe"
+                aria-pressed="false"
+              >
+                Culling
               </button>
             </li>
             <li>
@@ -116,9 +127,9 @@
             class="shading-slider"
             type="range"
             min="0"
-            max="6"
+            max="7"
             step="1"
-            value="6"
+            value="7"
             aria-label="Shading"
           />
         </div>
