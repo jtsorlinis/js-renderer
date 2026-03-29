@@ -140,11 +140,18 @@ export const loadObj = (file: string, normalize = false) => {
 
   // Scale and center model
   if (normalize) {
-    const scale = maxPos.subtract(minPos);
-    const scaleFactor = 2 / Math.max(scale.x, scale.y, scale.z);
     const translate = maxPos.add(minPos).scale(0.5);
+    let maxRadiusSq = 0;
     for (let i = 0; i < vertices.length; i++) {
-      vertices[i] = vertices[i].subtract(translate).scale(scaleFactor);
+      vertices[i] = vertices[i].subtract(translate);
+      maxRadiusSq = Math.max(maxRadiusSq, vertices[i].lengthSq());
+    }
+
+    if (maxRadiusSq > 0) {
+      const scaleFactor = 1 / Math.sqrt(maxRadiusSq);
+      for (let i = 0; i < vertices.length; i++) {
+        vertices[i] = vertices[i].scale(scaleFactor);
+      }
     }
   }
 
