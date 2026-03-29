@@ -1,5 +1,7 @@
 import { Vector2, Vector3 } from "../maths";
 
+export type LoadedModel = ReturnType<typeof loadObj>;
+
 const getFallbackTangent = (normal: Vector3) => {
   const reference = Math.abs(normal.y) < 0.999 ? Vector3.Up : Vector3.Forward;
   let tangent = reference.cross(normal);
@@ -10,6 +12,10 @@ const getFallbackTangent = (normal: Vector3) => {
     tangent = new Vector3(1, 0, 0);
   }
   return tangent.normalize();
+};
+
+export const getModelRadius = (mesh: LoadedModel) => {
+  return mesh.vertices.reduce((max, v) => Math.max(max, v.length()), 0);
 };
 
 export const loadObj = (file: string, normalize = false) => {
@@ -44,57 +50,57 @@ export const loadObj = (file: string, normalize = false) => {
         tempTris.push(
           +split[1].split("/")[0] - 1,
           +split[2].split("/")[0] - 1,
-          +split[3].split("/")[0] - 1
+          +split[3].split("/")[0] - 1,
         );
         tempTris.push(
           +split[1].split("/")[0] - 1,
           +split[3].split("/")[0] - 1,
-          +split[4].split("/")[0] - 1
+          +split[4].split("/")[0] - 1,
         );
 
         // Add UVs
         tempUVTris.push(
           +split[1].split("/")[1] - 1,
           +split[2].split("/")[1] - 1,
-          +split[3].split("/")[1] - 1
+          +split[3].split("/")[1] - 1,
         );
         tempUVTris.push(
           +split[1].split("/")[1] - 1,
           +split[3].split("/")[1] - 1,
-          +split[4].split("/")[1] - 1
+          +split[4].split("/")[1] - 1,
         );
 
         // Add normals
         tempNormalTris.push(
           +split[1].split("/")[2] - 1,
           +split[2].split("/")[2] - 1,
-          +split[3].split("/")[2] - 1
+          +split[3].split("/")[2] - 1,
         );
         tempNormalTris.push(
           +split[1].split("/")[2] - 1,
           +split[3].split("/")[2] - 1,
-          +split[4].split("/")[2] - 1
+          +split[4].split("/")[2] - 1,
         );
       } else {
         // Triangles
         tempTris.push(
           +split[1].split("/")[0] - 1,
           +split[2].split("/")[0] - 1,
-          +split[3].split("/")[0] - 1
+          +split[3].split("/")[0] - 1,
         );
 
         // Add UVs
         tempUVTris.push(
           +split[1].split("/")[1] - 1,
           +split[2].split("/")[1] - 1,
-          +split[3].split("/")[1] - 1
+          +split[3].split("/")[1] - 1,
         );
 
         // Add normals
         tempNormalTris.push(
           +split[1].split("/")[2] - 1,
           +split[2].split("/")[2] - 1,
-          +split[3].split("/")[2] - 1
+          +split[3].split("/")[2] - 1,
         );
       }
     }
@@ -191,7 +197,9 @@ export const loadObj = (file: string, normalize = false) => {
       for (let j = 0; j < 3; j++) {
         const normal = normals[i + j];
 
-        let tangent = faceTangent.subtract(normal.scale(normal.dot(faceTangent)));
+        let tangent = faceTangent.subtract(
+          normal.scale(normal.dot(faceTangent)),
+        );
         if (tangent.lengthSq() < 0.00000001) {
           tangent = getFallbackTangent(normal);
         } else {
@@ -199,7 +207,7 @@ export const loadObj = (file: string, normalize = false) => {
         }
 
         let bitangent = faceBitangent.subtract(
-          normal.scale(normal.dot(faceBitangent))
+          normal.scale(normal.dot(faceBitangent)),
         );
         if (bitangent.lengthSq() < 0.00000001) {
           bitangent = normal.cross(tangent).normalize();

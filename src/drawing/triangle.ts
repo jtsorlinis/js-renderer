@@ -86,24 +86,22 @@ export const triangle = (
           zBuffer.data[index] = P.z;
 
           // Skip if no fragment shader is defined (e.g. depth pass)
-          if (!shader.fragment) {
-            continue;
-          }
+          if (shader.fragment) {
+            // Get perspective correct barycentric coordinates
+            P.w = 1 / (p0.w * bc.u + p1.w * bc.v + p2.w * bc.w);
+            bcClip.u = bc.u * P.w * p0.w;
+            bcClip.v = bc.v * P.w * p1.w;
+            bcClip.w = bc.w * P.w * p2.w;
 
-          // Get perspective correct barycentric coordinates
-          P.w = 1 / (p0.w * bc.u + p1.w * bc.v + p2.w * bc.w);
-          bcClip.u = bc.u * P.w * p0.w;
-          bcClip.v = bc.v * P.w * p1.w;
-          bcClip.w = bc.w * P.w * p2.w;
+            // Fragment shader
+            shader.bc = bcClip;
+            shader.fragPos = P;
+            const frag = shader.fragment();
 
-          // Fragment shader
-          shader.bc = bcClip;
-          shader.fragPos = P;
-          const frag = shader.fragment();
-
-          // If fragment shader returns a colour, set pixel
-          if (frag) {
-            buffer.setPixel(P.x, P.y, frag);
+            // If fragment shader returns a colour, set pixel
+            if (frag) {
+              buffer.setPixel(P.x, P.y, frag);
+            }
           }
         }
       }

@@ -1,7 +1,7 @@
 import "./style.css";
 import { Matrix4, Vector3, Vector4 } from "./maths";
 import { DepthTexture, Framebuffer, Texture, line, triangle } from "./drawing";
-import { loadObj } from "./utils/objLoader";
+import { getModelRadius, LoadedModel, loadObj } from "./utils/objLoader";
 import { SmoothShader } from "./shaders/Smooth";
 import { TexturedShader } from "./shaders/Textured";
 import { FlatShader } from "./shaders/Flat";
@@ -11,6 +11,9 @@ import { DepthShader } from "./shaders/DepthShader";
 import { NormalMappedShader } from "./shaders/NormalMapped";
 import { resolveShadingSelection } from "./renderSettings";
 
+import boxModelFile from "./models/box.obj?raw";
+import boxDiffuseTex from "./models/box_diffuse.jpg";
+import boxNormalTex from "./models/box_normal.jpg";
 import dogModelFile from "./models/dog.obj?raw";
 import dogDiffuseTex from "./models/dog_diffuse.png";
 import dogNormalTex from "./models/dog_normal.png";
@@ -103,26 +106,38 @@ const lightDir = new Vector3(0, -1, 1).normalize();
 const lightCol = new Vector3(1, 1, 1);
 
 const camPos = new Vector3(0, 0, -2.5);
-let orthoSize = 1.5;
+let cameraOrthoSize = 1.5;
 
 // Mesh + textures
-type LoadedModel = ReturnType<typeof loadObj>;
-type ModelKey = "dog" | "head";
+type ModelKey = "box" | "dog" | "head";
 type ModelOption = {
   mesh: LoadedModel;
   texture: Texture;
   normalTexture: Texture;
 };
 
-const [dogTexture, dogNormalTexture, headTexture, headNormalTexture] =
-  await Promise.all([
-    Texture.Load(dogDiffuseTex),
-    Texture.Load(dogNormalTex, true),
-    Texture.Load(headDiffuseTex),
-    Texture.Load(headNormalTex, true),
-  ]);
+const [
+  boxTexture,
+  boxNormalTexture,
+  dogTexture,
+  dogNormalTexture,
+  headTexture,
+  headNormalTexture,
+] = await Promise.all([
+  Texture.Load(boxDiffuseTex),
+  Texture.Load(boxNormalTex, true),
+  Texture.Load(dogDiffuseTex),
+  Texture.Load(dogNormalTex, true),
+  Texture.Load(headDiffuseTex),
+  Texture.Load(headNormalTex, true),
+]);
 
 const modelOptions: Record<ModelKey, ModelOption> = {
+  box: {
+    mesh: loadObj(boxModelFile, true),
+    texture: boxTexture,
+    normalTexture: boxNormalTexture,
+  },
   dog: {
     mesh: loadObj(dogModelFile, true),
     texture: dogTexture,
@@ -135,9 +150,10 @@ const modelOptions: Record<ModelKey, ModelOption> = {
   },
 };
 
-let model = modelOptions.dog.mesh;
-let texture = modelOptions.dog.texture;
-let normalTexture = modelOptions.dog.normalTexture;
+let model = modelOptions.box.mesh;
+let texture = modelOptions.box.texture;
+let normalTexture = modelOptions.box.normalTexture;
+let shadowOrthoSize = getModelRadius(model);
 
 let modelPos = new Vector3(0, 0, 0);
 let modelRotation = new Vector3(0, -Math.PI / 2, 0);
@@ -175,6 +191,7 @@ const setModel = (modelKey: ModelKey) => {
   model = selectedModel.mesh;
   texture = selectedModel.texture;
   normalTexture = selectedModel.normalTexture;
+  shadowOrthoSize = getModelRadius(model);
   updateTriangleCount();
   resetModelTransform();
 };
@@ -239,16 +256,16 @@ const draw = () => {
   const normalMat = modelMat.invert().transpose();
 
   // 3) Build light-space transform (for shadow mapping).
-  const lightViewMat = Matrix4.LookTo(lightDir.scale(-5), lightDir, Vector3.Up);
-  const lightProjMat = Matrix4.Ortho(orthoSize, aspectRatio, 1, 10);
-  const lightSpaceMat = modelMat.multiply(lightViewMat.multiply(lightProjMat));
+  const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), Vector3.Zero);
+  const lightProjMat = Matrix4.Ortho(shadowOrthoSize, aspectRatio, 1, 10);
+  const lightSpaceMat = modelMat.multiply(lightViewMat).multiply(lightProjMat);
   const mLightDir = invModelMat.multiplyDirection(lightDir).normalize();
   const mCamPos = invModelMat.multiplyPoint(camPos).xyz;
 
   // 4) Build camera transform and final clip transform.
   const viewMat = Matrix4.LookTo(camPos, Vector3.Forward, Vector3.Up);
   const projMat = orthographicCb.checked
-    ? Matrix4.Ortho(orthoSize, aspectRatio)
+    ? Matrix4.Ortho(cameraOrthoSize, aspectRatio)
     : Matrix4.Perspective(60, aspectRatio);
   const mvp = modelMat.multiply(viewMat).multiply(projMat);
 
@@ -306,8 +323,9 @@ canvas.onmousemove = (e) => {
 canvas.onwheel = (e) => {
   e.preventDefault();
   if (orthographicCb.checked) {
-    orthoSize += e.deltaY / ZOOM_SENSITIVITY;
-    orthoSize = Math.max(0.01, orthoSize);
+    cameraOrthoSize += e.deltaY / ZOOM_SENSITIVITY;
+    cameraOrthoSize = Math.max(0.01, cameraOrthoSize);
+    console.log(cameraOrthoSize);
   } else {
     camPos.z -= e.deltaY / ZOOM_SENSITIVITY;
   }
