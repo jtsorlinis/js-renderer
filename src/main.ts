@@ -258,7 +258,7 @@ const draw = () => {
   // 3) Build light-space transform (for shadow mapping).
   const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), Vector3.Zero);
   const lightProjMat = Matrix4.Ortho(shadowOrthoSize, aspectRatio, 1, 10);
-  const lightSpaceMat = modelMat.multiply(lightViewMat).multiply(lightProjMat);
+  const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
   const mLightDir = invModelMat.multiplyDirection(lightDir).normalize();
   const mCamPos = invModelMat.multiplyPoint(camPos).xyz;
 
@@ -267,7 +267,7 @@ const draw = () => {
   const projMat = orthographicCb.checked
     ? Matrix4.Ortho(cameraOrthoSize, aspectRatio)
     : Matrix4.Perspective(60, aspectRatio);
-  const mvp = modelMat.multiply(viewMat).multiply(projMat);
+  const mvp = projMat.multiply(viewMat).multiply(modelMat);
 
   // 5) Select active material shader and update uniforms.
   const shader = shaders[renderSettings.shaderKey];
@@ -313,10 +313,10 @@ const loop = () => {
 canvas.onmousemove = (e) => {
   if (e.buttons === 1) {
     modelRotation.y -= e.movementX / ROTATE_SENSITIVITY;
-    modelRotation.x += e.movementY / ROTATE_SENSITIVITY;
+    modelRotation.x -= e.movementY / ROTATE_SENSITIVITY;
   } else if (e.buttons === 2 || e.buttons === 4) {
-    modelPos.x += e.movementX / PAN_SENSITIVITY;
-    modelPos.y -= e.movementY / PAN_SENSITIVITY;
+    camPos.x -= e.movementX / PAN_SENSITIVITY;
+    camPos.y += e.movementY / PAN_SENSITIVITY;
   }
 };
 

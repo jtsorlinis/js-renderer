@@ -6,6 +6,8 @@ export class Matrix4 {
     this.m = new Float32Array(16);
   }
 
+  // Matrices are stored in column-major order and transform column vectors.
+
   public static Identity() {
     const m = new Matrix4();
     m.m[0] = 1;
@@ -72,9 +74,9 @@ export class Matrix4 {
   }
 
   public static TRS(t: Vector3, r: Vector3, s: Vector3) {
-    return Matrix4.Scale(s)
+    return Matrix4.Translate(t)
       .multiply(Matrix4.RotateYXZ(r))
-      .multiply(Matrix4.Translate(t));
+      .multiply(Matrix4.Scale(s));
   }
 
   public static LookTo(eye: Vector3, dir: Vector3, up: Vector3) {
@@ -155,10 +157,10 @@ export class Matrix4 {
   // prettier-ignore
   public multiplyVector4(v: Vector4) {
     const result = new Vector4();
-    result.x = this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12];
-    result.y = this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z + this.m[13];
-    result.z = this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z + this.m[14];
-    result.w = this.m[3] * v.x + this.m[7] * v.y + this.m[11] * v.z + this.m[15];
+    result.x = this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12] * v.w;
+    result.y = this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z + this.m[13] * v.w;
+    result.z = this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z + this.m[14] * v.w;
+    result.w = this.m[3] * v.x + this.m[7] * v.y + this.m[11] * v.z + this.m[15] * v.w;
 
     return result;
   }
@@ -185,30 +187,20 @@ export class Matrix4 {
     return result;
   }
 
-  // prettier-ignore
   public multiply(m: Matrix4) {
     const result = new Matrix4();
-    
-    result.m[0] = this.m[0] * m.m[0] + this.m[1] * m.m[4] + this.m[2] * m.m[8] + this.m[3] * m.m[12];
-    result.m[1] = this.m[0] * m.m[1] + this.m[1] * m.m[5] + this.m[2] * m.m[9] + this.m[3] * m.m[13];
-    result.m[2] = this.m[0] * m.m[2] + this.m[1] * m.m[6] + this.m[2] * m.m[10] + this.m[3] * m.m[14];
-    result.m[3] = this.m[0] * m.m[3] + this.m[1] * m.m[7] + this.m[2] * m.m[11] + this.m[3] * m.m[15];
-  
-    result.m[4] = this.m[4] * m.m[0] + this.m[5] * m.m[4] + this.m[6] * m.m[8] + this.m[7] * m.m[12];
-    result.m[5] = this.m[4] * m.m[1] + this.m[5] * m.m[5] + this.m[6] * m.m[9] + this.m[7] * m.m[13];
-    result.m[6] = this.m[4] * m.m[2] + this.m[5] * m.m[6] + this.m[6] * m.m[10] + this.m[7] * m.m[14];
-    result.m[7] = this.m[4] * m.m[3] + this.m[5] * m.m[7] + this.m[6] * m.m[11] + this.m[7] * m.m[15];
-  
-    result.m[8] = this.m[8] * m.m[0] + this.m[9] * m.m[4] + this.m[10] * m.m[8] + this.m[11] * m.m[12];
-    result.m[9] = this.m[8] * m.m[1] + this.m[9] * m.m[5] + this.m[10] * m.m[9] + this.m[11] * m.m[13];
-    result.m[10] = this.m[8] * m.m[2] + this.m[9] * m.m[6] + this.m[10] * m.m[10] + this.m[11] * m.m[14];
-    result.m[11] = this.m[8] * m.m[3] + this.m[9] * m.m[7] + this.m[10] * m.m[11] + this.m[11] * m.m[15];
-  
-    result.m[12] = this.m[12] * m.m[0] + this.m[13] * m.m[4] + this.m[14] * m.m[8] + this.m[15] * m.m[12];
-    result.m[13] = this.m[12] * m.m[1] + this.m[13] * m.m[5] + this.m[14] * m.m[9] + this.m[15] * m.m[13];
-    result.m[14] = this.m[12] * m.m[2] + this.m[13] * m.m[6] + this.m[14] * m.m[10] + this.m[15] * m.m[14];
-    result.m[15] = this.m[12] * m.m[3] + this.m[13] * m.m[7] + this.m[14] * m.m[11] + this.m[15] * m.m[15];
-  
+
+    for (let col = 0; col < 4; col++) {
+      const colOffset = col * 4;
+      for (let row = 0; row < 4; row++) {
+        result.m[row + colOffset] =
+          this.m[row] * m.m[colOffset] +
+          this.m[row + 4] * m.m[colOffset + 1] +
+          this.m[row + 8] * m.m[colOffset + 2] +
+          this.m[row + 12] * m.m[colOffset + 3];
+      }
+    }
+
     return result;
   }
 
