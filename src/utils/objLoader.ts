@@ -18,7 +18,7 @@ export const getModelRadius = (mesh: LoadedModel) => {
   return mesh.vertices.reduce((max, v) => Math.max(max, v.length()), 0);
 };
 
-export const loadObj = (file: string, normalize = false) => {
+export const loadObj = (file: string, normalize = false, scale = 1) => {
   const vertices: Vector3[] = [];
   let normals: Vector3[] = [];
   const uvs: Vector2[] = [];
@@ -152,6 +152,12 @@ export const loadObj = (file: string, normalize = false) => {
       for (let i = 0; i < vertices.length; i++) {
         vertices[i] = vertices[i].scale(scaleFactor);
       }
+    }
+  }
+
+  if (scale !== 1) {
+    for (let i = 0; i < vertices.length; i++) {
+      vertices[i] = vertices[i].scale(scale);
     }
   }
 
