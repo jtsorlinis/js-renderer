@@ -1,6 +1,13 @@
 import "./style.css";
 import { Matrix4, Vector3, Vector4 } from "./maths";
-import { DepthTexture, Framebuffer, Texture, line, triangle } from "./drawing";
+import {
+  DepthTexture,
+  Framebuffer,
+  Texture,
+  edgeFunction,
+  line,
+  triangle,
+} from "./drawing";
 import { getModelRadius, LoadedModel, loadObj } from "./utils/objLoader";
 import { SmoothShader } from "./shaders/Smooth";
 import { TexturedShader } from "./shaders/Textured";
@@ -9,11 +16,11 @@ import { UnlitShader } from "./shaders/Unlit";
 import { BaseShader } from "./shaders/BaseShader";
 import { DepthShader } from "./shaders/DepthShader";
 import { NormalMappedShader } from "./shaders/NormalMapped";
-import { resolveShadingSelection } from "./renderSettings";
+import { resolveShadingSelection, type RenderMode } from "./renderSettings";
 
-import boxModelFile from "./models/box.obj?raw";
-import boxDiffuseTex from "./models/box_diffuse.jpg";
-import boxNormalTex from "./models/box_normal.jpg";
+import ballModelFile from "./models/ball.obj?raw";
+import ballDiffuseTex from "./models/ball_diffuse.png";
+import ballNormalTex from "./models/ball_normal.png";
 import dogModelFile from "./models/dog.obj?raw";
 import dogDiffuseTex from "./models/dog_diffuse.png";
 import dogNormalTex from "./models/dog_normal.png";
@@ -109,7 +116,7 @@ const camPos = new Vector3(0, 0, -2.5);
 let cameraOrthoSize = 1.5;
 
 // Mesh + textures
-type ModelKey = "box" | "dog" | "head";
+type ModelKey = "ball" | "dog" | "head";
 type ModelOption = {
   mesh: LoadedModel;
   texture: Texture;
@@ -117,15 +124,15 @@ type ModelOption = {
 };
 
 const [
-  boxTexture,
-  boxNormalTexture,
+  ballTexture,
+  ballNormalTexture,
   dogTexture,
   dogNormalTexture,
   headTexture,
   headNormalTexture,
 ] = await Promise.all([
-  Texture.Load(boxDiffuseTex),
-  Texture.Load(boxNormalTex, true),
+  Texture.Load(ballDiffuseTex),
+  Texture.Load(ballNormalTex, true),
   Texture.Load(dogDiffuseTex),
   Texture.Load(dogNormalTex, true),
   Texture.Load(headDiffuseTex),
@@ -133,10 +140,10 @@ const [
 ]);
 
 const modelOptions: Record<ModelKey, ModelOption> = {
-  box: {
-    mesh: loadObj(boxModelFile, true),
-    texture: boxTexture,
-    normalTexture: boxNormalTexture,
+  ball: {
+    mesh: loadObj(ballModelFile, true),
+    texture: ballTexture,
+    normalTexture: ballNormalTexture,
   },
   dog: {
     mesh: loadObj(dogModelFile, true),
@@ -150,9 +157,9 @@ const modelOptions: Record<ModelKey, ModelOption> = {
   },
 };
 
-let model = modelOptions.box.mesh;
-let texture = modelOptions.box.texture;
-let normalTexture = modelOptions.box.normalTexture;
+let model = modelOptions.ball.mesh;
+let texture = modelOptions.ball.texture;
+let normalTexture = modelOptions.ball.normalTexture;
 let shadowOrthoSize = getModelRadius(model);
 
 let modelPos = new Vector3(0, 0, 0);
@@ -170,7 +177,7 @@ const shaders = {
 type ShaderKey = keyof typeof shaders;
 type RenderSettings = {
   shaderKey: ShaderKey;
-  wireframe: boolean;
+  renderMode: RenderMode;
   useShadows: boolean;
 };
 
@@ -207,7 +214,7 @@ const getRenderSettings = (): RenderSettings => {
   }
   return {
     shaderKey: selection.material,
-    wireframe: selection.wireframe,
+    renderMode: selection.renderMode,
     useShadows: selection.useShadows,
   };
 };
@@ -215,7 +222,7 @@ const getRenderSettings = (): RenderSettings => {
 const renderMesh = (
   activeShader: BaseShader,
   depthBuffer: DepthTexture,
-  wireframe = false,
+  renderMode: RenderMode = "filled",
 ) => {
   for (let i = 0; i < model.vertices.length; i += 3) {
     // Vertex stage for one triangle.
@@ -225,7 +232,14 @@ const renderMesh = (
       triVerts[j] = activeShader.vertex();
     }
 
-    if (wireframe) {
+    if (renderMode !== "filled") {
+      if (renderMode === "culledWireframe") {
+        const p0 = frameBuffer.viewportTransform(triVerts[0]);
+        const p1 = frameBuffer.viewportTransform(triVerts[1]);
+        const p2 = frameBuffer.viewportTransform(triVerts[2]);
+        if (edgeFunction(p2, p1, p0) <= 0) continue;
+      }
+
       // Debug/teaching mode: draw triangle edges only.
       line(triVerts[0], triVerts[1], frameBuffer);
       line(triVerts[1], triVerts[2], frameBuffer);
@@ -294,7 +308,7 @@ const draw = () => {
     renderMesh(depthShader, shadowMap);
   }
 
-  renderMesh(shader, zBuffer, renderSettings.wireframe);
+  renderMesh(shader, zBuffer, renderSettings.renderMode);
   ctx.putImageData(image, 0, 0);
 };
 

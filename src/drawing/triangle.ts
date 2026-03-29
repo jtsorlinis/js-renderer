@@ -9,7 +9,7 @@ export interface Barycentric {
 }
 
 // Calculates the signed area of a triangle from 3 points
-const edgeFunction = (a: Vector4, b: Vector4, c: Vector4) => {
+export const edgeFunction = (a: Vector4, b: Vector4, c: Vector4) => {
   return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x);
 };
 
@@ -30,11 +30,12 @@ export const triangle = (
   const p1 = buffer.viewportTransform(verts[1]);
   const p2 = buffer.viewportTransform(verts[2]);
 
-  // Calculate inverse signed area of triangle
-  const invArea = 1 / edgeFunction(p2, p1, p0);
-
   // Backface culling based on winding order
-  if (invArea <= 0) return;
+  const area = edgeFunction(p2, p1, p0);
+  if (area <= 0) return;
+
+  // Calculate inverse signed area of triangle
+  const invArea = 1 / area;
 
   // // Clip near and far planes
   if (p0.z < 0 || p1.z < 0 || p2.z < 0) return;

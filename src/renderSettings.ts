@@ -5,9 +5,11 @@ export type MaterialMode =
   | "flat"
   | "unlit";
 
+export type RenderMode = "filled" | "culledWireframe" | "wireframe";
+
 export type RenderSelection = {
   material: MaterialMode;
-  wireframe: boolean;
+  renderMode: RenderMode;
   useShadows: boolean;
   normalizedValue: string;
 };
@@ -29,49 +31,56 @@ export const resolveShadingSelection = (
     case "normalMapped-shadows":
       return {
         material: "normalMapped",
-        wireframe: false,
+        renderMode: "filled",
         useShadows: true,
         normalizedValue: value,
       };
     case "normalMapped":
       return {
         material: "normalMapped",
-        wireframe: false,
+        renderMode: "filled",
         useShadows: false,
         normalizedValue: value,
       };
     case "textured":
       return {
         material: "textured",
-        wireframe: false,
+        renderMode: "filled",
         useShadows: false,
         normalizedValue: value,
       };
     case "smooth":
       return {
         material: "smooth",
-        wireframe: false,
+        renderMode: "filled",
         useShadows: false,
         normalizedValue: value,
       };
     case "flat":
       return {
         material: "flat",
-        wireframe: false,
+        renderMode: "filled",
         useShadows: false,
         normalizedValue: value,
       };
     case "unlit":
       return {
         material: "unlit",
-        wireframe: false,
+        renderMode: "filled",
+        useShadows: false,
+        normalizedValue: value,
+      };
+    case "culledWireframe":
+      return {
+        material: "smooth",
+        renderMode: "culledWireframe",
         useShadows: false,
         normalizedValue: value,
       };
     default:
       return {
         material: "smooth",
-        wireframe: true,
+        renderMode: "wireframe",
         useShadows: false,
         normalizedValue: "wireframe",
       };
