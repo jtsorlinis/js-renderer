@@ -325,7 +325,6 @@ canvas.onwheel = (e) => {
   if (orthographicCb.checked) {
     cameraOrthoSize += e.deltaY / ZOOM_SENSITIVITY;
     cameraOrthoSize = Math.max(0.01, cameraOrthoSize);
-    console.log(cameraOrthoSize);
   } else {
     camPos.z -= e.deltaY / ZOOM_SENSITIVITY;
   }
