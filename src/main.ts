@@ -21,15 +21,15 @@ import { resolveShadingSelection, type RenderMode } from "./renderSettings";
 import rockModelFile from "./models/rock.obj?raw";
 import rockDiffuseTex from "./models/rock_diffuse.png";
 import rockNormalTex from "./models/rock_normal.png";
-import ballModelFile from "./models/ball.obj?raw";
-import ballDiffuseTex from "./models/ball_diffuse.png";
-import ballNormalTex from "./models/ball_normal.png";
 import dogModelFile from "./models/dog.obj?raw";
 import dogDiffuseTex from "./models/dog_diffuse.png";
 import dogNormalTex from "./models/dog_normal.png";
 import headModelFile from "./models/head.obj?raw";
 import headDiffuseTex from "./models/head_diffuse.png";
 import headNormalTex from "./models/head_normal.png";
+import personModelFile from "./models/person.obj?raw";
+import personDiffuseTex from "./models/person_diffuse.png";
+import personNormalTex from "./models/person_normal.png";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
@@ -122,7 +122,7 @@ const camPos = new Vector3(0, 0, -2.5);
 let cameraOrthoSize = 1.5;
 
 // Mesh + textures
-type ModelKey = "rock" | "ball" | "dog" | "head";
+type ModelKey = "rock" | "dog" | "head" | "person";
 type ModelOption = {
   mesh: LoadedModel;
   texture: Texture;
@@ -132,21 +132,21 @@ type ModelOption = {
 const [
   rockTexture,
   rockNormalTexture,
-  ballTexture,
-  ballNormalTexture,
   dogTexture,
   dogNormalTexture,
   headTexture,
   headNormalTexture,
+  personTexture,
+  personNormalTexture,
 ] = await Promise.all([
   Texture.Load(rockDiffuseTex),
   Texture.Load(rockNormalTex, true),
-  Texture.Load(ballDiffuseTex),
-  Texture.Load(ballNormalTex, true),
   Texture.Load(dogDiffuseTex),
   Texture.Load(dogNormalTex, true),
   Texture.Load(headDiffuseTex),
   Texture.Load(headNormalTex, true),
+  Texture.Load(personDiffuseTex),
+  Texture.Load(personNormalTex, true),
 ]);
 
 const modelOptions: Record<ModelKey, ModelOption> = {
@@ -154,11 +154,6 @@ const modelOptions: Record<ModelKey, ModelOption> = {
     mesh: loadObj(rockModelFile, true),
     texture: rockTexture,
     normalTexture: rockNormalTexture,
-  },
-  ball: {
-    mesh: loadObj(ballModelFile, true, 0.8),
-    texture: ballTexture,
-    normalTexture: ballNormalTexture,
   },
   dog: {
     mesh: loadObj(dogModelFile, true),
@@ -169,6 +164,11 @@ const modelOptions: Record<ModelKey, ModelOption> = {
     mesh: loadObj(headModelFile, true),
     texture: headTexture,
     normalTexture: headNormalTexture,
+  },
+  person: {
+    mesh: loadObj(personModelFile, true, 1.2),
+    texture: personTexture,
+    normalTexture: personNormalTexture,
   },
 };
 
