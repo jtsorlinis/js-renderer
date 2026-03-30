@@ -3,12 +3,16 @@ import { Matrix4, Vector3, Vector4 } from "./maths";
 import {
   DepthTexture,
   Framebuffer,
-  Texture,
   edgeFunction,
   line,
   triangle,
 } from "./drawing";
-import { getModelRadius, LoadedModel, loadObj } from "./utils/objLoader";
+import { getModelRadius } from "./utils/objLoader";
+import {
+  ensureModelOption,
+  prefetchRemainingModels,
+  type ModelKey,
+} from "./utils/modelLoader";
 import { SmoothShader } from "./shaders/Smooth";
 import { TexturedShader } from "./shaders/Textured";
 import { FlatShader } from "./shaders/Flat";
@@ -17,25 +21,6 @@ import { BaseShader } from "./shaders/BaseShader";
 import { DepthShader } from "./shaders/DepthShader";
 import { NormalMappedShader } from "./shaders/NormalMapped";
 import { resolveShadingSelection, type RenderMode } from "./renderSettings";
-
-import diceModelFile from "./models/dice.obj?raw";
-import diceDiffuseTex from "./models/dice_diffuse.png";
-import diceNormalTex from "./models/dice_normal.png";
-import rockModelFile from "./models/rock.obj?raw";
-import rockDiffuseTex from "./models/rock_diffuse.png";
-import rockNormalTex from "./models/rock_normal.png";
-import dogModelFile from "./models/dog.obj?raw";
-import dogDiffuseTex from "./models/dog_diffuse.png";
-import dogNormalTex from "./models/dog_normal.png";
-import headModelFile from "./models/head.obj?raw";
-import headDiffuseTex from "./models/head_diffuse.png";
-import headNormalTex from "./models/head_normal.png";
-import dragonModelFile from "./models/dragon.obj?raw";
-import dragonDiffuseTex from "./models/dragon_diffuse.png";
-import dragonNormalTex from "./models/dragon_normal.png";
-import spartanModelFile from "./models/spartan.obj?raw";
-import spartanDiffuseTex from "./models/spartan_diffuse.png";
-import spartanNormalTex from "./models/spartan_normal.png";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
@@ -127,77 +112,12 @@ const lightCol = new Vector3(1, 1, 1);
 const camPos = new Vector3(0, 0, -2.5);
 let cameraOrthoSize = 1.5;
 
-// Mesh + textures
-type ModelKey = "dice" | "rock" | "dog" | "head" | "dragon" | "spartan";
-type ModelOption = {
-  mesh: LoadedModel;
-  texture: Texture;
-  normalTexture: Texture;
-};
+const diceModel = await ensureModelOption("dice");
+prefetchRemainingModels("dice");
 
-const [
-  diceTexture,
-  diceNormalTexture,
-  rockTexture,
-  rockNormalTexture,
-  dogTexture,
-  dogNormalTexture,
-  headTexture,
-  headNormalTexture,
-  dragonTexture,
-  dragonNormalTexture,
-  spartanTexture,
-  spartanNormalTexture,
-] = await Promise.all([
-  Texture.Load(diceDiffuseTex),
-  Texture.Load(diceNormalTex, true),
-  Texture.Load(rockDiffuseTex),
-  Texture.Load(rockNormalTex, true),
-  Texture.Load(dogDiffuseTex),
-  Texture.Load(dogNormalTex, true),
-  Texture.Load(headDiffuseTex),
-  Texture.Load(headNormalTex, true),
-  Texture.Load(dragonDiffuseTex),
-  Texture.Load(dragonNormalTex, true),
-  Texture.Load(spartanDiffuseTex),
-  Texture.Load(spartanNormalTex, true),
-]);
-
-const modelOptions: Record<ModelKey, ModelOption> = {
-  dice: {
-    mesh: loadObj(diceModelFile, true, 0.75),
-    texture: diceTexture,
-    normalTexture: diceNormalTexture,
-  },
-  rock: {
-    mesh: loadObj(rockModelFile, true),
-    texture: rockTexture,
-    normalTexture: rockNormalTexture,
-  },
-  dog: {
-    mesh: loadObj(dogModelFile, true, 1.1),
-    texture: dogTexture,
-    normalTexture: dogNormalTexture,
-  },
-  head: {
-    mesh: loadObj(headModelFile, true),
-    texture: headTexture,
-    normalTexture: headNormalTexture,
-  },
-  dragon: {
-    mesh: loadObj(dragonModelFile, true, 1.3),
-    texture: dragonTexture,
-    normalTexture: dragonNormalTexture,
-  },
-  spartan: {
-    mesh: loadObj(spartanModelFile, true),
-    texture: spartanTexture,
-    normalTexture: spartanNormalTexture,
-  },
-};
-let model = modelOptions.dice.mesh;
-let texture = modelOptions.dice.texture;
-let normalTexture = modelOptions.dice.normalTexture;
+let model = diceModel.mesh;
+let texture = diceModel.texture;
+let normalTexture = diceModel.normalTexture;
 let shadowOrthoSize = getModelRadius(model);
 
 let modelPos = new Vector3(0, 0, 0);
@@ -231,8 +151,15 @@ const resetModelTransform = () => {
   modelPos.set(0, 0, 0);
 };
 
-const setModel = (modelKey: ModelKey) => {
-  const selectedModel = modelOptions[modelKey];
+let activeModelRequest = 0;
+
+const setModel = async (modelKey: ModelKey) => {
+  const requestId = ++activeModelRequest;
+  const selectedModel = await ensureModelOption(modelKey);
+  if (requestId !== activeModelRequest) {
+    return;
+  }
+
   model = selectedModel.mesh;
   texture = selectedModel.texture;
   normalTexture = selectedModel.normalTexture;
@@ -386,7 +313,9 @@ canvas.onwheel = (e) => {
 canvas.oncontextmenu = (e) => e.preventDefault();
 
 modelDd.onchange = () => {
-  setModel(modelDd.value as ModelKey);
+  setModel(modelDd.value as ModelKey).catch((error) => {
+    console.error(`Failed to switch to model "${modelDd.value}"`, error);
+  });
 };
 
 updateTriangleCount();
