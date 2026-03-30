@@ -35,6 +35,7 @@ const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
 const orthographicCb = document.getElementById("orthoCb") as HTMLInputElement;
+const highResCb = document.getElementById("highResCb") as HTMLInputElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
 const shadingSlider = document.getElementById(
   "shadingSlider",
@@ -77,9 +78,7 @@ shadingList.addEventListener("click", (event) => {
 
 shadingSlider.addEventListener("input", syncShadingButtons);
 
-canvas.width = CANVAS_WIDTH;
-canvas.height = CANVAS_HEIGHT;
-const aspectRatio = canvas.width / canvas.height;
+let aspectRatio = CANVAS_WIDTH / CANVAS_HEIGHT;
 
 const viewport = canvas.parentElement!;
 const fitCanvas = () => {
@@ -94,16 +93,35 @@ const fitCanvas = () => {
   canvas.style.width = `${Math.floor(w)}px`;
   canvas.style.height = `${Math.floor(h)}px`;
 };
-fitCanvas();
-window.addEventListener("resize", fitCanvas);
+let imageData = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
+let frameBuffer = new Framebuffer(imageData);
+let zBuffer = new DepthTexture(CANVAS_WIDTH, CANVAS_HEIGHT);
+let shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+let shadowImageData = new ImageData(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+let shadowBuffer = new Framebuffer(shadowImageData);
 
-// Software render targets
-const imageData = new ImageData(canvas.width, canvas.height);
-const frameBuffer = new Framebuffer(imageData);
-const zBuffer = new DepthTexture(canvas.width, canvas.height);
-const shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-const shadowImageData = new ImageData(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-const shadowBuffer = new Framebuffer(shadowImageData);
+const setRenderResolution = (scale = 1) => {
+  const width = CANVAS_WIDTH * scale;
+  const height = CANVAS_HEIGHT * scale;
+  const shadowMapSize = SHADOW_MAP_SIZE * scale;
+
+  canvas.width = width;
+  canvas.height = height;
+  aspectRatio = width / height;
+  imageData = new ImageData(width, height);
+  frameBuffer = new Framebuffer(imageData);
+  zBuffer = new DepthTexture(width, height);
+  shadowMap = new DepthTexture(shadowMapSize, shadowMapSize);
+  shadowImageData = new ImageData(shadowMapSize, shadowMapSize);
+  shadowBuffer = new Framebuffer(shadowImageData);
+  fitCanvas();
+};
+
+setRenderResolution();
+window.addEventListener("resize", fitCanvas);
+highResCb.addEventListener("change", () => {
+  setRenderResolution(highResCb.checked ? 2 : 1);
+});
 
 // Scene and camera
 const lightDir = new Vector3(0, -1, 1).normalize();
