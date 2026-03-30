@@ -18,8 +18,8 @@ import { DepthShader } from "./shaders/DepthShader";
 import { NormalMappedShader } from "./shaders/NormalMapped";
 import { resolveShadingSelection, type RenderMode } from "./renderSettings";
 
-import rockModelFile from "./models/monster.obj?raw";
-import rockDiffuseTex from "./models/mon.png";
+import rockModelFile from "./models/rock.obj?raw";
+import rockDiffuseTex from "./models/rock_diffuse.png";
 import rockNormalTex from "./models/rock_normal.png";
 import ballModelFile from "./models/ball.obj?raw";
 import ballDiffuseTex from "./models/ball_diffuse.png";
