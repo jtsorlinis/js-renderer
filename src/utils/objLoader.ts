@@ -25,6 +25,7 @@ export const loadObj = (file: string, normalize = false, scale = 1) => {
   const faceNormals: Vector3[] = [];
   const tangents: Vector3[] = [];
   const bitangents: Vector3[] = [];
+  const tangentKeys: string[] = [];
 
   const tempVerts: Vector3[] = [];
   const tempUVs: Vector2[] = [];
@@ -111,9 +112,12 @@ export const loadObj = (file: string, normalize = false, scale = 1) => {
 
   // rebuild vertices and normals
   for (let i = 0; i < tempTris.length; i++) {
-    const vert = tempVerts[tempTris[i]];
-    const normal = tempNormals[tempNormalTris[i]];
-    const uv = tempUVs[tempUVTris[i]];
+    const vertIndex = tempTris[i];
+    const uvIndex = tempUVTris[i];
+    const normalIndex = tempNormalTris[i];
+    const vert = tempVerts[vertIndex];
+    const normal = tempNormals[normalIndex];
+    const uv = tempUVs[uvIndex];
     vertices.push(vert);
     if (normal) {
       normals.push(normal);
@@ -121,6 +125,10 @@ export const loadObj = (file: string, normalize = false, scale = 1) => {
     if (uv) {
       uvs.push(uv);
     }
+
+    tangentKeys.push(
+      normal && uv ? `${vertIndex}/${uvIndex}/${normalIndex}` : `corner/${i}`,
+    );
 
     if (vert.x > maxPos.x) maxPos.x = vert.x;
     if (vert.y > maxPos.y) maxPos.y = vert.y;
@@ -173,6 +181,9 @@ export const loadObj = (file: string, normalize = false, scale = 1) => {
 
   // Generate tangent basis for tangent-space normal mapping
   if (uvs.length === vertices.length) {
+    const tangentSums = new Map<string, Vector3>();
+    const bitangentSums = new Map<string, Vector3>();
+
     for (let i = 0; i < vertices.length; i += 3) {
       const v0 = vertices[i];
       const v1 = vertices[i + 1];
@@ -208,33 +219,44 @@ export const loadObj = (file: string, normalize = false, scale = 1) => {
       }
 
       for (let j = 0; j < 3; j++) {
-        const normal = normals[i + j];
+        const key = tangentKeys[i + j];
+        const tangentSum = tangentSums.get(key) ?? new Vector3();
+        tangentSum.addInPlace(faceTangent);
+        tangentSums.set(key, tangentSum);
 
-        let tangent = faceTangent.subtract(
-          normal.scale(normal.dot(faceTangent)),
-        );
-        if (tangent.lengthSq() < 0.00000001) {
-          tangent = getFallbackTangent(normal);
-        } else {
-          tangent = tangent.normalize();
-        }
-
-        let bitangent = faceBitangent.subtract(
-          normal.scale(normal.dot(faceBitangent)),
-        );
-        if (bitangent.lengthSq() < 0.00000001) {
-          bitangent = normal.cross(tangent).normalize();
-        } else {
-          bitangent = bitangent.normalize();
-        }
-
-        if (normal.cross(tangent).dot(bitangent) < 0) {
-          bitangent = bitangent.scale(-1);
-        }
-
-        tangents.push(tangent);
-        bitangents.push(bitangent);
+        const bitangentSum = bitangentSums.get(key) ?? new Vector3();
+        bitangentSum.addInPlace(faceBitangent);
+        bitangentSums.set(key, bitangentSum);
       }
+    }
+
+    for (let i = 0; i < vertices.length; i++) {
+      const normal = normals[i];
+      const tangentSum = tangentSums.get(tangentKeys[i]) ?? getFallbackTangent(normal);
+      const bitangentSum = bitangentSums.get(tangentKeys[i]);
+
+      let tangent = tangentSum.subtract(normal.scale(normal.dot(tangentSum)));
+      if (tangent.lengthSq() < 0.00000001) {
+        tangent = getFallbackTangent(normal);
+      } else {
+        tangent = tangent.normalize();
+      }
+
+      let bitangent = bitangentSum
+        ? bitangentSum.subtract(normal.scale(normal.dot(bitangentSum)))
+        : normal.cross(tangent).normalize();
+      if (bitangent.lengthSq() < 0.00000001) {
+        bitangent = normal.cross(tangent).normalize();
+      } else {
+        bitangent = bitangent.normalize();
+      }
+
+      if (normal.cross(tangent).dot(bitangent) < 0) {
+        bitangent = bitangent.scale(-1);
+      }
+
+      tangents.push(tangent);
+      bitangents.push(bitangent);
     }
   } else {
     for (let i = 0; i < vertices.length; i++) {
