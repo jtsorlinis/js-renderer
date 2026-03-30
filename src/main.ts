@@ -158,7 +158,7 @@ const [
 
 const modelOptions: Record<ModelKey, ModelOption> = {
   dice: {
-    mesh: loadObj(diceModelFile, true, 0.8),
+    mesh: loadObj(diceModelFile, true, 0.75),
     texture: diceTexture,
     normalTexture: diceNormalTexture,
   },
@@ -189,7 +189,7 @@ let normalTexture = modelOptions.dice.normalTexture;
 let shadowOrthoSize = getModelRadius(model);
 
 let modelPos = new Vector3(0, 0, 0);
-let modelRotation = new Vector3(0, -Math.PI / 2, 0);
+let modelRotation = new Vector3(0, Math.PI / 2, 0);
 let modelScale = new Vector3(1, 1, 1);
 
 const shaders = {
@@ -215,7 +215,7 @@ const updateTriangleCount = () => {
 };
 
 const resetModelTransform = () => {
-  modelRotation.set(0, -Math.PI / 2, 0);
+  modelRotation.set(0, Math.PI / 2, 0);
   modelPos.set(0, 0, 0);
 };
 
