@@ -30,6 +30,7 @@ import headNormalTex from "./models/head_normal.png";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
+const SHADOW_MAP_SIZE = 512;
 const ROTATION_SPEED = 5;
 const ROTATE_SENSITIVITY = 250;
 const PAN_SENSITIVITY = 250;
@@ -103,10 +104,12 @@ fitCanvas();
 window.addEventListener("resize", fitCanvas);
 
 // Software render targets
-const image = new ImageData(canvas.width, canvas.height);
-const frameBuffer = new Framebuffer(image);
+const imageData = new ImageData(canvas.width, canvas.height);
+const frameBuffer = new Framebuffer(imageData);
 const zBuffer = new DepthTexture(canvas.width, canvas.height);
-const shadowMap = new DepthTexture(canvas.width, canvas.height);
+const shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+const shadowImageData = new ImageData(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+const shadowBuffer = new Framebuffer(shadowImageData);
 
 // Scene and camera
 const lightDir = new Vector3(0, -1, 1).normalize();
@@ -223,6 +226,7 @@ const renderMesh = (
   activeShader: BaseShader,
   depthBuffer: DepthTexture,
   renderMode: RenderMode = "filled",
+  targetBuffer: Framebuffer = frameBuffer,
 ) => {
   for (let i = 0; i < model.vertices.length; i += 3) {
     // Vertex stage for one triangle.
@@ -234,21 +238,21 @@ const renderMesh = (
 
     if (renderMode !== "filled") {
       if (renderMode === "culledWireframe") {
-        const p0 = frameBuffer.viewportTransform(triVerts[0]);
-        const p1 = frameBuffer.viewportTransform(triVerts[1]);
-        const p2 = frameBuffer.viewportTransform(triVerts[2]);
+        const p0 = targetBuffer.viewportTransform(triVerts[0]);
+        const p1 = targetBuffer.viewportTransform(triVerts[1]);
+        const p2 = targetBuffer.viewportTransform(triVerts[2]);
         if (edgeFunction(p2, p1, p0) <= 0) continue;
       }
 
       // Debug/teaching mode: draw triangle edges only.
-      line(triVerts[0], triVerts[1], frameBuffer);
-      line(triVerts[1], triVerts[2], frameBuffer);
-      line(triVerts[2], triVerts[0], frameBuffer);
+      line(triVerts[0], triVerts[1], targetBuffer);
+      line(triVerts[1], triVerts[2], targetBuffer);
+      line(triVerts[2], triVerts[0], targetBuffer);
       continue;
     }
 
     // Rasterization + fragment stage.
-    triangle(triVerts, activeShader, frameBuffer, depthBuffer);
+    triangle(triVerts, activeShader, targetBuffer, depthBuffer);
   }
 };
 
@@ -271,7 +275,7 @@ const draw = () => {
 
   // 3) Build light-space transform (for shadow mapping).
   const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), Vector3.Zero);
-  const lightProjMat = Matrix4.Ortho(shadowOrthoSize, aspectRatio, 1, 10);
+  const lightProjMat = Matrix4.Ortho(shadowOrthoSize, 1, 1, 10);
   const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
   const mLightDir = invModelMat.multiplyDirection(lightDir).normalize();
   const mCamPos = invModelMat.multiplyPoint(camPos).xyz;
@@ -305,11 +309,11 @@ const draw = () => {
 
   // 6) Optional shadow pass first, then visible color pass.
   if (renderSettings.useShadows) {
-    renderMesh(depthShader, shadowMap);
+    renderMesh(depthShader, shadowMap, "filled", shadowBuffer);
   }
 
   renderMesh(shader, zBuffer, renderSettings.renderMode);
-  ctx.putImageData(image, 0, 0);
+  ctx.putImageData(imageData, 0, 0);
 };
 
 let prevTime = 0;
