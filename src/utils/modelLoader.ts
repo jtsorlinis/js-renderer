@@ -1,25 +1,6 @@
 import { Texture } from "../drawing";
 import { type LoadedModel, loadObj } from "./objLoader";
 
-import diceModelFile from "../models/dice.obj?url";
-import diceDiffuseTex from "../models/dice_diffuse.png";
-import diceNormalTex from "../models/dice_normal.png";
-import rockModelFile from "../models/rock.obj?url";
-import rockDiffuseTex from "../models/rock_diffuse.png";
-import rockNormalTex from "../models/rock_normal.png";
-import dogModelFile from "../models/dog.obj?url";
-import dogDiffuseTex from "../models/dog_diffuse.png";
-import dogNormalTex from "../models/dog_normal.png";
-import headModelFile from "../models/head.obj?url";
-import headDiffuseTex from "../models/head_diffuse.png";
-import headNormalTex from "../models/head_normal.png";
-import dragonModelFile from "../models/dragon.obj?url";
-import dragonDiffuseTex from "../models/dragon_diffuse.png";
-import dragonNormalTex from "../models/dragon_normal.png";
-import spartanModelFile from "../models/spartan.obj?url";
-import spartanDiffuseTex from "../models/spartan_diffuse.png";
-import spartanNormalTex from "../models/spartan_normal.png";
-
 export const MODEL_KEYS = [
   "dice",
   "rock",
@@ -48,6 +29,9 @@ type ModelAssetSource = {
   prefetched?: Promise<void>;
 };
 
+const assetPath = (fileName: string) =>
+  `${import.meta.env.BASE_URL}models/${fileName}`;
+
 const loadObjAsset = async (url: string, normalize = false, scale = 1) => {
   const response = await fetch(url);
   if (!response.ok) {
@@ -70,42 +54,42 @@ const prefetchAsset = async (url: string) => {
 
 const modelAssets: Record<ModelKey, ModelAssetSource> = {
   dice: {
-    meshUrl: diceModelFile,
-    textureUrl: diceDiffuseTex,
-    normalTextureUrl: diceNormalTex,
+    meshUrl: assetPath("dice.obj"),
+    textureUrl: assetPath("dice_diffuse.png"),
+    normalTextureUrl: assetPath("dice_normal.png"),
     normalize: true,
     scale: 0.75,
   },
   rock: {
-    meshUrl: rockModelFile,
-    textureUrl: rockDiffuseTex,
-    normalTextureUrl: rockNormalTex,
+    meshUrl: assetPath("rock.obj"),
+    textureUrl: assetPath("rock_diffuse.png"),
+    normalTextureUrl: assetPath("rock_normal.png"),
     normalize: true,
   },
   dog: {
-    meshUrl: dogModelFile,
-    textureUrl: dogDiffuseTex,
-    normalTextureUrl: dogNormalTex,
+    meshUrl: assetPath("dog.obj"),
+    textureUrl: assetPath("dog_diffuse.png"),
+    normalTextureUrl: assetPath("dog_normal.png"),
     normalize: true,
     scale: 1.1,
   },
   head: {
-    meshUrl: headModelFile,
-    textureUrl: headDiffuseTex,
-    normalTextureUrl: headNormalTex,
+    meshUrl: assetPath("head.obj"),
+    textureUrl: assetPath("head_diffuse.png"),
+    normalTextureUrl: assetPath("head_normal.png"),
     normalize: true,
   },
   dragon: {
-    meshUrl: dragonModelFile,
-    textureUrl: dragonDiffuseTex,
-    normalTextureUrl: dragonNormalTex,
+    meshUrl: assetPath("dragon.obj"),
+    textureUrl: assetPath("dragon_diffuse.png"),
+    normalTextureUrl: assetPath("dragon_normal.png"),
     normalize: true,
     scale: 1.3,
   },
   spartan: {
-    meshUrl: spartanModelFile,
-    textureUrl: spartanDiffuseTex,
-    normalTextureUrl: spartanNormalTex,
+    meshUrl: assetPath("spartan.obj"),
+    textureUrl: assetPath("spartan_diffuse.png"),
+    normalTextureUrl: assetPath("spartan_normal.png"),
     normalize: true,
   },
 };

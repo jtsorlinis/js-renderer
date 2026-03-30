@@ -9,5 +9,6 @@ export default defineConfig(({ command }) => {
       base: "/js-renderer/",
     };
   }
+
   return {};
 });
