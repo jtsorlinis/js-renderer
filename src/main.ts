@@ -18,6 +18,9 @@ import { DepthShader } from "./shaders/DepthShader";
 import { NormalMappedShader } from "./shaders/NormalMapped";
 import { resolveShadingSelection, type RenderMode } from "./renderSettings";
 
+import boxModelFile from "./models/box.obj?raw";
+import boxDiffuseTex from "./models/box_diffuse.png";
+import boxNormalTex from "./models/box_normal.png";
 import rockModelFile from "./models/rock.obj?raw";
 import rockDiffuseTex from "./models/rock_diffuse.png";
 import rockNormalTex from "./models/rock_normal.png";
@@ -27,9 +30,9 @@ import dogNormalTex from "./models/dog_normal.png";
 import headModelFile from "./models/head.obj?raw";
 import headDiffuseTex from "./models/head_diffuse.png";
 import headNormalTex from "./models/head_normal.png";
-import personModelFile from "./models/person.obj?raw";
-import personDiffuseTex from "./models/person_diffuse.png";
-import personNormalTex from "./models/person_normal.png";
+import dragonModelFile from "./models/dragon.obj?raw";
+import dragonDiffuseTex from "./models/dragon_diffuse.png";
+import dragonNormalTex from "./models/dragon_normal.png";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
@@ -122,7 +125,7 @@ const camPos = new Vector3(0, 0, -2.5);
 let cameraOrthoSize = 1.5;
 
 // Mesh + textures
-type ModelKey = "rock" | "dog" | "head" | "person";
+type ModelKey = "box" | "rock" | "dog" | "head" | "dragon";
 type ModelOption = {
   mesh: LoadedModel;
   texture: Texture;
@@ -130,33 +133,42 @@ type ModelOption = {
 };
 
 const [
+  boxTexture,
+  boxNormalTexture,
   rockTexture,
   rockNormalTexture,
   dogTexture,
   dogNormalTexture,
   headTexture,
   headNormalTexture,
-  personTexture,
-  personNormalTexture,
+  dragonTexture,
+  dragonNormalTexture,
 ] = await Promise.all([
+  Texture.Load(boxDiffuseTex),
+  Texture.Load(boxNormalTex, true),
   Texture.Load(rockDiffuseTex),
   Texture.Load(rockNormalTex, true),
   Texture.Load(dogDiffuseTex),
   Texture.Load(dogNormalTex, true),
   Texture.Load(headDiffuseTex),
   Texture.Load(headNormalTex, true),
-  Texture.Load(personDiffuseTex),
-  Texture.Load(personNormalTex, true),
+  Texture.Load(dragonDiffuseTex),
+  Texture.Load(dragonNormalTex, true),
 ]);
 
 const modelOptions: Record<ModelKey, ModelOption> = {
+  box: {
+    mesh: loadObj(boxModelFile, true, 0.9),
+    texture: boxTexture,
+    normalTexture: boxNormalTexture,
+  },
   rock: {
     mesh: loadObj(rockModelFile, true),
     texture: rockTexture,
     normalTexture: rockNormalTexture,
   },
   dog: {
-    mesh: loadObj(dogModelFile, true),
+    mesh: loadObj(dogModelFile, true, 1.1),
     texture: dogTexture,
     normalTexture: dogNormalTexture,
   },
@@ -165,16 +177,15 @@ const modelOptions: Record<ModelKey, ModelOption> = {
     texture: headTexture,
     normalTexture: headNormalTexture,
   },
-  person: {
-    mesh: loadObj(personModelFile, true, 1.2),
-    texture: personTexture,
-    normalTexture: personNormalTexture,
+  dragon: {
+    mesh: loadObj(dragonModelFile, true, 1.3),
+    texture: dragonTexture,
+    normalTexture: dragonNormalTexture,
   },
 };
-
-let model = modelOptions.rock.mesh;
-let texture = modelOptions.rock.texture;
-let normalTexture = modelOptions.rock.normalTexture;
+let model = modelOptions.box.mesh;
+let texture = modelOptions.box.texture;
+let normalTexture = modelOptions.box.normalTexture;
 let shadowOrthoSize = getModelRadius(model);
 
 let modelPos = new Vector3(0, 0, 0);
