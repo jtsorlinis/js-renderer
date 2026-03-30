@@ -34,75 +34,39 @@ export const loadObj = (file: string, normalize = false, scale = 1) => {
   const tempUVTris: number[] = [];
   const tempNormalTris: number[] = [];
 
+  const pushCorner = (corner: string) => {
+    const [vert, uv, normal] = corner.split("/");
+    tempTris.push(+vert - 1);
+    tempUVTris.push(uv ? +uv - 1 : -1);
+    tempNormalTris.push(normal ? +normal - 1 : -1);
+  };
+
+  // OBJ assets are authored in a right-handed convention, while the renderer
+  // uses a left-handed camera/projection setup. Negating Z changes handedness;
+  // reversing the corner order for each triangle preserves front-facing winding.
+  const pushTriangle = (a: string, b: string, c: string) => {
+    pushCorner(a);
+    pushCorner(c);
+    pushCorner(b);
+  };
+
   const lines = file.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const split = lines[i].trim().split(/\s+/);
     const isQuad = split.length === 5;
     if (split[0] == "v") {
-      tempVerts.push(new Vector3(+split[1], +split[2], +split[3]));
+      tempVerts.push(new Vector3(+split[1], +split[2], -(+split[3])));
     } else if (split[0] == "vt") {
       tempUVs.push(new Vector2(+split[1], +split[2]));
     } else if (split[0] == "vn") {
-      tempNormals.push(new Vector3(+split[1], +split[2], +split[3]));
+      tempNormals.push(new Vector3(+split[1], +split[2], -(+split[3])));
     } else if (split[0] == "f") {
       // Check if quad
       if (isQuad) {
-        // Quads
-        tempTris.push(
-          +split[1].split("/")[0] - 1,
-          +split[2].split("/")[0] - 1,
-          +split[3].split("/")[0] - 1,
-        );
-        tempTris.push(
-          +split[1].split("/")[0] - 1,
-          +split[3].split("/")[0] - 1,
-          +split[4].split("/")[0] - 1,
-        );
-
-        // Add UVs
-        tempUVTris.push(
-          +split[1].split("/")[1] - 1,
-          +split[2].split("/")[1] - 1,
-          +split[3].split("/")[1] - 1,
-        );
-        tempUVTris.push(
-          +split[1].split("/")[1] - 1,
-          +split[3].split("/")[1] - 1,
-          +split[4].split("/")[1] - 1,
-        );
-
-        // Add normals
-        tempNormalTris.push(
-          +split[1].split("/")[2] - 1,
-          +split[2].split("/")[2] - 1,
-          +split[3].split("/")[2] - 1,
-        );
-        tempNormalTris.push(
-          +split[1].split("/")[2] - 1,
-          +split[3].split("/")[2] - 1,
-          +split[4].split("/")[2] - 1,
-        );
+        pushTriangle(split[1], split[2], split[3]);
+        pushTriangle(split[1], split[3], split[4]);
       } else {
-        // Triangles
-        tempTris.push(
-          +split[1].split("/")[0] - 1,
-          +split[2].split("/")[0] - 1,
-          +split[3].split("/")[0] - 1,
-        );
-
-        // Add UVs
-        tempUVTris.push(
-          +split[1].split("/")[1] - 1,
-          +split[2].split("/")[1] - 1,
-          +split[3].split("/")[1] - 1,
-        );
-
-        // Add normals
-        tempNormalTris.push(
-          +split[1].split("/")[2] - 1,
-          +split[2].split("/")[2] - 1,
-          +split[3].split("/")[2] - 1,
-        );
+        pushTriangle(split[1], split[2], split[3]);
       }
     }
   }
