@@ -10,10 +10,12 @@ export interface Uniforms {
   camPos: Vector3;
 }
 
-// Returns a random value in [0.25, 1] for each face to give them distinct colours.
+const minColour = 0.4;
+
+// Returns a random value for each face to give them distinct colours.
 const hash = (x: number) => {
   const s = Math.sin(x * 12.9898) * 43758.5453;
-  return 0.25 + (s - Math.floor(s)) * 0.75;
+  return minColour + (s - Math.floor(s)) * (1 - minColour);
 };
 
 export class UnlitShader extends BaseShader {

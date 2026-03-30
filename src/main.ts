@@ -18,6 +18,9 @@ import { DepthShader } from "./shaders/DepthShader";
 import { NormalMappedShader } from "./shaders/NormalMapped";
 import { resolveShadingSelection, type RenderMode } from "./renderSettings";
 
+import rockModelFile from "./models/monster.obj?raw";
+import rockDiffuseTex from "./models/mon.png";
+import rockNormalTex from "./models/rock_normal.png";
 import ballModelFile from "./models/ball.obj?raw";
 import ballDiffuseTex from "./models/ball_diffuse.png";
 import ballNormalTex from "./models/ball_normal.png";
@@ -119,7 +122,7 @@ const camPos = new Vector3(0, 0, -2.5);
 let cameraOrthoSize = 1.5;
 
 // Mesh + textures
-type ModelKey = "ball" | "dog" | "head";
+type ModelKey = "rock" | "ball" | "dog" | "head";
 type ModelOption = {
   mesh: LoadedModel;
   texture: Texture;
@@ -127,6 +130,8 @@ type ModelOption = {
 };
 
 const [
+  rockTexture,
+  rockNormalTexture,
   ballTexture,
   ballNormalTexture,
   dogTexture,
@@ -134,6 +139,8 @@ const [
   headTexture,
   headNormalTexture,
 ] = await Promise.all([
+  Texture.Load(rockDiffuseTex),
+  Texture.Load(rockNormalTex, true),
   Texture.Load(ballDiffuseTex),
   Texture.Load(ballNormalTex, true),
   Texture.Load(dogDiffuseTex),
@@ -143,6 +150,11 @@ const [
 ]);
 
 const modelOptions: Record<ModelKey, ModelOption> = {
+  rock: {
+    mesh: loadObj(rockModelFile, true),
+    texture: rockTexture,
+    normalTexture: rockNormalTexture,
+  },
   ball: {
     mesh: loadObj(ballModelFile, true, 0.8),
     texture: ballTexture,
@@ -160,9 +172,9 @@ const modelOptions: Record<ModelKey, ModelOption> = {
   },
 };
 
-let model = modelOptions.ball.mesh;
-let texture = modelOptions.ball.texture;
-let normalTexture = modelOptions.ball.normalTexture;
+let model = modelOptions.rock.mesh;
+let texture = modelOptions.rock.texture;
+let normalTexture = modelOptions.rock.normalTexture;
 let shadowOrthoSize = getModelRadius(model);
 
 let modelPos = new Vector3(0, 0, 0);
