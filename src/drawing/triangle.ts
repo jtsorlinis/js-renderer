@@ -53,8 +53,8 @@ export const triangle = (
   // Calculate bounding box
   let minX = ~~Math.max(0, Math.min(p0.x, p1.x, p2.x));
   let minY = ~~Math.max(0, Math.min(p0.y, p1.y, p2.y));
-  let maxX = ~~Math.min(buffer.width, Math.max(p0.x, p1.x, p2.x));
-  let maxY = ~~Math.min(buffer.height, Math.max(p0.y, p1.y, p2.y));
+  let maxX = ~~Math.min(buffer.width - 1, Math.max(p0.x, p1.x, p2.x));
+  let maxY = ~~Math.min(buffer.height - 1, Math.max(p0.y, p1.y, p2.y));
 
   // Calculate barycentric coordinates for first pixel
   const minPos = new Vector4(minX, minY);
