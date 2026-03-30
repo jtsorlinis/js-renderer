@@ -33,6 +33,9 @@ import headNormalTex from "./models/head_normal.png";
 import dragonModelFile from "./models/dragon.obj?raw";
 import dragonDiffuseTex from "./models/dragon_diffuse.png";
 import dragonNormalTex from "./models/dragon_normal.png";
+import spartanModelFile from "./models/spartan.obj?raw";
+import spartanDiffuseTex from "./models/spartan_diffuse.png";
+import spartanNormalTex from "./models/spartan_normal.png";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
@@ -125,7 +128,7 @@ const camPos = new Vector3(0, 0, -2.5);
 let cameraOrthoSize = 1.5;
 
 // Mesh + textures
-type ModelKey = "dice" | "rock" | "dog" | "head" | "dragon";
+type ModelKey = "dice" | "rock" | "dog" | "head" | "dragon" | "spartan";
 type ModelOption = {
   mesh: LoadedModel;
   texture: Texture;
@@ -143,6 +146,8 @@ const [
   headNormalTexture,
   dragonTexture,
   dragonNormalTexture,
+  spartanTexture,
+  spartanNormalTexture,
 ] = await Promise.all([
   Texture.Load(diceDiffuseTex),
   Texture.Load(diceNormalTex, true),
@@ -154,6 +159,8 @@ const [
   Texture.Load(headNormalTex, true),
   Texture.Load(dragonDiffuseTex),
   Texture.Load(dragonNormalTex, true),
+  Texture.Load(spartanDiffuseTex),
+  Texture.Load(spartanNormalTex, true),
 ]);
 
 const modelOptions: Record<ModelKey, ModelOption> = {
@@ -181,6 +188,11 @@ const modelOptions: Record<ModelKey, ModelOption> = {
     mesh: loadObj(dragonModelFile, true, 1.3),
     texture: dragonTexture,
     normalTexture: dragonNormalTexture,
+  },
+  spartan: {
+    mesh: loadObj(spartanModelFile, true),
+    texture: spartanTexture,
+    normalTexture: spartanNormalTexture,
   },
 };
 let model = modelOptions.dice.mesh;
