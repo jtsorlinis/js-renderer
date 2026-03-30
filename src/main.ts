@@ -18,9 +18,9 @@ import { DepthShader } from "./shaders/DepthShader";
 import { NormalMappedShader } from "./shaders/NormalMapped";
 import { resolveShadingSelection, type RenderMode } from "./renderSettings";
 
-import boxModelFile from "./models/box.obj?raw";
-import boxDiffuseTex from "./models/box_diffuse.png";
-import boxNormalTex from "./models/box_normal.png";
+import diceModelFile from "./models/dice.obj?raw";
+import diceDiffuseTex from "./models/dice_diffuse.png";
+import diceNormalTex from "./models/dice_normal.png";
 import rockModelFile from "./models/rock.obj?raw";
 import rockDiffuseTex from "./models/rock_diffuse.png";
 import rockNormalTex from "./models/rock_normal.png";
@@ -125,7 +125,7 @@ const camPos = new Vector3(0, 0, -2.5);
 let cameraOrthoSize = 1.5;
 
 // Mesh + textures
-type ModelKey = "box" | "rock" | "dog" | "head" | "dragon";
+type ModelKey = "dice" | "rock" | "dog" | "head" | "dragon";
 type ModelOption = {
   mesh: LoadedModel;
   texture: Texture;
@@ -133,8 +133,8 @@ type ModelOption = {
 };
 
 const [
-  boxTexture,
-  boxNormalTexture,
+  diceTexture,
+  diceNormalTexture,
   rockTexture,
   rockNormalTexture,
   dogTexture,
@@ -144,8 +144,8 @@ const [
   dragonTexture,
   dragonNormalTexture,
 ] = await Promise.all([
-  Texture.Load(boxDiffuseTex),
-  Texture.Load(boxNormalTex, true),
+  Texture.Load(diceDiffuseTex),
+  Texture.Load(diceNormalTex, true),
   Texture.Load(rockDiffuseTex),
   Texture.Load(rockNormalTex, true),
   Texture.Load(dogDiffuseTex),
@@ -157,10 +157,10 @@ const [
 ]);
 
 const modelOptions: Record<ModelKey, ModelOption> = {
-  box: {
-    mesh: loadObj(boxModelFile, true, 0.9),
-    texture: boxTexture,
-    normalTexture: boxNormalTexture,
+  dice: {
+    mesh: loadObj(diceModelFile, true, 0.8),
+    texture: diceTexture,
+    normalTexture: diceNormalTexture,
   },
   rock: {
     mesh: loadObj(rockModelFile, true),
@@ -183,9 +183,9 @@ const modelOptions: Record<ModelKey, ModelOption> = {
     normalTexture: dragonNormalTexture,
   },
 };
-let model = modelOptions.box.mesh;
-let texture = modelOptions.box.texture;
-let normalTexture = modelOptions.box.normalTexture;
+let model = modelOptions.dice.mesh;
+let texture = modelOptions.dice.texture;
+let normalTexture = modelOptions.dice.normalTexture;
 let shadowOrthoSize = getModelRadius(model);
 
 let modelPos = new Vector3(0, 0, 0);
