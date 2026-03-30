@@ -1,6 +1,8 @@
 import { Texture } from "../drawing";
 import { type LoadedModel, loadObj } from "./objLoader";
 
+const isDogNyxy = true;
+
 export const MODEL_KEYS = [
   "dice",
   "rock",
@@ -67,9 +69,9 @@ const modelAssets: Record<ModelKey, ModelAssetSource> = {
     normalize: true,
   },
   dog: {
-    meshUrl: assetPath("dog.obj"),
-    textureUrl: assetPath("dog_diffuse.png"),
-    normalTextureUrl: assetPath("dog_normal.png"),
+    meshUrl: assetPath(`${isDogNyxy ? "nyxy" : "dog"}.obj`),
+    textureUrl: assetPath(`${isDogNyxy ? "nyxy" : "dog"}_diffuse.png`),
+    normalTextureUrl: assetPath(`${isDogNyxy ? "nyxy" : "dog"}_normal.png`),
     normalize: true,
     scale: 1.1,
   },
