@@ -14,11 +14,12 @@ const modelAssets: Record<string, ModelAssetSource> = {
     meshUrl: assetPath("rock.glb"),
     scale: 0.9,
   },
-  shoe: {
-    meshUrl: assetPath("shoe.glb"),
+  hydrant: {
+    meshUrl: assetPath("hydrant.glb"),
   },
   dog: {
     meshUrl: assetPath("dog.glb"),
+    scale: 1.1,
   },
   head: {
     meshUrl: assetPath("head.glb"),
