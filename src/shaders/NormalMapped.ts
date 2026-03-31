@@ -58,7 +58,7 @@ export class NormalMappedShader extends BaseShader {
     );
 
     // Position in light clip space for shadow map lookup in fragment().
-    const lightSpacePos = this.uniforms.lightSpaceMat.multiplyPoint(modelPos);
+    const lightSpacePos = this.uniforms.lightSpaceMat.projectPoint(modelPos);
 
     // Convert from NDC [-1, 1] to texture UV space [0, 1].
     lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
@@ -71,7 +71,7 @@ export class NormalMappedShader extends BaseShader {
     this.v2f(this.vViewDirTangent, viewDirTangent);
 
     // Final clip-space position for rasterization.
-    return this.uniforms.mvp.multiplyPoint(modelPos);
+    return this.uniforms.mvp.projectPoint(modelPos);
   };
 
   fragment = () => {

@@ -3,6 +3,7 @@ import { Vector3, Matrix4, Vector4 } from "../maths";
 
 export interface Uniforms {
   model: Verts;
+  modelMat: Matrix4;
   mvp: Matrix4;
   normalMat: Matrix4;
   lightDir: Vector3;
@@ -27,9 +28,9 @@ export class FlatShader extends BaseShader {
     const model = this.uniforms.model;
     const i = this.vertexId;
     const normal = this.uniforms.normalMat
-      .multiplyDirection(model.faceNormals[i])
+      .transformDirection(model.faceNormals[i])
       .normalize();
-    const worldPos = this.uniforms.mvp.multiplyPoint(model.vertices[i]);
+    const worldPos = this.uniforms.modelMat.transformPoint(model.vertices[i]);
 
     // Compute lighting once in vertex stage for this face.
     const viewDir = this.uniforms.camPos.subtract(worldPos.xyz).normalize();
@@ -40,7 +41,7 @@ export class FlatShader extends BaseShader {
     this.lighting = (diffuse + spec + ambient) * lightScale;
 
     // Return clip-space position.
-    return this.uniforms.mvp.multiplyPoint(model.vertices[i]);
+    return this.uniforms.mvp.projectPoint(model.vertices[i]);
   };
 
   fragment = () => {

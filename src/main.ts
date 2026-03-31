@@ -279,8 +279,8 @@ const draw = () => {
   const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), Vector3.Zero);
   const lightProjMat = Matrix4.Ortho(shadowOrthoSize, 1, 1, 10);
   const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
-  const mLightDir = invModelMat.multiplyDirection(lightDir).normalize();
-  const mCamPos = invModelMat.multiplyPoint(camPos).xyz;
+  const mLightDir = invModelMat.transformDirection(lightDir).normalize();
+  const mCamPos = invModelMat.transformPoint(camPos).xyz;
 
   // 4) Build camera transform and final clip transform.
   const viewMat = Matrix4.LookTo(camPos, Vector3.Forward, Vector3.Up);

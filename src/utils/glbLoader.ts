@@ -451,7 +451,7 @@ const convertGlbGeometry = (
           positions[positionOffset + 1],
           positions[positionOffset + 2],
         );
-        const worldPosition = worldMatrix.multiplyPoint(localPosition).xyz;
+        const worldPosition = worldMatrix.transformPoint(localPosition).xyz;
         objLines.push(`v ${worldPosition.x} ${worldPosition.y} ${worldPosition.z}`);
 
         if (uvs) {
@@ -464,7 +464,7 @@ const convertGlbGeometry = (
         if (normals) {
           const normalOffset = vertexIndex * 3;
           const worldNormal = normaliseDirection(
-            normalMatrix.multiplyDirection(
+            normalMatrix.transformDirection(
               new Vector3(
                 normals[normalOffset],
                 normals[normalOffset + 1],

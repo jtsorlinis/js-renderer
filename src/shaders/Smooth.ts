@@ -28,9 +28,9 @@ export class SmoothShader extends BaseShader {
     // Read source mesh data.
     const model = this.uniforms.model;
     const i = this.vertexId;
-    const worldPos = this.uniforms.modelMat.multiplyPoint(model.vertices[i]);
+    const worldPos = this.uniforms.modelMat.transformPoint(model.vertices[i]);
     const normal = this.uniforms.normalMat
-      .multiplyDirection(model.normals[i])
+      .transformDirection(model.normals[i])
       .normalize();
 
     // Emit varyings.
@@ -38,7 +38,7 @@ export class SmoothShader extends BaseShader {
     this.v2f(this.vWorldPos, worldPos);
 
     // Return clip-space position.
-    return this.uniforms.mvp.multiplyPoint(model.vertices[i]);
+    return this.uniforms.mvp.projectPoint(model.vertices[i]);
   };
 
   fragment = () => {
