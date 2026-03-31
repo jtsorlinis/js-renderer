@@ -11,6 +11,7 @@ import { getModelRadius } from "./utils/objLoader";
 import {
   ensureModelOption,
   prefetchRemainingModels,
+  setHighResTextureLimits,
   type ModelKey,
 } from "./utils/modelLoader";
 import { SmoothShader } from "./shaders/Smooth";
@@ -29,11 +30,18 @@ const ROTATION_SPEED = 5;
 const ROTATE_SENSITIVITY = 250;
 const PAN_SENSITIVITY = 250;
 const ZOOM_SENSITIVITY = 100;
+const FPS_UPDATE_INTERVAL_MS = 250;
 
 // UI handles
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
+const textureSizeText = document.getElementById(
+  "textureSize",
+) as HTMLSpanElement;
+const normalTextureSizeText = document.getElementById(
+  "normalTextureSize",
+) as HTMLSpanElement;
 const orthographicCb = document.getElementById("orthoCb") as HTMLInputElement;
 const highResCb = document.getElementById("highResCb") as HTMLInputElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
@@ -119,9 +127,7 @@ const setRenderResolution = (scale = 1) => {
 
 setRenderResolution();
 window.addEventListener("resize", fitCanvas);
-highResCb.addEventListener("change", () => {
-  setRenderResolution(highResCb.checked ? 2 : 1);
-});
+setHighResTextureLimits(highResCb.checked);
 
 // Scene and camera
 const lightDir = new Vector3(0, -1, 1).normalize();
@@ -160,8 +166,10 @@ type RenderSettings = {
 const depthShader = new DepthShader();
 const triVerts: Vector4[] = [];
 
-const updateTriangleCount = () => {
+const updateModelStats = () => {
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
+  textureSizeText.innerText = `${texture.width} x ${texture.height}`;
+  normalTextureSizeText.innerText = `${normalTexture.width} x ${normalTexture.height}`;
 };
 
 const resetModelTransform = () => {
@@ -171,20 +179,34 @@ const resetModelTransform = () => {
 
 let activeModelRequest = 0;
 
-const setModel = async (modelKey: ModelKey) => {
+const applyModelOption = (
+  selectedModel: Awaited<ReturnType<typeof ensureModelOption>>,
+) => {
+  model = selectedModel.mesh;
+  texture = selectedModel.texture;
+  normalTexture = selectedModel.normalTexture;
+  shadowOrthoSize = getModelRadius(model);
+  updateModelStats();
+};
+
+const setModel = async (modelKey: ModelKey, resetTransform = true) => {
   const requestId = ++activeModelRequest;
   const selectedModel = await ensureModelOption(modelKey);
   if (requestId !== activeModelRequest) {
     return;
   }
 
-  model = selectedModel.mesh;
-  texture = selectedModel.texture;
-  normalTexture = selectedModel.normalTexture;
-  shadowOrthoSize = getModelRadius(model);
-  updateTriangleCount();
-  resetModelTransform();
+  applyModelOption(selectedModel);
+  if (resetTransform) {
+    resetModelTransform();
+  }
 };
+
+highResCb.addEventListener("change", () => {
+  setRenderResolution(highResCb.checked ? 2 : 1);
+  if (!setHighResTextureLimits(highResCb.checked)) return;
+  setModel(modelDd.value as ModelKey, false);
+});
 
 const getRenderSettings = (): RenderSettings => {
   const shadingValue = getShadingButton()?.dataset.shadingValue || "wireframe";
@@ -296,15 +318,23 @@ const draw = () => {
   ctx.putImageData(imageData, 0, 0);
 };
 
-let prevTime = 0;
+let prevTime = performance.now();
+let lastFpsUiUpdate = prevTime;
 const loop = () => {
   const now = performance.now();
-  const deltaTime = (now - prevTime) / 1000;
+  const frameIntervalMs = now - prevTime;
+  const deltaTime = frameIntervalMs / 1000;
   prevTime = now;
   update(deltaTime);
   draw();
   const actualFrameTime = performance.now() - now;
-  fpsText.innerText = actualFrameTime.toFixed(0);
+
+  if (now - lastFpsUiUpdate >= FPS_UPDATE_INTERVAL_MS) {
+    const fps = frameIntervalMs > 0 ? 1000 / frameIntervalMs : 0;
+    fpsText.innerText = `${actualFrameTime.toFixed(0)} ms (${fps.toFixed(0)} fps)`;
+    lastFpsUiUpdate = now;
+  }
+
   requestAnimationFrame(loop);
 };
 
@@ -336,5 +366,5 @@ modelDd.onchange = () => {
   });
 };
 
-updateTriangleCount();
+updateModelStats();
 loop();

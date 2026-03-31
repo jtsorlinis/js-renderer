@@ -31,6 +31,11 @@
       </div>
 
       <div class="section">
+        <span class="section-heading">Frame</span>
+        <span class="stat-value" id="fps">0 (0.0 ms)</span>
+      </div>
+
+      <div class="section">
         <span class="section-heading">Shading</span>
 
         <div class="shading-picker">
@@ -139,11 +144,11 @@
       </div>
 
       <div class="section">
-        <label><input type="checkbox" id="orthoCb" /> Orthographic</label>
+        <label><input type="checkbox" id="highResCb" /> High Res (2x)</label>
       </div>
 
       <div class="section">
-        <label><input type="checkbox" id="highResCb" /> High Res (2x)</label>
+        <label><input type="checkbox" id="orthoCb" /> Orthographic</label>
       </div>
 
       <div class="stats">
@@ -152,8 +157,12 @@
           <span class="stat-value" id="tris">0</span>
         </div>
         <div class="stat">
-          <span class="stat-label">Frame</span>
-          <span class="stat-value"><span id="fps">0</span> ms</span>
+          <span class="stat-label">Texture</span>
+          <span class="stat-value" id="textureSize">0 x 0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Normal</span>
+          <span class="stat-value" id="normalTextureSize">0 x 0</span>
         </div>
       </div>
     </aside>
