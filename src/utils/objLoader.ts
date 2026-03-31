@@ -18,6 +18,16 @@ export const getModelRadius = (mesh: LoadedModel) => {
   return mesh.vertices.reduce((max, v) => Math.max(max, v.length()), 0);
 };
 
+export const loadObjAsset = async (url: string, normalize = true, scale = 1) => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load OBJ asset: ${url} (${response.status} ${response.statusText})`,
+    );
+  }
+  return loadObj(await response.text(), normalize, scale);
+};
+
 export const loadObj = (file: string, normalize = false, scale = 1) => {
   const vertices: Vector3[] = [];
   let normals: Vector3[] = [];
