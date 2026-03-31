@@ -20,9 +20,7 @@ const modelAssets: Record<string, ModelAssetSource> = {
     normalTextureUrl: assetPath("rock_normal.png"),
   },
   dog: {
-    meshUrl: isDogNyxy ? assetPath("nyxy.glb") : assetPath("dog.obj"),
-    textureUrl: assetPath("dog_diffuse.png"),
-    normalTextureUrl: assetPath("dog_normal.png"),
+    meshUrl: assetPath(isDogNyxy ? "nyxy.glb" : "dog.glb"),
   },
   head: {
     meshUrl: assetPath("head.glb"),
