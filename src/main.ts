@@ -174,7 +174,7 @@ const updateModelStats = () => {
 
 const resetModelTransform = () => {
   modelRotation.set(0, Math.PI / 2, 0);
-  modelPos.set(0, 0, 0);
+  camPos.set(0, 0, -2.5);
 };
 
 let activeModelRequest = 0;
@@ -359,6 +359,13 @@ canvas.onwheel = (e) => {
 };
 
 canvas.oncontextmenu = (e) => e.preventDefault();
+
+window.addEventListener("keydown", (event) => {
+  if (modelDd.value === "dog" && event.key.toLowerCase() === "n") {
+    modelDd.value = "nyxy";
+    modelDd.dispatchEvent(new Event("change"));
+  }
+});
 
 modelDd.onchange = () => {
   setModel(modelDd.value as ModelKey).catch((error) => {

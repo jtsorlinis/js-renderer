@@ -2,8 +2,6 @@ import { setHighResTextureLimit, Texture } from "../drawing";
 import { loadGlbAsset } from "./glbLoader";
 import { type LoadedModel, loadObjAsset } from "./objLoader";
 
-const isDogNyxy = true;
-
 const assetPath = (fileName: string) =>
   `${import.meta.env.BASE_URL}models/${fileName}`;
 
@@ -16,8 +14,11 @@ const modelAssets: Record<string, ModelAssetSource> = {
     meshUrl: assetPath("rock.glb"),
     scale: 0.9,
   },
+  shoe: {
+    meshUrl: assetPath("shoe.glb"),
+  },
   dog: {
-    meshUrl: assetPath(isDogNyxy ? "nyxy.glb" : "dog.glb"),
+    meshUrl: assetPath("dog.glb"),
   },
   head: {
     meshUrl: assetPath("head.glb"),
@@ -29,6 +30,10 @@ const modelAssets: Record<string, ModelAssetSource> = {
   spartan: {
     meshUrl: assetPath("spartan.glb"),
     scale: 1.25,
+  },
+  // Secret nyxy model
+  nyxy: {
+    meshUrl: assetPath("nyxy.glb"),
   },
 };
 
