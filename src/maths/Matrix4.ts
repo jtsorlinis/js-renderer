@@ -188,18 +188,63 @@ export class Matrix4 {
   }
 
   public multiply(m: Matrix4) {
+    const a = this.m;
+    const b = m.m;
     const result = new Matrix4();
+    const r = result.m;
 
-    for (let col = 0; col < 4; col++) {
-      const colOffset = col * 4;
-      for (let row = 0; row < 4; row++) {
-        result.m[row + colOffset] =
-          this.m[row] * m.m[colOffset] +
-          this.m[row + 4] * m.m[colOffset + 1] +
-          this.m[row + 8] * m.m[colOffset + 2] +
-          this.m[row + 12] * m.m[colOffset + 3];
-      }
-    }
+    const a00 = a[0];
+    const a01 = a[1];
+    const a02 = a[2];
+    const a03 = a[3];
+    const a10 = a[4];
+    const a11 = a[5];
+    const a12 = a[6];
+    const a13 = a[7];
+    const a20 = a[8];
+    const a21 = a[9];
+    const a22 = a[10];
+    const a23 = a[11];
+    const a30 = a[12];
+    const a31 = a[13];
+    const a32 = a[14];
+    const a33 = a[15];
+
+    let b0 = b[0];
+    let b1 = b[1];
+    let b2 = b[2];
+    let b3 = b[3];
+    r[0] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+    r[1] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+    r[2] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+    r[3] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+    b0 = b[4];
+    b1 = b[5];
+    b2 = b[6];
+    b3 = b[7];
+    r[4] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+    r[5] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+    r[6] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+    r[7] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+    b0 = b[8];
+    b1 = b[9];
+    b2 = b[10];
+    b3 = b[11];
+    r[8] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+    r[9] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+    r[10] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+    r[11] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+    b0 = b[12];
+    b1 = b[13];
+    b2 = b[14];
+    b3 = b[15];
+    r[12] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+    r[13] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+    r[14] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+    r[15] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
 
     return result;
   }
