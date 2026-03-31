@@ -28,15 +28,11 @@ const modelAssets: Record<string, ModelAssetSource> = {
     meshUrl: assetPath("head.glb"),
   },
   dragon: {
-    meshUrl: assetPath("dragon.obj"),
-    textureUrl: assetPath("dragon_diffuse.png"),
-    normalTextureUrl: assetPath("dragon_normal.png"),
+    meshUrl: assetPath("dragon.glb"),
     scale: 1.3,
   },
   spartan: {
-    meshUrl: assetPath("spartan.obj"),
-    textureUrl: assetPath("spartan_diffuse.png"),
-    normalTextureUrl: assetPath("spartan_normal.png"),
+    meshUrl: assetPath("spartan.glb"),
   },
 };
 
