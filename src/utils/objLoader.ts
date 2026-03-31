@@ -18,7 +18,11 @@ export const getModelRadius = (mesh: LoadedModel) => {
   return mesh.vertices.reduce((max, v) => Math.max(max, v.length()), 0);
 };
 
-export const loadObjAsset = async (url: string, normalize = true, scale = 1) => {
+export const loadObjAsset = async (
+  url: string,
+  normalize = true,
+  scale = 1,
+) => {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(
@@ -65,11 +69,11 @@ export const loadObj = (file: string, normalize = false, scale = 1) => {
     const split = lines[i].trim().split(/\s+/);
     const isQuad = split.length === 5;
     if (split[0] == "v") {
-      tempVerts.push(new Vector3(+split[1], +split[2], -(+split[3])));
+      tempVerts.push(new Vector3(+split[1], +split[2], -+split[3]));
     } else if (split[0] == "vt") {
       tempUVs.push(new Vector2(+split[1], +split[2]));
     } else if (split[0] == "vn") {
-      tempNormals.push(new Vector3(+split[1], +split[2], -(+split[3])));
+      tempNormals.push(new Vector3(+split[1], +split[2], -+split[3]));
     } else if (split[0] == "f") {
       // Check if quad
       if (isQuad) {
@@ -206,7 +210,8 @@ export const loadObj = (file: string, normalize = false, scale = 1) => {
 
     for (let i = 0; i < vertices.length; i++) {
       const normal = normals[i];
-      const tangentSum = tangentSums.get(tangentKeys[i]) ?? getFallbackTangent(normal);
+      const tangentSum =
+        tangentSums.get(tangentKeys[i]) ?? getFallbackTangent(normal);
       const bitangentSum = bitangentSums.get(tangentKeys[i]);
 
       let tangent = tangentSum.subtract(normal.scale(normal.dot(tangentSum)));
@@ -216,18 +221,15 @@ export const loadObj = (file: string, normalize = false, scale = 1) => {
         tangent = tangent.normalize();
       }
 
-      let bitangent = bitangentSum
-        ? bitangentSum.subtract(normal.scale(normal.dot(bitangentSum)))
-        : normal.cross(tangent).normalize();
-      if (bitangent.lengthSq() < 0.00000001) {
-        bitangent = normal.cross(tangent).normalize();
-      } else {
-        bitangent = bitangent.normalize();
-      }
-
-      if (normal.cross(tangent).dot(bitangent) < 0) {
-        bitangent = bitangent.scale(-1);
-      }
+      const canonicalBitangent = normal.cross(tangent).normalize();
+      const bitangentHandedness =
+        bitangentSum &&
+        canonicalBitangent.dot(
+          bitangentSum.subtract(normal.scale(normal.dot(bitangentSum))),
+        ) < 0
+          ? -1
+          : 1;
+      const bitangent = canonicalBitangent.scale(bitangentHandedness);
 
       tangents.push(tangent);
       bitangents.push(bitangent);
