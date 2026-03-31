@@ -10,9 +10,11 @@ import {
 import { getModelRadius } from "./utils/objLoader";
 import {
   ensureModelOption,
+  loadCustomGlb,
   prefetchRemainingModels,
   setHighResTextureLimits,
   type ModelKey,
+  type ModelOption,
 } from "./utils/modelLoader";
 import { SmoothShader } from "./shaders/Smooth";
 import { TexturedShader } from "./shaders/Textured";
@@ -49,6 +51,8 @@ const shadingSlider = document.getElementById(
   "shadingSlider",
 ) as HTMLInputElement;
 const modelDd = document.getElementById("modelDd") as HTMLSelectElement;
+const loadGlbBtn = document.getElementById("loadGlbBtn") as HTMLButtonElement;
+const glbInput = document.getElementById("glbInput") as HTMLInputElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 
 const getShadingButton = () => {
@@ -147,6 +151,7 @@ let shadowOrthoSize = getModelRadius(model);
 let modelPos = new Vector3(0, 0, 0);
 let modelRotation = new Vector3(0, Math.PI / 2, 0);
 let modelScale = new Vector3(1, 1, 1);
+let customGlbFile: File | null = null;
 
 const shaders = {
   normalMapped: new NormalMappedShader(),
@@ -179,9 +184,7 @@ const resetModelTransform = () => {
 
 let activeModelRequest = 0;
 
-const applyModelOption = (
-  selectedModel: Awaited<ReturnType<typeof ensureModelOption>>,
-) => {
+const applyModelOption = (selectedModel: ModelOption) => {
   model = selectedModel.mesh;
   texture = selectedModel.texture;
   normalTexture = selectedModel.normalTexture;
@@ -196,6 +199,21 @@ const setModel = async (modelKey: ModelKey, resetTransform = true) => {
     return;
   }
 
+  customGlbFile = null;
+  applyModelOption(selectedModel);
+  if (resetTransform) {
+    resetModelTransform();
+  }
+};
+
+const loadSelectedGlb = async (file: File, resetTransform = true) => {
+  const requestId = ++activeModelRequest;
+  const selectedModel = await loadCustomGlb(file);
+  if (requestId !== activeModelRequest) {
+    return;
+  }
+
+  customGlbFile = file;
   applyModelOption(selectedModel);
   if (resetTransform) {
     resetModelTransform();
@@ -205,6 +223,10 @@ const setModel = async (modelKey: ModelKey, resetTransform = true) => {
 highResCb.addEventListener("change", () => {
   setRenderResolution(highResCb.checked ? 2 : 1);
   if (!setHighResTextureLimits(highResCb.checked)) return;
+  if (customGlbFile) {
+    loadSelectedGlb(customGlbFile, false);
+    return;
+  }
   setModel(modelDd.value as ModelKey, false);
 });
 
@@ -372,6 +394,22 @@ modelDd.onchange = () => {
     console.error(`Failed to switch to model "${modelDd.value}"`, error);
   });
 };
+
+loadGlbBtn.addEventListener("click", () => {
+  glbInput.click();
+});
+
+glbInput.addEventListener("change", () => {
+  const [file] = glbInput.files ?? [];
+  glbInput.value = "";
+  if (!file) {
+    return;
+  }
+
+  loadSelectedGlb(file).catch((error) => {
+    console.error(`Failed to load GLB file "${file.name}"`, error);
+  });
+});
 
 updateModelStats();
 loop();

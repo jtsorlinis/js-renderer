@@ -159,6 +159,20 @@ export const ensureModelOption = (modelKey: ModelKey) => {
   return modelAsset.pending;
 };
 
+export const loadCustomGlb = async (
+  file: File,
+  normalize = true,
+  scale = 1,
+) => {
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    return await loadGlbAsset(objectUrl, normalize, scale);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+};
+
 export const prefetchRemainingModels = async (initialModelKey: ModelKey) => {
   for (const modelKey of MODEL_KEYS) {
     if (modelKey === initialModelKey) continue;
