@@ -12,12 +12,11 @@ const modelAssets: Record<string, ModelAssetSource> = {
     meshUrl: assetPath("dice.obj"),
     textureUrl: assetPath("dice_diffuse.png"),
     normalTextureUrl: assetPath("dice_normal.png"),
-    scale: 0.75,
+    scale: 0.8,
   },
   rock: {
-    meshUrl: assetPath("rock.obj"),
-    textureUrl: assetPath("rock_diffuse.png"),
-    normalTextureUrl: assetPath("rock_normal.png"),
+    meshUrl: assetPath("rock.glb"),
+    scale: 0.9,
   },
   dog: {
     meshUrl: assetPath(isDogNyxy ? "nyxy.glb" : "dog.glb"),
@@ -31,6 +30,7 @@ const modelAssets: Record<string, ModelAssetSource> = {
   },
   spartan: {
     meshUrl: assetPath("spartan.glb"),
+    scale: 1.25,
   },
 };
 
