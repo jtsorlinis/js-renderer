@@ -5,7 +5,7 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Software Renderer</title>
-    <script type="module" crossorigin src="/js-renderer/assets/index-76XW1wx4.js"></script>
+    <script type="module" crossorigin src="/js-renderer/assets/index-dLKa5oP1.js"></script>
     <link rel="stylesheet" crossorigin href="/js-renderer/assets/index-CYBepr8N.css">
   </head>
   <body>
@@ -20,12 +20,23 @@
 
       <div class="section">
         <label>
-          Model
+          Model (triangles):
           <select id="modelDd">
-            <option value="dog">Dog</option>
-            <option value="head">Head</option>
+            <option value="dice">Dice (20)</option>
+            <option value="rock">Rock (500)</option>
+            <option value="shoe">Shoe (3k)</option>
+            <option value="dog">Dog (10k)</option>
+            <option value="head">Head (50k)</option>
+            <option value="dragon">Dragon (100k)</option>
+            <option value="spartan">Spartan (300k)</option>
+            <option value="nyxy" hidden>Nyxy (10k)</option>
           </select>
         </label>
+      </div>
+
+      <div class="section">
+        <span class="section-heading">Frame</span>
+        <span class="stat-value" id="fps">0 (0.0 ms)</span>
       </div>
 
       <div class="section">
@@ -37,7 +48,7 @@
               <button
                 type="button"
                 class="shading-option is-active"
-                data-shading-index="6"
+                data-shading-index="7"
                 data-shading-value="normalMapped-shadows"
                 aria-pressed="true"
               >
@@ -48,7 +59,7 @@
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="5"
+                data-shading-index="6"
                 data-shading-value="normalMapped"
                 aria-pressed="false"
               >
@@ -59,7 +70,7 @@
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="4"
+                data-shading-index="5"
                 data-shading-value="textured"
                 aria-pressed="false"
               >
@@ -70,18 +81,18 @@
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="3"
+                data-shading-index="4"
                 data-shading-value="smooth"
                 aria-pressed="false"
               >
-                Smoothing
+                Interpolation
               </button>
             </li>
             <li>
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="2"
+                data-shading-index="3"
                 data-shading-value="flat"
                 aria-pressed="false"
               >
@@ -92,11 +103,22 @@
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="1"
+                data-shading-index="2"
                 data-shading-value="unlit"
                 aria-pressed="false"
               >
                 Faces
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="shading-option"
+                data-shading-index="1"
+                data-shading-value="culledWireframe"
+                aria-pressed="false"
+              >
+                Culling
               </button>
             </li>
             <li>
@@ -117,9 +139,9 @@
             class="shading-slider"
             type="range"
             min="0"
-            max="6"
+            max="7"
             step="1"
-            value="6"
+            value="7"
             aria-label="Shading"
           />
         </div>
@@ -129,14 +151,22 @@
         <label><input type="checkbox" id="orthoCb" /> Orthographic</label>
       </div>
 
+      <div class="section">
+        <label><input type="checkbox" id="highResCb" /> High Res (2x)</label>
+      </div>
+
       <div class="stats">
         <div class="stat">
           <span class="stat-label">Triangles</span>
           <span class="stat-value" id="tris">0</span>
         </div>
         <div class="stat">
-          <span class="stat-label">Frame</span>
-          <span class="stat-value"><span id="fps">0</span> ms</span>
+          <span class="stat-label">Texture</span>
+          <span class="stat-value" id="textureSize">0 x 0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Normal</span>
+          <span class="stat-value" id="normalTextureSize">0 x 0</span>
         </div>
       </div>
     </aside>
