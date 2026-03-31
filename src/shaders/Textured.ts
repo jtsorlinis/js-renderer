@@ -30,9 +30,9 @@ export class TexturedShader extends BaseShader {
     // Load source vertex data.
     const model = this.uniforms.model;
     const i = this.vertexId;
-    const worldPos = this.uniforms.modelMat.multiplyPoint(model.vertices[i]);
+    const worldPos = this.uniforms.modelMat.transformPoint(model.vertices[i]);
     const normal = this.uniforms.normalMat
-      .multiplyDirection(model.normals[i])
+      .transformDirection(model.normals[i])
       .normalize();
 
     // Emit per-vertex values to be interpolated over the triangle.
@@ -41,7 +41,7 @@ export class TexturedShader extends BaseShader {
     this.v2f(this.vUV, model.uvs[i]);
 
     // Return clip-space position.
-    return this.uniforms.mvp.multiplyPoint(model.vertices[i]);
+    return this.uniforms.mvp.projectPoint(model.vertices[i]);
   };
 
   fragment = () => {

@@ -33,7 +33,7 @@ export class UnlitShader extends BaseShader {
     this.colour = new Vector3(hash(i), hash(i + 1), hash(i + 2));
 
     // Return clip-space position.
-    return this.uniforms.mvp.multiplyPoint(model.vertices[this.vertexId]);
+    return this.uniforms.mvp.projectPoint(model.vertices[this.vertexId]);
   };
 
   fragment = () => {
