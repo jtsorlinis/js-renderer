@@ -569,7 +569,7 @@ const loadTextureFromSlot = async (
   );
 };
 
-export const loadGlbAsset = async (url: string, normalize = false, scale = 1) => {
+export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => {
   const { json, binaryChunk } = await readGlb(url);
   const converted = convertGlbGeometry(json, binaryChunk, normalize, scale);
 
