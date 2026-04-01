@@ -14,8 +14,14 @@ const minColour = 0.4;
 
 // Returns a random value for each face to give them distinct colours.
 const hash = (x: number) => {
-  const s = Math.sin(x * 12.9898) * 43758.5453;
-  return minColour + (s - Math.floor(s)) * (1 - minColour);
+  x |= 0; // force 32-bit int
+  x ^= x >>> 16;
+  x = Math.imul(x, 0x7feb352d);
+  x ^= x >>> 15;
+  x = Math.imul(x, 0x846ca68b);
+  x ^= x >>> 16;
+
+  return minColour + ((x >>> 0) / 4294967295) * (1 - minColour);
 };
 
 export class UnlitShader extends BaseShader {
