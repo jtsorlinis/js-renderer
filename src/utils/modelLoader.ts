@@ -7,7 +7,7 @@ const assetPath = (fileName: string) =>
 
 const modelAssets: Record<string, ModelAssetSource> = {
   dice: {
-    meshUrl: assetPath("dice.glb"),
+    meshUrl: assetPath("d20.glb"),
     scale: 0.8,
   },
   rock: {
