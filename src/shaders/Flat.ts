@@ -3,16 +3,12 @@ import { Vector3, Matrix4, Vector4 } from "../maths";
 
 export interface Uniforms {
   model: Verts;
-  modelMat: Matrix4;
   mvp: Matrix4;
   normalMat: Matrix4;
   lightDir: Vector3;
   lightCol: Vector3;
-  camPos: Vector3;
 }
 
-const specStr = 0.25;
-const shininess = 16;
 const ambient = 0.2;
 const lightScale = 0.75;
 
@@ -21,30 +17,26 @@ export class FlatShader extends BaseShader {
   uniforms!: Uniforms;
 
   // Flat shading stores one lighting value for the whole triangle.
-  lighting = 0;
+  lighting = new Vector3();
 
   vertex = (): Vector4 => {
-    // Use face normal so every pixel in this triangle gets identical lighting.
     const model = this.uniforms.model;
-    const i = this.vertexId;
-    const normal = this.uniforms.normalMat
-      .transformDirection(model.faceNormals[i])
-      .normalize();
-    const worldPos = this.uniforms.modelMat.transformPoint(model.vertices[i]);
 
-    // Compute lighting once in vertex stage for this face.
-    const viewDir = this.uniforms.camPos.subtract(worldPos.xyz).normalize();
-    const halfWayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
-    let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
-    spec *= specStr;
-    const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
-    this.lighting = (diffuse + spec + ambient) * lightScale;
+    // Use one shared lighting value for the whole triangle.
+    if (this.nthVert === 0) {
+      const normal = this.uniforms.normalMat
+        .transformDirection(model.faceNormals[this.vertexId])
+        .normalize();
+      const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
+      const lightStrength = (diffuse + ambient) * lightScale;
+      this.lighting = this.uniforms.lightCol.scale(lightStrength);
+    }
 
     // Return clip-space position.
-    return this.uniforms.mvp.projectPoint(model.vertices[i]);
+    return this.uniforms.mvp.projectPoint(model.vertices[this.vertexId]);
   };
 
   fragment = () => {
-    return this.uniforms.lightCol.scale(this.lighting);
+    return this.lighting;
   };
 }
