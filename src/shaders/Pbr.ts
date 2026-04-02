@@ -2,6 +2,17 @@ import { BaseShader, Verts } from "./BaseShader";
 import { Vector3, Matrix4, Vector4, Vector2 } from "../maths";
 import { DepthTexture, Texture } from "../drawing";
 import { type PbrMaterial } from "../utils/modelLoader";
+import {
+  EPSILON,
+  distributionGGX,
+  fresnelSchlick,
+  geometrySmith,
+  linearToSrgb,
+  mixVec3,
+  saturate,
+  srgbToLinear,
+  toneMapLinear,
+} from "./pbrHelpers";
 
 export interface Uniforms {
   model: Verts;
@@ -16,77 +27,11 @@ export interface Uniforms {
   shadowMap: DepthTexture;
 }
 
-const EPSILON = 0.00001;
-const SHADOW_BIAS = 0.01;
-const DIRECT_LIGHT_INTENSITY = 2.5;
-const AMBIENT_INTENSITY = 0.025;
-const DISPLAY_EXPOSURE = 1.5;
+const shadowBias = 0.01;
+const lightIntensity = 2.5;
+const exposure = 1;
 
-const saturate = (value: number) => {
-  return Math.max(0, Math.min(1, value));
-};
-
-const mixVec3 = (a: Vector3, b: Vector3, t: number) => {
-  return a.scale(1 - t).add(b.scale(t));
-};
-
-const srgbToLinearChannel = (value: number) => {
-  if (value <= 0.04045) {
-    return value / 12.92;
-  }
-  return Math.pow((value + 0.055) / 1.055, 2.4);
-};
-
-const linearToSrgbChannel = (value: number) => {
-  if (value <= 0.0031308) {
-    return value * 12.92;
-  }
-  return 1.055 * Math.pow(value, 1 / 2.4) - 0.055;
-};
-
-const srgbToLinear = (colour: Vector3) => {
-  return new Vector3(
-    srgbToLinearChannel(colour.x),
-    srgbToLinearChannel(colour.y),
-    srgbToLinearChannel(colour.z),
-  );
-};
-
-const linearToSrgb = (colour: Vector3) => {
-  return new Vector3(
-    linearToSrgbChannel(saturate(colour.x)),
-    linearToSrgbChannel(saturate(colour.y)),
-    linearToSrgbChannel(saturate(colour.z)),
-  );
-};
-
-const toneMapLinear = (colour: Vector3) => {
-  return colour.scale(DISPLAY_EXPOSURE);
-};
-
-const fresnelSchlick = (cosTheta: number, f0: Vector3) => {
-  const factor = Math.pow(1 - saturate(cosTheta), 5);
-  return f0.add(Vector3.One.subtract(f0).scale(factor));
-};
-
-const distributionGGX = (nDotH: number, roughness: number) => {
-  const alpha = roughness * roughness;
-  const alphaSq = alpha * alpha;
-  const denom = nDotH * nDotH * (alphaSq - 1) + 1;
-  return alphaSq / Math.max(Math.PI * denom * denom, EPSILON);
-};
-
-const geometrySchlickGGX = (nDotX: number, roughness: number) => {
-  const r = roughness + 1;
-  const k = (r * r) / 8;
-  return nDotX / Math.max(nDotX * (1 - k) + k, EPSILON);
-};
-
-const geometrySmith = (nDotV: number, nDotL: number, roughness: number) => {
-  return (
-    geometrySchlickGGX(nDotV, roughness) * geometrySchlickGGX(nDotL, roughness)
-  );
-};
+const ambientIntensity = 0.05;
 
 export class PbrShader extends BaseShader {
   uniforms!: Uniforms;
@@ -138,7 +83,7 @@ export class PbrShader extends BaseShader {
     const viewDir = this.interpolateVec3(this.vViewDirTangent).normalize();
 
     const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-    const shadow = lightSpacePos.z - SHADOW_BIAS > depth ? 0 : 1;
+    const shadow = lightSpacePos.z - shadowBias > depth ? 0 : 1;
 
     const normal = this.sample(this.uniforms.normalTexture, uv);
     const baseColor = srgbToLinear(
@@ -181,16 +126,16 @@ export class PbrShader extends BaseShader {
       directLighting = diffuse
         .add(specular)
         .multiply(this.uniforms.lightCol)
-        .scale(nDotL * shadow * DIRECT_LIGHT_INTENSITY);
+        .scale(nDotL * shadow * lightIntensity);
     }
 
     // Direct-light-only PBR still needs a small environment stand-in until IBL exists.
     const f0 = mixVec3(new Vector3(0.04, 0.04, 0.04), baseColor, metallic);
     const ambient = baseColor
       .scale(1 - metallic)
-      .scale(AMBIENT_INTENSITY)
-      .add(f0.scale(AMBIENT_INTENSITY * 0.5));
+      .scale(ambientIntensity)
+      .add(f0.scale(ambientIntensity * 0.5));
 
-    return linearToSrgb(toneMapLinear(ambient.add(directLighting)));
+    return linearToSrgb(toneMapLinear(ambient.add(directLighting), exposure));
   };
 }
