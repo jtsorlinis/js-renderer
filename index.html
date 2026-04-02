@@ -46,9 +46,20 @@
               <button
                 type="button"
                 class="shading-option is-active"
+                data-shading-index="8"
+                data-shading-value="pbr"
+                aria-pressed="true"
+              >
+                PBR
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="shading-option"
                 data-shading-index="7"
                 data-shading-value="normalMapped-shadows"
-                aria-pressed="true"
+                aria-pressed="false"
               >
                 Shadows
               </button>
@@ -137,9 +148,9 @@
             class="shading-slider"
             type="range"
             min="0"
-            max="7"
+            max="8"
             step="1"
-            value="7"
+            value="8"
             aria-label="Shading"
           />
         </div>

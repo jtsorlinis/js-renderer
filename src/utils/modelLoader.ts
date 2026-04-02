@@ -1,4 +1,5 @@
 import { setHighResTextureLimit, Texture } from "../drawing";
+import { Vector3 } from "../maths";
 import { loadGlbAsset } from "./glbLoader";
 import { type LoadedModel, loadObjAsset } from "./objLoader";
 
@@ -44,10 +45,18 @@ export const MODEL_KEYS = Object.keys(
 
 export type ModelKey = keyof typeof modelAssets;
 
+export type PbrMaterial = {
+  metallicRoughnessTexture: Texture;
+  baseColorFactor: Vector3;
+  metallicFactor: number;
+  roughnessFactor: number;
+};
+
 export type ModelOption = {
   mesh: LoadedModel;
   texture: Texture;
   normalTexture: Texture;
+  pbrMaterial: PbrMaterial;
 };
 
 type ModelAssetSource = {
@@ -149,7 +158,17 @@ export const ensureModelOption = (modelKey: ModelKey) => {
             ),
           ]);
 
-          return { mesh, texture, normalTexture };
+          return {
+            mesh,
+            texture,
+            normalTexture,
+            pbrMaterial: {
+              metallicRoughnessTexture: new Texture([Vector3.One], 1, 1),
+              baseColorFactor: Vector3.One,
+              metallicFactor: 0,
+              roughnessFactor: 1,
+            },
+          };
         })();
 
     modelAsset.loaded = loadedModel;

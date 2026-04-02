@@ -23,6 +23,7 @@ import { UnlitShader } from "./shaders/Unlit";
 import { BaseShader } from "./shaders/BaseShader";
 import { DepthShader } from "./shaders/DepthShader";
 import { NormalMappedShader } from "./shaders/NormalMapped";
+import { PbrShader } from "./shaders/Pbr";
 import { resolveShadingSelection, type RenderMode } from "./renderSettings";
 
 const CANVAS_WIDTH = 800;
@@ -146,6 +147,7 @@ prefetchRemainingModels("dice");
 let model = diceModel.mesh;
 let texture = diceModel.texture;
 let normalTexture = diceModel.normalTexture;
+let pbrMaterial = diceModel.pbrMaterial;
 let shadowOrthoSize = getModelRadius(model);
 
 let modelPos = new Vector3(0, 0, 0);
@@ -154,6 +156,7 @@ let modelScale = new Vector3(1, 1, 1);
 let customGlbFile: File | null = null;
 
 const shaders = {
+  pbr: new PbrShader(),
   normalMapped: new NormalMappedShader(),
   textured: new TexturedShader(),
   smooth: new SmoothShader(),
@@ -188,6 +191,7 @@ const applyModelOption = (selectedModel: ModelOption) => {
   model = selectedModel.mesh;
   texture = selectedModel.texture;
   normalTexture = selectedModel.normalTexture;
+  pbrMaterial = selectedModel.pbrMaterial;
   shadowOrthoSize = getModelRadius(model);
   updateModelStats();
 };
@@ -327,6 +331,7 @@ const draw = () => {
     mCamPos,
     texture,
     normalTexture,
+    pbrMaterial,
     lightSpaceMat,
     shadowMap,
   };
