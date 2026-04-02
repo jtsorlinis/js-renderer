@@ -40,7 +40,11 @@ type GltfImage = {
 type GltfMaterial = {
   normalTexture?: GltfTextureInfo;
   pbrMetallicRoughness?: {
+    baseColorFactor?: number[];
     baseColorTexture?: GltfTextureInfo;
+    metallicFactor?: number;
+    metallicRoughnessTexture?: GltfTextureInfo;
+    roughnessFactor?: number;
   };
 };
 
@@ -96,6 +100,12 @@ type ConvertedGlb = {
   mesh: LoadedModel;
   baseColorTextureIndex?: number;
   normalTextureIndex?: number;
+  pbrMaterial: {
+    baseColorFactor: Vector3;
+    metallicFactor: number;
+    metallicRoughnessTextureIndex?: number;
+    roughnessFactor: number;
+  };
 };
 
 const GLB_MAGIC = 0x46546c67;
@@ -399,6 +409,10 @@ const convertGlbGeometry = (
   let nextObjIndex = 1;
   let baseColorTextureIndex: number | undefined;
   let normalTextureIndex: number | undefined;
+  let baseColorFactor: Vector3 | undefined;
+  let metallicFactor: number | undefined;
+  let metallicRoughnessTextureIndex: number | undefined;
+  let roughnessFactor: number | undefined;
 
   for (const { primitive, worldMatrix } of primitiveInstances) {
     const positionAccessorIndex = primitive.attributes.POSITION;
@@ -410,9 +424,15 @@ const convertGlbGeometry = (
       primitive.material !== undefined
         ? gltf.materials?.[primitive.material]
         : undefined;
-    const baseColorTexture = material?.pbrMetallicRoughness?.baseColorTexture;
+    const pbrMaterial = material?.pbrMetallicRoughness;
+    const baseColorTexture = pbrMaterial?.baseColorTexture;
+    const metallicRoughnessTexture = pbrMaterial?.metallicRoughnessTexture;
     const normalTexture = material?.normalTexture;
-    const texCoordSet = baseColorTexture?.texCoord ?? normalTexture?.texCoord ?? 0;
+    const texCoordSet =
+      baseColorTexture?.texCoord ??
+      normalTexture?.texCoord ??
+      metallicRoughnessTexture?.texCoord ??
+      0;
     const uvAccessorIndex =
       primitive.attributes[`TEXCOORD_${texCoordSet}`] ??
       primitive.attributes.TEXCOORD_0;
@@ -439,6 +459,17 @@ const convertGlbGeometry = (
 
     baseColorTextureIndex ??= baseColorTexture?.index;
     normalTextureIndex ??= normalTexture?.index;
+    metallicRoughnessTextureIndex ??= metallicRoughnessTexture?.index;
+    baseColorFactor ??=
+      pbrMaterial?.baseColorFactor && pbrMaterial.baseColorFactor.length >= 3
+        ? new Vector3(
+            pbrMaterial.baseColorFactor[0],
+            pbrMaterial.baseColorFactor[1],
+            pbrMaterial.baseColorFactor[2],
+          )
+        : Vector3.One;
+    metallicFactor ??= pbrMaterial?.metallicFactor ?? 1;
+    roughnessFactor ??= pbrMaterial?.roughnessFactor ?? 1;
 
     const normalMatrix = worldMatrix.invert().transpose();
 
@@ -504,6 +535,12 @@ const convertGlbGeometry = (
     mesh: loadObj(objLines.join("\n"), normalize, scale),
     baseColorTextureIndex,
     normalTextureIndex,
+    pbrMaterial: {
+      baseColorFactor: baseColorFactor ?? Vector3.One,
+      metallicFactor: metallicFactor ?? 1,
+      metallicRoughnessTextureIndex,
+      roughnessFactor: roughnessFactor ?? 1,
+    },
   };
 };
 
@@ -573,7 +610,7 @@ export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => 
   const { json, binaryChunk } = await readGlb(url);
   const converted = convertGlbGeometry(json, binaryChunk, normalize, scale);
 
-  const [texture, normalTexture] = await Promise.all([
+  const [texture, normalTexture, metallicRoughnessTexture] = await Promise.all([
     loadTextureFromSlot(
       json,
       binaryChunk,
@@ -590,11 +627,25 @@ export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => 
       new Texture([Vector3.Forward], 1, 1),
       true,
     ),
+    loadTextureFromSlot(
+      json,
+      binaryChunk,
+      converted.pbrMaterial.metallicRoughnessTextureIndex,
+      url,
+      new Texture([Vector3.One], 1, 1),
+      false,
+    ),
   ]);
 
   return {
     mesh: converted.mesh,
     texture,
     normalTexture,
+    pbrMaterial: {
+      baseColorFactor: converted.pbrMaterial.baseColorFactor,
+      metallicFactor: converted.pbrMaterial.metallicFactor,
+      metallicRoughnessTexture,
+      roughnessFactor: converted.pbrMaterial.roughnessFactor,
+    },
   };
 };
