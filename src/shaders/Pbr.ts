@@ -60,13 +60,8 @@ const linearToSrgb = (colour: Vector3) => {
   );
 };
 
-const toneMap = (colour: Vector3) => {
-  const exposed = colour.scale(DISPLAY_EXPOSURE);
-  return new Vector3(
-    exposed.x / (1 + exposed.x),
-    exposed.y / (1 + exposed.y),
-    exposed.z / (1 + exposed.z),
-  );
+const toneMapLinear = (colour: Vector3) => {
+  return colour.scale(DISPLAY_EXPOSURE);
 };
 
 const fresnelSchlick = (cosTheta: number, f0: Vector3) => {
@@ -196,6 +191,6 @@ export class PbrShader extends BaseShader {
       .scale(AMBIENT_INTENSITY)
       .add(f0.scale(AMBIENT_INTENSITY * 0.5));
 
-    return linearToSrgb(toneMap(ambient.add(directLighting)));
+    return linearToSrgb(toneMapLinear(ambient.add(directLighting)));
   };
 }
