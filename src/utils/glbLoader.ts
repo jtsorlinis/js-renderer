@@ -650,10 +650,7 @@ export const loadGlbAsset = async (
       converted.baseColorTextureIndex,
       url,
       new Texture([Vector3.One], 1, 1),
-      {
-        type: "color",
-        colorSpace: "srgb",
-      },
+      { type: "color", colorSpace: "srgb" },
     ),
     loadTextureFromSlot(
       json,
@@ -661,10 +658,7 @@ export const loadGlbAsset = async (
       converted.normalTextureIndex,
       url,
       new Texture([Vector3.Forward], 1, 1),
-      {
-        type: "normal",
-        colorSpace: "linear",
-      },
+      { type: "normal", colorSpace: "linear" },
     ),
     loadTextureFromSlot(
       json,
@@ -672,10 +666,7 @@ export const loadGlbAsset = async (
       converted.pbrMaterial.metallicRoughnessTextureIndex,
       url,
       new Texture([Vector3.One], 1, 1),
-      {
-        type: "color",
-        colorSpace: "linear",
-      },
+      { type: "color", colorSpace: "linear" },
     ),
   ]);
 
