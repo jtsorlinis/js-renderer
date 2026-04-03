@@ -1,4 +1,4 @@
-import { Texture } from "../drawing";
+import { Texture, type TextureDescriptor } from "../drawing";
 import { Matrix4, Vector3 } from "../maths";
 import { type LoadedModel, loadObj } from "./objLoader";
 
@@ -179,7 +179,9 @@ const readGlb = async (url: string): Promise<ParsedGlb> => {
     }
 
     if (chunkType === JSON_CHUNK_TYPE) {
-      jsonChunk = decoder.decode(new Uint8Array(fileBuffer, chunkStart, chunkLength));
+      jsonChunk = decoder.decode(
+        new Uint8Array(fileBuffer, chunkStart, chunkLength),
+      );
     } else if (chunkType === BIN_CHUNK_TYPE) {
       binaryChunk = fileBuffer.slice(chunkStart, chunkEnd);
     }
@@ -205,9 +207,7 @@ const matrixFromArray = (values: number[]) => {
   return matrix;
 };
 
-const rotationFromQuaternion = (
-  rotation: [number, number, number, number],
-) => {
+const rotationFromQuaternion = (rotation: [number, number, number, number]) => {
   const [x, y, z, w] = rotation;
   const x2 = x + x;
   const y2 = y + y;
@@ -335,7 +335,11 @@ const readAccessor = (
     const elementOffset =
       bufferViewOffset + accessorOffset + elementIndex * byteStride;
 
-    for (let componentIndex = 0; componentIndex < componentCount; componentIndex++) {
+    for (
+      let componentIndex = 0;
+      componentIndex < componentCount;
+      componentIndex++
+    ) {
       const valueOffset = elementOffset + componentIndex * componentSize;
       values[elementIndex * componentCount + componentIndex] = readComponent(
         dataView,
@@ -372,11 +376,17 @@ const collectPrimitiveInstances = (gltf: Gltf) => {
     (rootNodeIndices.length ? { nodes: rootNodeIndices } : undefined);
 
   const visitNode = (nodeIndex: number, parentMatrix: Matrix4) => {
-    const node = requireValue(gltf.nodes?.[nodeIndex], `Missing node ${nodeIndex}`);
+    const node = requireValue(
+      gltf.nodes?.[nodeIndex],
+      `Missing node ${nodeIndex}`,
+    );
     const worldMatrix = parentMatrix.multiply(getNodeMatrix(node));
 
     if (node.mesh !== undefined) {
-      const mesh = requireValue(gltf.meshes?.[node.mesh], `Missing mesh ${node.mesh}`);
+      const mesh = requireValue(
+        gltf.meshes?.[node.mesh],
+        `Missing mesh ${node.mesh}`,
+      );
       for (const primitive of mesh.primitives) {
         if ((primitive.mode ?? TRIANGLES_MODE) !== TRIANGLES_MODE) {
           continue;
@@ -473,7 +483,11 @@ const convertGlbGeometry = (
 
     const normalMatrix = worldMatrix.invert().transpose();
 
-    for (let triangleIndex = 0; triangleIndex < indices.length; triangleIndex += 3) {
+    for (
+      let triangleIndex = 0;
+      triangleIndex < indices.length;
+      triangleIndex += 3
+    ) {
       for (let corner = 0; corner < 3; corner++) {
         const vertexIndex = indices[triangleIndex + corner];
         const positionOffset = vertexIndex * 3;
@@ -483,7 +497,9 @@ const convertGlbGeometry = (
           positions[positionOffset + 2],
         );
         const worldPosition = worldMatrix.transformPoint(localPosition).xyz;
-        objLines.push(`v ${worldPosition.x} ${worldPosition.y} ${worldPosition.z}`);
+        objLines.push(
+          `v ${worldPosition.x} ${worldPosition.y} ${worldPosition.z}`,
+        );
 
         if (uvs) {
           const uvOffset = vertexIndex * 2;
@@ -503,7 +519,9 @@ const convertGlbGeometry = (
               ),
             ),
           );
-          objLines.push(`vn ${worldNormal.x} ${worldNormal.y} ${worldNormal.z}`);
+          objLines.push(
+            `vn ${worldNormal.x} ${worldNormal.y} ${worldNormal.z}`,
+          );
         }
       }
 
@@ -520,7 +538,9 @@ const convertGlbGeometry = (
           `f ${nextObjIndex}//${nextObjIndex} ${nextObjIndex + 1}//${nextObjIndex + 1} ${nextObjIndex + 2}//${nextObjIndex + 2}`,
         );
       } else {
-        objLines.push(`f ${nextObjIndex} ${nextObjIndex + 1} ${nextObjIndex + 2}`);
+        objLines.push(
+          `f ${nextObjIndex} ${nextObjIndex + 1} ${nextObjIndex + 2}`,
+        );
       }
 
       nextObjIndex += 3;
@@ -549,9 +569,12 @@ const loadTextureFromImage = async (
   binaryChunk: ArrayBuffer,
   imageIndex: number,
   assetUrl: string,
-  isNormalMap: boolean,
+  descriptor: TextureDescriptor,
 ) => {
-  const image = requireValue(gltf.images?.[imageIndex], `Missing image ${imageIndex}`);
+  const image = requireValue(
+    gltf.images?.[imageIndex],
+    `Missing image ${imageIndex}`,
+  );
 
   if (image.bufferView !== undefined) {
     const bufferView = requireValue(
@@ -560,10 +583,16 @@ const loadTextureFromImage = async (
     );
     const byteOffset = bufferView.byteOffset ?? 0;
     const mimeType = image.mimeType ?? "image/png";
-    const bytes = new Uint8Array(binaryChunk, byteOffset, bufferView.byteLength);
-    const objectUrl = URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+    const bytes = new Uint8Array(
+      binaryChunk,
+      byteOffset,
+      bufferView.byteLength,
+    );
+    const objectUrl = URL.createObjectURL(
+      new Blob([bytes], { type: mimeType }),
+    );
     try {
-      return await Texture.Load(objectUrl, isNormalMap);
+      return await Texture.Load(objectUrl, descriptor);
     } finally {
       URL.revokeObjectURL(objectUrl);
     }
@@ -571,7 +600,7 @@ const loadTextureFromImage = async (
 
   if (image.uri) {
     const baseUrl = new URL(assetUrl, window.location.href);
-    return Texture.Load(new URL(image.uri, baseUrl).toString(), isNormalMap);
+    return Texture.Load(new URL(image.uri, baseUrl).toString(), descriptor);
   }
 
   throw new Error(`Image ${imageIndex} does not contain data`);
@@ -583,7 +612,7 @@ const loadTextureFromSlot = async (
   textureIndex: number | undefined,
   assetUrl: string,
   fallback: Texture,
-  isNormalMap: boolean,
+  descriptor: TextureDescriptor,
 ) => {
   if (textureIndex === undefined) {
     return fallback;
@@ -602,11 +631,15 @@ const loadTextureFromSlot = async (
     binaryChunk,
     texture.source,
     assetUrl,
-    isNormalMap,
+    descriptor,
   );
 };
 
-export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => {
+export const loadGlbAsset = async (
+  url: string,
+  normalize = true,
+  scale = 1,
+) => {
   const { json, binaryChunk } = await readGlb(url);
   const converted = convertGlbGeometry(json, binaryChunk, normalize, scale);
 
@@ -616,24 +649,42 @@ export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => 
       binaryChunk,
       converted.baseColorTextureIndex,
       url,
-      new Texture([Vector3.One], 1, 1),
-      false,
+      new Texture([Vector3.One], 1, 1, {
+        type: "color",
+        colorSpace: "linear",
+      }),
+      {
+        type: "color",
+        colorSpace: "srgb",
+      },
     ),
     loadTextureFromSlot(
       json,
       binaryChunk,
       converted.normalTextureIndex,
       url,
-      new Texture([Vector3.Forward], 1, 1),
-      true,
+      new Texture([Vector3.Forward], 1, 1, {
+        type: "normal",
+        colorSpace: "linear",
+      }),
+      {
+        type: "normal",
+        colorSpace: "linear",
+      },
     ),
     loadTextureFromSlot(
       json,
       binaryChunk,
       converted.pbrMaterial.metallicRoughnessTextureIndex,
       url,
-      new Texture([Vector3.One], 1, 1),
-      false,
+      new Texture([Vector3.One], 1, 1, {
+        type: "color",
+        colorSpace: "linear",
+      }),
+      {
+        type: "color",
+        colorSpace: "linear",
+      },
     ),
   ]);
 
