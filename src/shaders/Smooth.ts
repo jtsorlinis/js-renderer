@@ -13,7 +13,7 @@ export interface Uniforms {
 
 const specStr = 0.5;
 const shininess = 32;
-const ambient = 0.04;
+const ambient = 0.05;
 const lightScale = 0.5;
 
 export class SmoothShader extends BaseShader {
