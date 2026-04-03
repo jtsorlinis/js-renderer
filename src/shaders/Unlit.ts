@@ -10,7 +10,7 @@ export interface Uniforms {
   camPos: Vector3;
 }
 
-const minColour = 0.4;
+const minColour = 0.125;
 
 // Returns a random value for each face to give them distinct colours.
 const hash = (x: number) => {

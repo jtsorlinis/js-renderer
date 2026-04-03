@@ -17,10 +17,10 @@ export interface Uniforms {
   shadowMap: DepthTexture;
 }
 
+const specStr = 0.5;
+const shininess = 32;
+const ambient = 0.04;
 const shadowBias = 0.01;
-const specStr = 0.25;
-const shininess = 16;
-const ambient = 0.2;
 
 export class NormalMappedShader extends BaseShader {
   // Uniforms are set per draw call from `main.ts`.
