@@ -55,20 +55,11 @@ export class Texture {
   data: Vector3[];
   width: number;
   height: number;
-  type: TextureType;
-  colorSpace: TextureColorSpace;
 
-  constructor(
-    data: Vector3[],
-    width: number,
-    height: number,
-    descriptor: TextureDescriptor,
-  ) {
+  constructor(data: Vector3[], width: number, height: number) {
     this.data = data;
     this.width = width;
     this.height = height;
-    this.type = descriptor.type;
-    this.colorSpace = descriptor.colorSpace;
   }
 
   static Load = async (imageURL: string, descriptor: TextureDescriptor) => {
@@ -117,7 +108,6 @@ export class Texture {
         data.push(new Vector3(r, g, b));
       }
     }
-
-    return new Texture(data, targetWidth, targetHeight, descriptor);
+    return new Texture(data, targetWidth, targetHeight);
   };
 }
