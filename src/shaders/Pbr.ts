@@ -26,7 +26,7 @@ export interface Uniforms {
 }
 
 const shadowBias = 0.01;
-const lightIntensity = 2.5;
+const lightIntensity = 3.14;
 const exposure = 1;
 
 const ambientIntensity = 0.04;
