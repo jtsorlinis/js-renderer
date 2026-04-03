@@ -29,7 +29,7 @@ const shadowBias = 0.01;
 const lightIntensity = 2.5;
 const exposure = 1;
 
-const ambientIntensity = 0.05;
+const ambientIntensity = 0.04;
 
 export class PbrShader extends BaseShader {
   uniforms!: Uniforms;
