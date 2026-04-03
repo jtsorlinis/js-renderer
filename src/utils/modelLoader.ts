@@ -166,7 +166,11 @@ export const ensureModelOption = (modelKey: ModelKey) => {
             texture,
             normalTexture,
             pbrMaterial: {
-              metallicRoughnessTexture: new Texture([Vector3.One], 1, 1),
+              metallicRoughnessTexture: new Texture(
+                new Float32Array([1, 1, 1]),
+                1,
+                1,
+              ),
               baseColorFactor: Vector3.One,
               metallicFactor: 0,
               roughnessFactor: 1,
