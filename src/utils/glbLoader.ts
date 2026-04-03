@@ -649,10 +649,7 @@ export const loadGlbAsset = async (
       binaryChunk,
       converted.baseColorTextureIndex,
       url,
-      new Texture([Vector3.One], 1, 1, {
-        type: "color",
-        colorSpace: "linear",
-      }),
+      new Texture([Vector3.One], 1, 1),
       {
         type: "color",
         colorSpace: "srgb",
@@ -663,10 +660,7 @@ export const loadGlbAsset = async (
       binaryChunk,
       converted.normalTextureIndex,
       url,
-      new Texture([Vector3.Forward], 1, 1, {
-        type: "normal",
-        colorSpace: "linear",
-      }),
+      new Texture([Vector3.Forward], 1, 1),
       {
         type: "normal",
         colorSpace: "linear",
@@ -677,10 +671,7 @@ export const loadGlbAsset = async (
       binaryChunk,
       converted.pbrMaterial.metallicRoughnessTextureIndex,
       url,
-      new Texture([Vector3.One], 1, 1, {
-        type: "color",
-        colorSpace: "linear",
-      }),
+      new Texture([Vector3.One], 1, 1),
       {
         type: "color",
         colorSpace: "linear",
