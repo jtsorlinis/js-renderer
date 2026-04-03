@@ -408,6 +408,17 @@ const collectPrimitiveInstances = (gltf: Gltf) => {
   return primitiveInstances;
 };
 
+const assertSupportedTexCoord = (
+  textureInfo: GltfTextureInfo | undefined,
+  textureLabel: string,
+) => {
+  if (textureInfo && (textureInfo.texCoord ?? 0) !== 0) {
+    throw new Error(
+      `Unsupported GLB asset: ${textureLabel} must use TEXCOORD_0`,
+    );
+  }
+};
+
 const convertGlbGeometry = (
   gltf: Gltf,
   binaryChunk: ArrayBuffer,
@@ -415,6 +426,12 @@ const convertGlbGeometry = (
   scale = 1,
 ): ConvertedGlb => {
   const primitiveInstances = collectPrimitiveInstances(gltf);
+  if (primitiveInstances.length > 1) {
+    throw new Error(
+      "Unsupported GLB asset: only a single primitive/material is supported",
+    );
+  }
+
   const objLines: string[] = [];
   let nextObjIndex = 1;
   let baseColorTextureIndex: number | undefined;
@@ -438,14 +455,22 @@ const convertGlbGeometry = (
     const baseColorTexture = pbrMaterial?.baseColorTexture;
     const metallicRoughnessTexture = pbrMaterial?.metallicRoughnessTexture;
     const normalTexture = material?.normalTexture;
-    const texCoordSet =
-      baseColorTexture?.texCoord ??
-      normalTexture?.texCoord ??
-      metallicRoughnessTexture?.texCoord ??
-      0;
-    const uvAccessorIndex =
-      primitive.attributes[`TEXCOORD_${texCoordSet}`] ??
-      primitive.attributes.TEXCOORD_0;
+    assertSupportedTexCoord(baseColorTexture, "base color texture");
+    assertSupportedTexCoord(normalTexture, "normal texture");
+    assertSupportedTexCoord(
+      metallicRoughnessTexture,
+      "metallic-roughness texture",
+    );
+
+    const hasTexturedMaterial =
+      !!baseColorTexture || !!normalTexture || !!metallicRoughnessTexture;
+    if (hasTexturedMaterial && primitive.attributes.TEXCOORD_0 === undefined) {
+      throw new Error(
+        "Unsupported GLB asset: textured materials must provide TEXCOORD_0",
+      );
+    }
+
+    const uvAccessorIndex = primitive.attributes.TEXCOORD_0;
 
     const positions = readAccessor(gltf, binaryChunk, positionAccessorIndex);
     const normals =
