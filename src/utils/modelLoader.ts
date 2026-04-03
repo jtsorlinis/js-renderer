@@ -142,10 +142,16 @@ export const ensureModelOption = (modelKey: ModelKey) => {
               modelAsset.normalize,
               modelAsset.scale,
             ),
-            Texture.Load(requireAssetUrl(modelAsset.textureUrl, "texture")),
+            Texture.Load(requireAssetUrl(modelAsset.textureUrl, "texture"), {
+              type: "color",
+              colorSpace: "srgb",
+            }),
             Texture.Load(
               requireAssetUrl(modelAsset.normalTextureUrl, "normal texture"),
-              true,
+              {
+                type: "normal",
+                colorSpace: "linear",
+              },
             ),
           ]);
 
