@@ -10,7 +10,7 @@ export interface Uniforms {
 }
 
 const ambient = 0.04;
-const lightScale = 0.75;
+const lightScale = 0.5;
 
 export class FlatShader extends BaseShader {
   // Uniforms are set once per draw call.
@@ -28,7 +28,7 @@ export class FlatShader extends BaseShader {
         .transformDirection(model.faceNormals[this.vertexId])
         .normalize();
       const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
-      const lightStrength = (diffuse + ambient) * lightScale;
+      const lightStrength = diffuse * lightScale + ambient;
       this.lighting = this.uniforms.lightCol.scale(lightStrength);
     }
 
