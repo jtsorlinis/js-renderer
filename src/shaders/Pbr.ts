@@ -6,6 +6,7 @@ import {
   EPSILON,
   distributionGGX,
   fresnelSchlick,
+  fresnelSchlickRoughness,
   geometrySmith,
   mixVec3,
   saturate,
@@ -98,6 +99,7 @@ export class PbrShader extends BaseShader {
     const metallic = saturate(
       metallicRoughness.z * this.uniforms.pbrMaterial.metallicFactor,
     );
+    const f0 = mixVec3(new Vector3(0.04, 0.04, 0.04), baseColor, metallic);
 
     const lightDir = lightDirTangent.scale(-1).normalize();
     const halfDir = viewDir.add(lightDir);
@@ -109,7 +111,6 @@ export class PbrShader extends BaseShader {
       halfDir.normalize();
       const nDotH = saturate(normal.dot(halfDir));
       const vDotH = saturate(viewDir.dot(halfDir));
-      const f0 = mixVec3(new Vector3(0.04, 0.04, 0.04), baseColor, metallic);
       const fresnel = fresnelSchlick(vDotH, f0);
       const distribution = distributionGGX(nDotH, roughness);
       const geometry = geometrySmith(nDotV, nDotL, roughness);
@@ -128,11 +129,15 @@ export class PbrShader extends BaseShader {
     }
 
     // Direct-light-only PBR still needs a small environment stand-in until IBL exists.
-    const f0 = mixVec3(new Vector3(0.04, 0.04, 0.04), baseColor, metallic);
-    const ambient = baseColor
-      .scale(1 - metallic)
-      .scale(ambientIntensity)
-      .add(f0.scale(ambientIntensity * 0.5));
+    const ksAmbient = fresnelSchlickRoughness(nDotV, f0, roughness);
+    const kdAmbient = Vector3.One.subtract(ksAmbient).scale(1 - metallic);
+    const ambientDiffuse = kdAmbient
+      .multiply(baseColor)
+      .scale(ambientIntensity);
+    const ambientSpecular = ksAmbient.scale(
+      ambientIntensity * (1 - roughness * 0.5),
+    );
+    const ambient = ambientDiffuse.add(ambientSpecular);
 
     return toneMapLinear(ambient.add(directLighting), exposure);
   };

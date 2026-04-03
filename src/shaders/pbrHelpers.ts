@@ -28,6 +28,20 @@ export const fresnelSchlick = (cosTheta: number, f0: Vector3) => {
   return f0.add(Vector3.One.subtract(f0).scale(factor));
 };
 
+export const fresnelSchlickRoughness = (
+  cosTheta: number,
+  f0: Vector3,
+  roughness: number,
+) => {
+  const factor = Math.pow(1 - saturate(cosTheta), 5);
+  const f90 = new Vector3(
+    Math.max(1 - roughness, f0.x),
+    Math.max(1 - roughness, f0.y),
+    Math.max(1 - roughness, f0.z),
+  );
+  return f0.add(f90.subtract(f0).scale(factor));
+};
+
 export const distributionGGX = (nDotH: number, roughness: number) => {
   const alpha = roughness * roughness;
   const alphaSq = alpha * alpha;
