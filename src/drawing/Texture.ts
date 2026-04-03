@@ -52,11 +52,11 @@ export class DepthTexture {
 }
 
 export class Texture {
-  data: Vector3[];
+  data: Float32Array;
   width: number;
   height: number;
 
-  constructor(data: Vector3[], width: number, height: number) {
+  constructor(data: Float32Array, width: number, height: number) {
     this.data = data;
     this.width = width;
     this.height = height;
@@ -86,7 +86,8 @@ export class Texture {
       targetWidth,
       targetHeight,
     );
-    const data = [];
+    const data = new Float32Array((imageData.data.length / 4) * 3);
+    let dataIndex = 0;
     for (let i = 0; i < imageData.data.length; i += 4) {
       if (descriptor.type === "normal") {
         const normal = new Vector3(
@@ -94,7 +95,9 @@ export class Texture {
           (imageData.data[i + 1] / 255) * 2 - 1,
           (imageData.data[i + 2] / 255) * 2 - 1,
         ).normalize();
-        data.push(normal);
+        data[dataIndex++] = normal.x;
+        data[dataIndex++] = normal.y;
+        data[dataIndex++] = normal.z;
       } else {
         let r = imageData.data[i] / 255;
         let g = imageData.data[i + 1] / 255;
@@ -105,7 +108,9 @@ export class Texture {
           b = srgbChannelToLinear(b);
         }
 
-        data.push(new Vector3(r, g, b));
+        data[dataIndex++] = r;
+        data[dataIndex++] = g;
+        data[dataIndex++] = b;
       }
     }
     return new Texture(data, targetWidth, targetHeight);
