@@ -7,10 +7,8 @@ import {
   distributionGGX,
   fresnelSchlick,
   geometrySmith,
-  linearToSrgb,
   mixVec3,
   saturate,
-  srgbToLinear,
   toneMapLinear,
 } from "./pbrHelpers";
 
@@ -86,9 +84,9 @@ export class PbrShader extends BaseShader {
     const shadow = lightSpacePos.z - shadowBias > depth ? 0 : 1;
 
     const normal = this.sample(this.uniforms.normalTexture, uv);
-    const baseColor = srgbToLinear(
-      this.sample(this.uniforms.texture, uv),
-    ).multiply(this.uniforms.pbrMaterial.baseColorFactor);
+    const baseColor = this.sample(this.uniforms.texture, uv).multiply(
+      this.uniforms.pbrMaterial.baseColorFactor,
+    );
     const metallicRoughness = this.sample(
       this.uniforms.pbrMaterial.metallicRoughnessTexture,
       uv,
@@ -136,6 +134,6 @@ export class PbrShader extends BaseShader {
       .scale(ambientIntensity)
       .add(f0.scale(ambientIntensity * 0.5));
 
-    return linearToSrgb(toneMapLinear(ambient.add(directLighting), exposure));
+    return toneMapLinear(ambient.add(directLighting), exposure);
   };
 }

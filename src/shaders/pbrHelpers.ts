@@ -10,36 +10,6 @@ export const mixVec3 = (a: Vector3, b: Vector3, t: number) => {
   return a.scale(1 - t).add(b.scale(t));
 };
 
-const srgbToLinearChannel = (value: number) => {
-  if (value <= 0.04045) {
-    return value / 12.92;
-  }
-  return Math.pow((value + 0.055) / 1.055, 2.4);
-};
-
-const linearToSrgbChannel = (value: number) => {
-  if (value <= 0.0031308) {
-    return value * 12.92;
-  }
-  return 1.055 * Math.pow(value, 1 / 2.4) - 0.055;
-};
-
-export const srgbToLinear = (colour: Vector3) => {
-  return new Vector3(
-    srgbToLinearChannel(colour.x),
-    srgbToLinearChannel(colour.y),
-    srgbToLinearChannel(colour.z),
-  );
-};
-
-export const linearToSrgb = (colour: Vector3) => {
-  return new Vector3(
-    linearToSrgbChannel(saturate(colour.x)),
-    linearToSrgbChannel(saturate(colour.y)),
-    linearToSrgbChannel(saturate(colour.z)),
-  );
-};
-
 export const toneMapLinear = (colour: Vector3, exposure: number) => {
   return colour.scale(exposure);
 };
