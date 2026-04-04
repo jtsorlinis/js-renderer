@@ -87,7 +87,7 @@ export class NormalMappedShader extends BaseShader {
     const normal = this.sample(this.uniforms.normalTexture, uv);
 
     // Blinn-Phong shading in tangent space.
-    const halfWayDir = viewDir.subtract(lightDir).normalize();
+    const halfWayDir = viewDir.subtractInPlace(lightDir).normalize();
     let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
     spec *= specStr;
     const diffuse = Math.max(-normal.dot(lightDir), 0);
