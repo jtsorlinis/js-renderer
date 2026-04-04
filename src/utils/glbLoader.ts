@@ -521,7 +521,7 @@ const convertGlbGeometry = (
           positions[positionOffset + 1],
           positions[positionOffset + 2],
         );
-        const worldPosition = worldMatrix.transformPoint(localPosition).xyz;
+        const worldPosition = worldMatrix.transformPoint(localPosition);
         objLines.push(
           `v ${worldPosition.x} ${worldPosition.y} ${worldPosition.z}`,
         );
