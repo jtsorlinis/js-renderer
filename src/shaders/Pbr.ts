@@ -3,7 +3,9 @@ import { Vector3, Matrix4, Vector4, Vector2 } from "../maths";
 import { DepthTexture, Texture } from "../drawing";
 import { type PbrMaterial } from "../utils/modelLoader";
 import {
+  DIELECTRIC_F0,
   EPSILON,
+  INV_PI,
   distributionGGX,
   fresnelSchlick,
   fresnelSchlickRoughness,
@@ -85,7 +87,7 @@ export class PbrShader extends BaseShader {
     const shadow = lightSpacePos.z - shadowBias > depth ? 0 : 1;
 
     const normal = this.sample(this.uniforms.normalTexture, uv);
-    const baseColor = this.sample(this.uniforms.texture, uv).multiply(
+    const baseColor = this.sample(this.uniforms.texture, uv).multiplyInPlace(
       this.uniforms.pbrMaterial.baseColorFactor,
     );
     const metallicRoughness = this.sample(
@@ -99,14 +101,14 @@ export class PbrShader extends BaseShader {
     const metallic = saturate(
       metallicRoughness.z * this.uniforms.pbrMaterial.metallicFactor,
     );
-    const f0 = mixVec3(new Vector3(0.04, 0.04, 0.04), baseColor, metallic);
+    const f0 = mixVec3(DIELECTRIC_F0, baseColor, metallic);
 
-    const lightDir = lightDirTangent.scale(-1).normalize();
-    const halfDir = viewDir.add(lightDir);
+    const lightDir = lightDirTangent.scaleInPlace(-1);
     const nDotL = saturate(normal.dot(lightDir));
     const nDotV = saturate(normal.dot(viewDir));
+    const halfDir = lightDir.addInPlace(viewDir);
 
-    let directLighting = Vector3.Zero;
+    let directLighting = new Vector3();
     if (nDotL > 0 && nDotV > 0 && halfDir.lengthSq() > EPSILON) {
       halfDir.normalize();
       const nDotH = saturate(normal.dot(halfDir));
@@ -114,31 +116,44 @@ export class PbrShader extends BaseShader {
       const fresnel = fresnelSchlick(vDotH, f0);
       const distribution = distributionGGX(nDotH, roughness);
       const geometry = geometrySmith(nDotV, nDotL, roughness);
-      const specular = fresnel.scale(
-        (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON),
-      );
-      const diffuse = Vector3.One.subtract(fresnel)
-        .scale(1 - metallic)
-        .multiply(baseColor)
-        .scale(1 / Math.PI);
+      const specularFactor =
+        (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
+      const diffuseFactor = (1 - metallic) * INV_PI;
+      const lightScale = nDotL * shadow * lightIntensity;
 
-      directLighting = diffuse
-        .add(specular)
-        .multiply(this.uniforms.lightCol)
-        .scale(nDotL * shadow * lightIntensity);
+      // Keep the BRDF combine readable while avoiding vector churn in the fragment hot path.
+      const directR =
+        ((1 - fresnel.x) * diffuseFactor * baseColor.x +
+          fresnel.x * specularFactor) *
+        this.uniforms.lightCol.x *
+        lightScale;
+      const directG =
+        ((1 - fresnel.y) * diffuseFactor * baseColor.y +
+          fresnel.y * specularFactor) *
+        this.uniforms.lightCol.y *
+        lightScale;
+      const directB =
+        ((1 - fresnel.z) * diffuseFactor * baseColor.z +
+          fresnel.z * specularFactor) *
+        this.uniforms.lightCol.z *
+        lightScale;
+
+      directLighting = new Vector3(directR, directG, directB);
     }
 
-    // Direct-light-only PBR still needs a small environment stand-in until IBL exists.
+    // Direct-light-only PBR still needs a small environment stand-in without IBL
     const ksAmbient = fresnelSchlickRoughness(nDotV, f0, roughness);
-    const kdAmbient = Vector3.One.subtract(ksAmbient).scale(1 - metallic);
-    const ambientDiffuse = kdAmbient
-      .multiply(baseColor)
-      .scale(ambientIntensity);
-    const ambientSpecular = ksAmbient.scale(
-      ambientIntensity * (1 - roughness * 0.5),
+    const ambientDiffuseFactor = (1 - metallic) * ambientIntensity;
+    const ambientSpecularFactor = ambientIntensity * (1 - roughness * 0.5);
+    const ambient = new Vector3(
+      (1 - ksAmbient.x) * baseColor.x * ambientDiffuseFactor +
+        ksAmbient.x * ambientSpecularFactor,
+      (1 - ksAmbient.y) * baseColor.y * ambientDiffuseFactor +
+        ksAmbient.y * ambientSpecularFactor,
+      (1 - ksAmbient.z) * baseColor.z * ambientDiffuseFactor +
+        ksAmbient.z * ambientSpecularFactor,
     );
-    const ambient = ambientDiffuse.add(ambientSpecular);
 
-    return toneMapLinear(ambient.add(directLighting), exposure);
+    return toneMapLinear(ambient.addInPlace(directLighting), exposure);
   };
 }

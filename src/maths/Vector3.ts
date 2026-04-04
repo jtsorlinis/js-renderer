@@ -110,6 +110,13 @@ export class Vector3 {
     return new Vector3(this.x - v.x, this.y - v.y, this.z - v.z);
   }
 
+  public subtractInPlace(v: Vector3) {
+    this.x -= v.x;
+    this.y -= v.y;
+    this.z -= v.z;
+    return this;
+  }
+
   public multiply(v: Vector3) {
     return new Vector3(this.x * v.x, this.y * v.y, this.z * v.z);
   }

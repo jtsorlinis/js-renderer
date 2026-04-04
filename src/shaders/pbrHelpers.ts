@@ -1,31 +1,48 @@
 import { Vector3 } from "../maths";
 
 export const EPSILON = 0.00001;
+export const DIELECTRIC_F0 = new Vector3(0.04, 0.04, 0.04);
+export const INV_PI = 1 / Math.PI;
 
 export const saturate = (value: number) => {
   return Math.max(0, Math.min(1, value));
 };
 
 export const mixVec3 = (a: Vector3, b: Vector3, t: number) => {
-  return a.scale(1 - t).add(b.scale(t));
+  const invT = 1 - t;
+  return new Vector3(
+    a.x * invT + b.x * t,
+    a.y * invT + b.y * t,
+    a.z * invT + b.z * t,
+  );
 };
 
 export const toneMapLinear = (colour: Vector3, exposure: number) => {
-  return colour.scale(exposure);
+  return new Vector3(
+    colour.x * exposure,
+    colour.y * exposure,
+    colour.z * exposure,
+  );
 };
 
 export const toneMapReinhard = (colour: Vector3, exposure: number) => {
-  const exposed = colour.scale(exposure);
+  const x = colour.x * exposure;
+  const y = colour.y * exposure;
+  const z = colour.z * exposure;
   return new Vector3(
-    exposed.x / (1 + exposed.x),
-    exposed.y / (1 + exposed.y),
-    exposed.z / (1 + exposed.z),
+    x / (1 + x),
+    y / (1 + y),
+    z / (1 + z),
   );
 };
 
 export const fresnelSchlick = (cosTheta: number, f0: Vector3) => {
   const factor = Math.pow(1 - saturate(cosTheta), 5);
-  return f0.add(Vector3.One.subtract(f0).scale(factor));
+  return new Vector3(
+    f0.x + (1 - f0.x) * factor,
+    f0.y + (1 - f0.y) * factor,
+    f0.z + (1 - f0.z) * factor,
+  );
 };
 
 export const fresnelSchlickRoughness = (
@@ -34,12 +51,14 @@ export const fresnelSchlickRoughness = (
   roughness: number,
 ) => {
   const factor = Math.pow(1 - saturate(cosTheta), 5);
-  const f90 = new Vector3(
-    Math.max(1 - roughness, f0.x),
-    Math.max(1 - roughness, f0.y),
-    Math.max(1 - roughness, f0.z),
+  const f90x = Math.max(1 - roughness, f0.x);
+  const f90y = Math.max(1 - roughness, f0.y);
+  const f90z = Math.max(1 - roughness, f0.z);
+  return new Vector3(
+    f0.x + (f90x - f0.x) * factor,
+    f0.y + (f90y - f0.y) * factor,
+    f0.z + (f90z - f0.z) * factor,
   );
-  return f0.add(f90.subtract(f0).scale(factor));
 };
 
 export const distributionGGX = (nDotH: number, roughness: number) => {
