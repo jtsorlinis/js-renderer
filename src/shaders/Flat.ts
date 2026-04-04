@@ -33,7 +33,7 @@ export class FlatShader extends BaseShader {
     }
 
     // Return clip-space position.
-    return this.uniforms.mvp.projectPoint(model.vertices[this.vertexId]);
+    return this.uniforms.mvp.transformPoint4(model.vertices[this.vertexId]);
   };
 
   fragment = () => {
