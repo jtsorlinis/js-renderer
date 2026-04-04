@@ -36,7 +36,7 @@ export class PbrShader extends BaseShader {
   uniforms!: Uniforms;
 
   vUV = this.varying<Vector2>();
-  vLightSpacePos = this.varying<Vector4>();
+  vLightSpacePos = this.varying<Vector3>();
   vLightDirTangent = this.varying<Vector3>();
   vViewDirTangent = this.varying<Vector3>();
 
@@ -61,7 +61,9 @@ export class PbrShader extends BaseShader {
       normal.dot(viewDir),
     );
 
-    const lightSpacePos = this.uniforms.lightSpaceMat.transformPoint4(modelPos);
+    const lightSpacePos = this.uniforms.lightSpaceMat.transformPoint(modelPos);
+    lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
+    lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
 
     this.v2f(this.vUV, model.uvs[i]);
     this.v2f(this.vLightSpacePos, lightSpacePos);
@@ -73,11 +75,7 @@ export class PbrShader extends BaseShader {
 
   fragment = () => {
     const uv = this.interpolateVec2(this.vUV);
-    const lightSpacePos = this.interpolateVec4(
-      this.vLightSpacePos,
-    ).perspectiveDivide();
-    lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
-    lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
+    const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
     const lightDirTangent = this.interpolateVec3(
       this.vLightDirTangent,
     ).normalize();

@@ -28,7 +28,7 @@ export class NormalMappedShader extends BaseShader {
 
   // Per-vertex data passed from vertex -> fragment.
   vUV = this.varying<Vector2>();
-  vLightSpacePos = this.varying<Vector4>();
+  vLightSpacePos = this.varying<Vector3>();
   vLightDirTangent = this.varying<Vector3>();
   vViewDirTangent = this.varying<Vector3>();
 
@@ -57,7 +57,9 @@ export class NormalMappedShader extends BaseShader {
       normal.dot(viewDir),
     );
 
-    const lightSpacePos = this.uniforms.lightSpaceMat.transformPoint4(modelPos);
+    const lightSpacePos = this.uniforms.lightSpaceMat.transformPoint(modelPos);
+    lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
+    lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
 
     // Emit varyings for interpolation across the triangle.
     this.v2f(this.vUV, model.uvs[i]);
@@ -72,11 +74,7 @@ export class NormalMappedShader extends BaseShader {
   fragment = () => {
     // Read interpolated values at this pixel.
     const uv = this.interpolateVec2(this.vUV);
-    const lightSpacePos = this.interpolateVec4(
-      this.vLightSpacePos,
-    ).perspectiveDivide();
-    lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
-    lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
+    const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
     const lightDir = this.interpolateVec3(this.vLightDirTangent).normalize();
     const viewDir = this.interpolateVec3(this.vViewDirTangent).normalize();
 
