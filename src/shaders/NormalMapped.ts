@@ -39,10 +39,10 @@ export class NormalMappedShader extends BaseShader {
     const normal = model.normals[i];
     const tangent = model.tangents[i];
     const bitangent = model.bitangents[i];
+    const modelPos = model.vertices[i];
 
     // Build lighting vectors in tangent space so sampled normal map values
     // can be dotted directly in fragment().
-    const modelPos = model.vertices[i];
     const lightDirTangent = new Vector3(
       tangent.dot(this.uniforms.mLightDir),
       bitangent.dot(this.uniforms.mLightDir),
