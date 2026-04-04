@@ -14,9 +14,8 @@ export const edgeFunction = (a: Vector4, b: Vector4, c: Vector4) => {
 };
 
 // Only instantiate these once and reuse them
-const P = new Vector4();
-const bc: Barycentric = { u: 0, v: 0, w: 0 };
 const bcClip: Barycentric = { u: 0, v: 0, w: 0 };
+const fragPos = new Vector2();
 
 // Draw a triangle in screen space (pixels)
 export const triangle = (
@@ -25,95 +24,113 @@ export const triangle = (
   buffer: Framebuffer,
   zBuffer: DepthTexture,
 ) => {
-  // Scale from [-1, 1] to [0, width] and [0, height]]
-  const p0 = buffer.viewportTransform(verts[0]);
-  const p1 = buffer.viewportTransform(verts[1]);
-  const p2 = buffer.viewportTransform(verts[2]);
+  const v0 = verts[0];
+  const v1 = verts[1];
+  const v2 = verts[2];
+
+  // Scale from [-1, 1] to [0, width] and [0, height]
+  const halfWidth = buffer.width * 0.5;
+  const halfHeight = buffer.height * 0.5;
+  const p0x = (v0.x + 1) * halfWidth;
+  const p0y = (-v0.y + 1) * halfHeight;
+  const p1x = (v1.x + 1) * halfWidth;
+  const p1y = (-v1.y + 1) * halfHeight;
+  const p2x = (v2.x + 1) * halfWidth;
+  const p2y = (-v2.y + 1) * halfHeight;
 
   // Backface culling based on winding order
-  const area = edgeFunction(p2, p1, p0);
+  const area = (p0x - p2x) * (p1y - p2y) - (p0y - p2y) * (p1x - p2x);
   if (area <= 0) return;
 
-  // Calculate inverse signed area of triangle
-  const invArea = 1 / area;
+  // Clip near and far planes [0,1]
+  if (v0.z < 0 || v1.z < 0 || v2.z < 0) return;
+  if (v0.z > 1 || v1.z > 1 || v2.z > 1) return;
 
-  // // Clip near and far planes
-  if (p0.z < 0 || p1.z < 0 || p2.z < 0) return;
-  if (p0.z > 1 || p1.z > 1 || p2.z > 1) return;
-
-  // Clip triangles that are fully outside the viewport
+  // Reject triangles that are fully outside the viewport
   if (
-    (p0.x < 0 && p1.x < 0 && p2.x < 0) ||
-    (p0.x > buffer.width && p1.x > buffer.width && p2.x > buffer.width) ||
-    (p0.y < 0 && p1.y < 0 && p2.y < 0) ||
-    (p0.y > buffer.height && p1.y > buffer.height && p2.y > buffer.height)
+    (p0x < 0 && p1x < 0 && p2x < 0) ||
+    (p0x > buffer.width && p1x > buffer.width && p2x > buffer.width) ||
+    (p0y < 0 && p1y < 0 && p2y < 0) ||
+    (p0y > buffer.height && p1y > buffer.height && p2y > buffer.height)
   )
     return;
 
   // Calculate bounding box
-  let minX = ~~Math.max(0, Math.min(p0.x, p1.x, p2.x));
-  let minY = ~~Math.max(0, Math.min(p0.y, p1.y, p2.y));
-  let maxX = ~~Math.min(buffer.width - 1, Math.max(p0.x, p1.x, p2.x));
-  let maxY = ~~Math.min(buffer.height - 1, Math.max(p0.y, p1.y, p2.y));
+  const minX = ~~Math.max(0, Math.min(p0x, p1x, p2x));
+  const minY = ~~Math.max(0, Math.min(p0y, p1y, p2y));
+  const maxX = ~~Math.min(buffer.width - 1, Math.max(p0x, p1x, p2x));
+  const maxY = ~~Math.min(buffer.height - 1, Math.max(p0y, p1y, p2y));
 
   // Calculate barycentric coordinates for first pixel
-  const minPos = new Vector4(minX, minY);
-  let w0Row = edgeFunction(p2, p1, minPos) * invArea;
-  let w1Row = edgeFunction(p0, p2, minPos) * invArea;
-  let w2Row = edgeFunction(p1, p0, minPos) * invArea;
+  const invArea = 1 / area;
+  let uRow =
+    ((minX - p2x) * (p1y - p2y) - (minY - p2y) * (p1x - p2x)) * invArea;
+  let vRow =
+    ((minX - p0x) * (p2y - p0y) - (minY - p0y) * (p2x - p0x)) * invArea;
+  let wRow =
+    ((minX - p1x) * (p0y - p1y) - (minY - p1y) * (p0x - p1x)) * invArea;
 
   // Calculate barycentric coordinate steps
-  const w0Step = new Vector2(p1.y - p2.y, p2.x - p1.x).scaleInPlace(invArea);
-  const w1Step = new Vector2(p2.y - p0.y, p0.x - p2.x).scaleInPlace(invArea);
-  const w2Step = new Vector2(p0.y - p1.y, p1.x - p0.x).scaleInPlace(invArea);
+  const uStepX = (p1y - p2y) * invArea;
+  const uStepY = (p2x - p1x) * invArea;
+  const vStepX = (p2y - p0y) * invArea;
+  const vStepY = (p0x - p2x) * invArea;
+  const wStepX = (p0y - p1y) * invArea;
+  const wStepY = (p1x - p0x) * invArea;
+
+  const fragment = shader.fragment;
+  shader.bc = bcClip;
+  shader.fragPos = fragPos;
 
   // Loop over pixels in bounding box
-  for (P.y = minY; P.y <= maxY; P.y++) {
+  for (let y = minY; y <= maxY; y++) {
     // Reset barycentric coordinates for this row
-    bc.u = w0Row;
-    bc.v = w1Row;
-    bc.w = w2Row;
+    let u = uRow;
+    let v = vRow;
+    let w = wRow;
+    let index = minX + y * buffer.width;
 
-    for (P.x = minX; P.x <= maxX; P.x++) {
+    for (let x = minX; x <= maxX; x++) {
       // Check if pixel is inside triangle
-      if (bc.u >= 0 && bc.v >= 0 && bc.w >= 0) {
+      if (u >= 0 && v >= 0 && w >= 0) {
         // Interpolate depth to get z value at pixel
-        P.z = p0.z * bc.u + p1.z * bc.v + p2.z * bc.w;
+        const z = v0.z * u + v1.z * v + v2.z * w;
 
-        // Check pixel'z depth against z buffer, if pixel is closer, draw it
-        const index = P.x + P.y * buffer.width;
-        if (P.z < zBuffer.data[index]) {
+        // Check pixel's depth against z buffer, if pixel is closer, draw it
+        if (z < zBuffer.data[index]) {
           // Update z buffer with new depth
-          zBuffer.data[index] = P.z;
+          zBuffer.data[index] = z;
 
           // Skip if no fragment shader is defined (e.g. depth pass)
-          if (shader.fragment) {
-            // Get perspective correct barycentric coordinates
-            P.w = 1 / (p0.w * bc.u + p1.w * bc.v + p2.w * bc.w);
-            bcClip.u = bc.u * P.w * p0.w;
-            bcClip.v = bc.v * P.w * p1.w;
-            bcClip.w = bc.w * P.w * p2.w;
+          if (fragment) {
+            // Get perspective-correct barycentric coordinates
+            const invW = 1 / (v0.w * u + v1.w * v + v2.w * w);
+            bcClip.u = u * invW * v0.w;
+            bcClip.v = v * invW * v1.w;
+            bcClip.w = w * invW * v2.w;
 
-            // Fragment shader
-            shader.bc = bcClip;
-            shader.fragPos = P;
-            const frag = shader.fragment();
+            // Pass fragment screen position to fragment shader
+            fragPos.x = x;
+            fragPos.y = y;
 
-            // If fragment shader returns a colour, set pixel
+            const frag = fragment();
+
+            // Skip if fragment shader discarded the pixel by returning undefined
             if (frag) {
-              buffer.setPixel(P.x, P.y, frag);
+              buffer.setPixel(x, y, frag);
             }
           }
         }
       }
       // Step to next pixel
-      bc.u += w0Step.x;
-      bc.v += w1Step.x;
-      bc.w += w2Step.x;
+      u += uStepX;
+      v += vStepX;
+      w += wStepX;
+      index++;
     }
     // Step to next row
-    w0Row += w0Step.y;
-    w1Row += w1Step.y;
-    w2Row += w2Step.y;
+    uRow += uStepY;
+    vRow += vStepY;
+    wRow += wStepY;
   }
 };
