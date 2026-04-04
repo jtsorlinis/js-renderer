@@ -36,7 +36,9 @@ export class UnlitShader extends BaseShader {
     const i = faceId * 3;
 
     // Give each face a random colour
-    this.colour = new Vector3(hash(i), hash(i + 1), hash(i + 2));
+    if (this.nthVert === 0) {
+      this.colour = new Vector3(hash(i), hash(i + 1), hash(i + 2));
+    }
 
     // Return clip-space position.
     return this.uniforms.mvp.projectPoint(model.vertices[this.vertexId]);
