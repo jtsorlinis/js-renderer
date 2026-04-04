@@ -61,21 +61,23 @@ export class PbrShader extends BaseShader {
       normal.dot(viewDir),
     );
 
-    const lightSpacePos = this.uniforms.lightSpaceMat.projectPoint(modelPos);
-    lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
-    lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
+    const lightSpacePos = this.uniforms.lightSpaceMat.transformPoint4(modelPos);
 
     this.v2f(this.vUV, model.uvs[i]);
     this.v2f(this.vLightSpacePos, lightSpacePos);
     this.v2f(this.vLightDirTangent, lightDirTangent);
     this.v2f(this.vViewDirTangent, viewDirTangent);
 
-    return this.uniforms.mvp.projectPoint(modelPos);
+    return this.uniforms.mvp.transformPoint4(modelPos);
   };
 
   fragment = () => {
     const uv = this.interpolateVec2(this.vUV);
-    const lightSpacePos = this.interpolateVec4(this.vLightSpacePos);
+    const lightSpacePos = this.interpolateVec4(
+      this.vLightSpacePos,
+    ).perspectiveDivide();
+    lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
+    lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
     const lightDirTangent = this.interpolateVec3(
       this.vLightDirTangent,
     ).normalize();

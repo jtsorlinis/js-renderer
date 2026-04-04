@@ -154,6 +154,14 @@ export class Matrix4 {
     return this.m;
   }
 
+  private multiplyVector3(v: Vector3, w: number) {
+    return new Vector3(
+      this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12] * w,
+      this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z + this.m[13] * w,
+      this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z + this.m[14] * w,
+    );
+  }
+
   // prettier-ignore
   public multiplyVector4(v: Vector4) {
     const result = new Vector4();
@@ -165,20 +173,30 @@ export class Matrix4 {
     return result;
   }
 
+  public multiplyVector4InPlace(v: Vector4) {
+    const x = v.x;
+    const y = v.y;
+    const z = v.z;
+    const w = v.w;
+
+    v.x = this.m[0] * x + this.m[4] * y + this.m[8] * z + this.m[12] * w;
+    v.y = this.m[1] * x + this.m[5] * y + this.m[9] * z + this.m[13] * w;
+    v.z = this.m[2] * x + this.m[6] * y + this.m[10] * z + this.m[14] * w;
+    v.w = this.m[3] * x + this.m[7] * y + this.m[11] * z + this.m[15] * w;
+
+    return v;
+  }
+
   public transformPoint(v: Vector3) {
-    return this.multiplyVector4(v.extend(1)).xyz;
+    return this.multiplyVector3(v, 1);
+  }
+
+  public transformPoint4(v: Vector3) {
+    return this.multiplyVector4InPlace(v.extend(1));
   }
 
   public transformDirection(v: Vector3) {
-    return this.multiplyVector4(v.extend(0)).xyz;
-  }
-
-  // Perspective division is normally automatically done by the GPU, but we
-  // need to do it manually and keep reciprocal W for perspective-correct interpolation.
-  public projectPoint(v: Vector3) {
-    const clip = this.multiplyVector4(v.extend(1));
-    const invW = 1 / clip.w;
-    return new Vector4(clip.x * invW, clip.y * invW, clip.z * invW, invW);
+    return this.multiplyVector3(v, 0);
   }
 
   public multiply(m: Matrix4) {

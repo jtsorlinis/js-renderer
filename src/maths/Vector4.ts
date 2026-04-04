@@ -29,7 +29,18 @@ export class Vector4 {
     return new Vector4(~~this.x, ~~this.y, ~~this.z, ~~this.w);
   }
 
+  // Converts clip space to NDC in place and keeps reciprocal W for perspective-correct interpolation.
+  perspectiveDivide() {
+    const invW = 1 / this.w;
+    this.x *= invW;
+    this.y *= invW;
+    this.z *= invW;
+    this.w = invW;
+    return this;
+  }
+
   divideByW() {
-    return new Vector3(this.x / this.w, this.y / this.w, this.z / this.w);
+    const invW = 1 / this.w;
+    return new Vector3(this.x * invW, this.y * invW, this.z * invW);
   }
 }

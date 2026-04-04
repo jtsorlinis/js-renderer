@@ -261,7 +261,7 @@ const renderMesh = (
     for (let j = 0; j < 3; j++) {
       activeShader.vertexId = i + j;
       activeShader.nthVert = j;
-      triVerts[j] = activeShader.vertex();
+      triVerts[j] = activeShader.vertex().perspectiveDivide();
     }
 
     if (renderMode !== "filled") {

@@ -11,7 +11,7 @@ export class DepthShader extends BaseShader {
 
   vertex = () => {
     // Shadow pass only needs light-space clip coordinates.
-    return this.uniforms.lightSpaceMat.projectPoint(
+    return this.uniforms.lightSpaceMat.transformPoint4(
       this.uniforms.model.vertices[this.vertexId],
     );
   };

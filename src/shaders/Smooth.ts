@@ -38,7 +38,7 @@ export class SmoothShader extends BaseShader {
     this.v2f(this.vWorldPos, worldPos);
 
     // Return clip-space position.
-    return this.uniforms.mvp.projectPoint(model.vertices[i]);
+    return this.uniforms.mvp.transformPoint4(model.vertices[i]);
   };
 
   fragment = () => {
