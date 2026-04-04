@@ -23,6 +23,7 @@ import { UnlitShader } from "./shaders/Unlit";
 import { BaseShader } from "./shaders/BaseShader";
 import { DepthShader } from "./shaders/DepthShader";
 import { NormalMappedShader } from "./shaders/NormalMapped";
+import { NormalMappedShadowsShader } from "./shaders/NormalMappedShadows";
 import { PbrShader } from "./shaders/Pbr";
 import { resolveShadingSelection, type RenderMode } from "./renderSettings";
 
@@ -157,6 +158,7 @@ let customGlbFile: File | null = null;
 
 const shaders = {
   pbr: new PbrShader(),
+  normalMappedShadows: new NormalMappedShadowsShader(),
   normalMapped: new NormalMappedShader(),
   textured: new TexturedShader(),
   smooth: new SmoothShader(),

@@ -1,5 +1,6 @@
 export type MaterialMode =
   | "pbr"
+  | "normalMappedShadows"
   | "normalMapped"
   | "textured"
   | "smooth"
@@ -23,11 +24,9 @@ export const resolveShadingSelection = (
 
   if (
     !canUseTexturedModes &&
-    (
-      value.includes("pbr") ||
+    (value.includes("pbr") ||
       value.includes("textured") ||
-      value.includes("normalMapped")
-    )
+      value.includes("normalMapped"))
   ) {
     value = "smooth";
   }
@@ -42,7 +41,7 @@ export const resolveShadingSelection = (
       };
     case "normalMapped-shadows":
       return {
-        material: "normalMapped",
+        material: "normalMappedShadows",
         renderMode: "filled",
         useShadows: true,
         normalizedValue: value,
