@@ -23,7 +23,7 @@ export class TexturedShader extends BaseShader {
 
   // Varyings are interpolated per pixel in fragment().
   vNormal = this.varying<Vector3>();
-  vWorldPos = this.varying<Vector4>();
+  vWorldPos = this.varying<Vector3>();
   vUV = this.varying<Vector2>();
 
   vertex = (): Vector4 => {
@@ -47,14 +47,14 @@ export class TexturedShader extends BaseShader {
   fragment = () => {
     // Read interpolated values at this pixel.
     const normal = this.interpolateVec3(this.vNormal).normalize();
-    const worldPos = this.interpolateVec4(this.vWorldPos);
+    const worldPos = this.interpolateVec3(this.vWorldPos);
     const uv = this.interpolateVec2(this.vUV);
 
     // Sample albedo texture.
     const col = this.sample(this.uniforms.texture, uv);
 
     // Basic Blinn-Phong lighting in world space.
-    const viewDir = this.uniforms.camPos.subtract(worldPos.xyz).normalize();
+    const viewDir = this.uniforms.camPos.subtract(worldPos).normalize();
     const halfWayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
     let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
     spec *= specStr;

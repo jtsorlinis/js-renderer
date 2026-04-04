@@ -22,7 +22,7 @@ export class SmoothShader extends BaseShader {
 
   // Per-vertex values that will be interpolated in fragment().
   vNormal = this.varying<Vector3>();
-  vWorldPos = this.varying<Vector4>();
+  vWorldPos = this.varying<Vector3>();
 
   vertex = (): Vector4 => {
     // Read source mesh data.
@@ -44,10 +44,10 @@ export class SmoothShader extends BaseShader {
   fragment = () => {
     // Interpolated normal/position at this pixel.
     const normal = this.interpolateVec3(this.vNormal).normalize();
-    const worldPos = this.interpolateVec4(this.vWorldPos);
+    const worldPos = this.interpolateVec3(this.vWorldPos);
 
     // Blinn-Phong lighting on a flat white material.
-    const viewDir = this.uniforms.camPos.subtract(worldPos.xyz).normalize();
+    const viewDir = this.uniforms.camPos.subtract(worldPos).normalize();
     const halfWayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
     let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
     spec *= specStr;
