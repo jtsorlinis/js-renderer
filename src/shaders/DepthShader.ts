@@ -3,15 +3,15 @@ import { BaseShader, Verts } from "./BaseShader";
 
 export interface Uniforms {
   model: Verts;
-  lightSpaceMat: Matrix4;
+  clipMat: Matrix4;
 }
 
 export class DepthShader extends BaseShader {
   uniforms!: Uniforms;
 
   vertex = () => {
-    // Shadow pass only needs light-space clip coordinates.
-    return this.uniforms.lightSpaceMat.transformPoint4(
+    // Depth-only passes only need clip-space coordinates.
+    return this.uniforms.clipMat.transformPoint4(
       this.uniforms.model.vertices[this.vertexId],
     );
   };
