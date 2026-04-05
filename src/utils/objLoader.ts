@@ -38,7 +38,6 @@ export const loadObj = (file: string, normalize = false, scale = 1) => {
   const uvs: Vector2[] = [];
   const faceNormals: Vector3[] = [];
   const tangents: Vector4[] = [];
-  const bitangents: Vector3[] = [];
   const tangentKeys: string[] = [];
 
   const tempVerts: Vector3[] = [];
@@ -229,20 +228,15 @@ export const loadObj = (file: string, normalize = false, scale = 1) => {
         ) < 0
           ? -1
           : 1;
-      const bitangent = canonicalBitangent.scale(bitangentHandedness);
-
       tangents.push(tangent.extend(bitangentHandedness));
-      bitangents.push(bitangent);
     }
   } else {
     for (let i = 0; i < vertices.length; i++) {
       const normal = normals[i];
       const tangent = getFallbackTangent(normal);
-      const bitangent = normal.cross(tangent).normalize();
       tangents.push(tangent.extend(1));
-      bitangents.push(bitangent);
     }
   }
 
-  return { vertices, normals, faceNormals, uvs, tangents, bitangents };
+  return { vertices, normals, faceNormals, uvs, tangents };
 };
