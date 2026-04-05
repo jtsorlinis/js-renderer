@@ -28,7 +28,7 @@ const shadowBias = 0.01;
 const lightIntensity = 3.14;
 const exposure = 1;
 
-const environmentIntensity = 0.05;
+const environmentIntensity = 0.1;
 
 // This shader keeps a few math-heavy sections expanded inline on purpose for
 // performance in the software renderer hot path.

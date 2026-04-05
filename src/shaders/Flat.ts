@@ -9,7 +9,7 @@ export interface Uniforms {
   lightCol: Vector3;
 }
 
-const ambient = 0.05;
+const ambient = 0.1;
 const lightScale = 0.5;
 
 export class FlatShader extends BaseShader {

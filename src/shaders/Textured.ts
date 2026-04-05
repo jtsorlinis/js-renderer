@@ -15,7 +15,7 @@ export interface Uniforms {
 
 const specStr = 0.5;
 const shininess = 32;
-const ambient = 0.05;
+const ambient = 0.1;
 
 export class TexturedShader extends BaseShader {
   // Uniforms are set once per draw call.
