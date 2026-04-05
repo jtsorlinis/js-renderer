@@ -28,7 +28,7 @@ const shadowBias = 0.01;
 const lightIntensity = 3.14;
 const exposure = 1;
 
-const ambientIntensity = 0.05;
+const ambientIntensity = 0.25;
 
 // This shader keeps a few math-heavy sections expanded inline on purpose for
 // performance in the software renderer hot path.
@@ -163,8 +163,9 @@ export class PbrShader extends BaseShader {
         lightScale;
     }
 
-    // Inlined equivalent to the usual vec3 ambient Fresnel/specular fallback.
-    // Direct-light-only PBR still needs a small environment stand-in without IBL
+    // Inlined constant-white IBL approximation without an environment texture
+    // or BRDF LUT. The diffuse term is exact for a constant environment and
+    // the specular term uses a compact EnvBRDF fit.
     const ambientFresnelFactor = Math.pow(1 - saturate(nDotV), 5);
     const f90x = Math.max(1 - roughness, f0x);
     const f90y = Math.max(1 - roughness, f0y);
@@ -173,16 +174,21 @@ export class PbrShader extends BaseShader {
     const ksAmbientY = f0y + (f90y - f0y) * ambientFresnelFactor;
     const ksAmbientZ = f0z + (f90z - f0z) * ambientFresnelFactor;
     const ambientDiffuseFactor = (1 - metallic) * ambientIntensity;
-    const ambientSpecularFactor = ambientIntensity * (1 - roughness * 0.5);
+    const rx = 1 - roughness;
+    const a004 =
+      Math.min(rx * rx, Math.pow(2, -9.28 * nDotV)) * rx +
+      (0.0425 - 0.0275 * roughness);
+    const envBrdfA = -1.04 * a004 + (1.04 - 0.572 * roughness);
+    const envBrdfB = 1.04 * a004 + (-0.04 + 0.022 * roughness);
     const ambientR =
       (1 - ksAmbientX) * baseColor.x * ambientDiffuseFactor +
-      ksAmbientX * ambientSpecularFactor;
+      (ksAmbientX * envBrdfA + envBrdfB) * ambientIntensity;
     const ambientG =
       (1 - ksAmbientY) * baseColor.y * ambientDiffuseFactor +
-      ksAmbientY * ambientSpecularFactor;
+      (ksAmbientY * envBrdfA + envBrdfB) * ambientIntensity;
     const ambientB =
       (1 - ksAmbientZ) * baseColor.z * ambientDiffuseFactor +
-      ksAmbientZ * ambientSpecularFactor;
+      (ksAmbientZ * envBrdfA + envBrdfB) * ambientIntensity;
 
     return new Vector3(
       (ambientR + directR) * exposure,
