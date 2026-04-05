@@ -25,6 +25,10 @@ export class Vector4 {
     return new Vector3(this.x, this.y, this.z);
   }
 
+  public dot3(v: Vector3) {
+    return this.x * v.x + this.y * v.y + this.z * v.z;
+  }
+
   truncate() {
     return new Vector4(~~this.x, ~~this.y, ~~this.z, ~~this.w);
   }

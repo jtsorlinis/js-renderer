@@ -1,4 +1,4 @@
-import { Vector2, Vector3 } from "../maths";
+import { Vector2, Vector3, Vector4 } from "../maths";
 
 export type LoadedModel = ReturnType<typeof loadObj>;
 
@@ -37,7 +37,7 @@ export const loadObj = (file: string, normalize = false, scale = 1) => {
   let normals: Vector3[] = [];
   const uvs: Vector2[] = [];
   const faceNormals: Vector3[] = [];
-  const tangents: Vector3[] = [];
+  const tangents: Vector4[] = [];
   const bitangents: Vector3[] = [];
   const tangentKeys: string[] = [];
 
@@ -231,7 +231,7 @@ export const loadObj = (file: string, normalize = false, scale = 1) => {
           : 1;
       const bitangent = canonicalBitangent.scale(bitangentHandedness);
 
-      tangents.push(tangent);
+      tangents.push(tangent.extend(bitangentHandedness));
       bitangents.push(bitangent);
     }
   } else {
@@ -239,7 +239,7 @@ export const loadObj = (file: string, normalize = false, scale = 1) => {
       const normal = normals[i];
       const tangent = getFallbackTangent(normal);
       const bitangent = normal.cross(tangent).normalize();
-      tangents.push(tangent);
+      tangents.push(tangent.extend(1));
       bitangents.push(bitangent);
     }
   }

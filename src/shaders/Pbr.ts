@@ -51,14 +51,14 @@ export class PbrShader extends BaseShader {
 
     const modelPos = model.vertices[i];
     const lightDirTangent = new Vector3(
-      tangent.dot(this.uniforms.mLightDir),
+      tangent.dot3(this.uniforms.mLightDir),
       bitangent.dot(this.uniforms.mLightDir),
       normal.dot(this.uniforms.mLightDir),
     );
 
     const viewDir = this.uniforms.mCamPos.subtract(modelPos).normalize();
     const viewDirTangent = new Vector3(
-      tangent.dot(viewDir),
+      tangent.dot3(viewDir),
       bitangent.dot(viewDir),
       normal.dot(viewDir),
     );
