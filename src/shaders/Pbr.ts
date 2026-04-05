@@ -16,6 +16,7 @@ export interface Uniforms {
   mvp: Matrix4;
   lightCol: Vector3;
   mLightDir: Vector3;
+  mWorldUp: Vector3;
   mCamPos: Vector3;
   texture: Texture;
   normalTexture: Texture;
@@ -28,7 +29,10 @@ const shadowBias = 0.01;
 const lightIntensity = 3.14;
 const exposure = 1;
 
-const environmentIntensity = 0.1;
+const sky = new Vector3(0.46, 0.42, 0.39);
+const horizon = new Vector3(0.72, 0.63, 0.54);
+const ground = new Vector3(0.07, 0.055, 0.045);
+const blend = 0.18;
 
 // This shader keeps a few math-heavy sections expanded inline on purpose for
 // performance in the software renderer hot path.
@@ -39,6 +43,7 @@ export class PbrShader extends BaseShader {
   vLightSpacePos = this.varying<Vector3>();
   vLightDirTangent = this.varying<Vector3>();
   vViewDirTangent = this.varying<Vector3>();
+  vWorldUpTangent = this.varying<Vector3>();
 
   vertex = (): Vector4 => {
     const model = this.uniforms.model;
@@ -77,6 +82,11 @@ export class PbrShader extends BaseShader {
       bitangent.dot(viewDir),
       normal.dot(viewDir),
     );
+    const worldUpTangent = new Vector3(
+      tangent.dot3(this.uniforms.mWorldUp),
+      bitangent.dot(this.uniforms.mWorldUp),
+      normal.dot(this.uniforms.mWorldUp),
+    );
 
     const lightSpacePos = this.uniforms.lightSpaceMat.transformPoint(modelPos);
     lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
@@ -86,6 +96,7 @@ export class PbrShader extends BaseShader {
     this.v2f(this.vLightSpacePos, lightSpacePos);
     this.v2f(this.vLightDirTangent, lightDirTangent);
     this.v2f(this.vViewDirTangent, viewDirTangent);
+    this.v2f(this.vWorldUpTangent, worldUpTangent);
 
     return this.uniforms.mvp.transformPoint4(modelPos);
   };
@@ -97,6 +108,14 @@ export class PbrShader extends BaseShader {
       this.vLightDirTangent,
     ).normalize();
     const viewDir = this.interpolateVec3(this.vViewDirTangent).normalize();
+    const worldUp = this.interpolateVec3(this.vWorldUpTangent);
+    if (worldUp.lengthSq() > EPSILON) {
+      worldUp.normalize();
+    } else {
+      worldUp.x = 0;
+      worldUp.y = 1;
+      worldUp.z = 0;
+    }
 
     const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
     const shadow = lightSpacePos.z - shadowBias > depth ? 0 : 1;
@@ -163,9 +182,8 @@ export class PbrShader extends BaseShader {
         lightScale;
     }
 
-    // Inlined constant-white IBL approximation without an environment texture
-    // or BRDF LUT. The diffuse term is exact for a constant environment and
-    // the specular term uses a compact EnvBRDF fit.
+    // Approximate IBL without an environment texture by evaluating a simple
+    // sky/horizon/ground hemi-light in tangent space.
     const ambientFresnelFactor = Math.pow(1 - saturate(nDotV), 5);
     const f90x = Math.max(1 - roughness, f0x);
     const f90y = Math.max(1 - roughness, f0y);
@@ -173,22 +191,49 @@ export class PbrShader extends BaseShader {
     const ksAmbientX = f0x + (f90x - f0x) * ambientFresnelFactor;
     const ksAmbientY = f0y + (f90y - f0y) * ambientFresnelFactor;
     const ksAmbientZ = f0z + (f90z - f0z) * ambientFresnelFactor;
-    const ambientDiffuseFactor = (1 - metallic) * environmentIntensity;
+    const ambientDiffuseFactor = 1 - metallic;
     const rx = 1 - roughness;
     const a004 =
       Math.min(rx * rx, Math.pow(2, -9.28 * nDotV)) * rx +
       (0.0425 - 0.0275 * roughness);
     const envBrdfA = -1.04 * a004 + (1.04 - 0.572 * roughness);
     const envBrdfB = 1.04 * a004 + (-0.04 + 0.022 * roughness);
+    const normalUp = normal.dot(worldUp);
+    const diffuseHemi = saturate(normalUp * 0.5 + 0.5);
+    const diffuseHorizon = 1 - Math.abs(normalUp);
+    let diffuseEnvR = ground.x + (sky.x - ground.x) * diffuseHemi;
+    let diffuseEnvG = ground.y + (sky.y - ground.y) * diffuseHemi;
+    let diffuseEnvB = ground.z + (sky.z - ground.z) * diffuseHemi;
+    diffuseEnvR += (horizon.x - diffuseEnvR) * diffuseHorizon * blend;
+    diffuseEnvG += (horizon.y - diffuseEnvG) * diffuseHorizon * blend;
+    diffuseEnvB += (horizon.z - diffuseEnvB) * diffuseHorizon * blend;
+
+    const reflectionScale = 2 * nDotV;
+    const reflectionX = normal.x * reflectionScale - viewDir.x;
+    const reflectionY = normal.y * reflectionScale - viewDir.y;
+    const reflectionZ = normal.z * reflectionScale - viewDir.z;
+    const reflectionUp =
+      reflectionX * worldUp.x +
+      reflectionY * worldUp.y +
+      reflectionZ * worldUp.z;
+    const specularHemi = saturate(reflectionUp * 0.5 + 0.5);
+    const specularHorizon = 1 - Math.abs(reflectionUp);
+    let specularEnvR = ground.x + (sky.x - ground.x) * specularHemi;
+    let specularEnvG = ground.y + (sky.y - ground.y) * specularHemi;
+    let specularEnvB = ground.z + (sky.z - ground.z) * specularHemi;
+    specularEnvR += (horizon.x - specularEnvR) * specularHorizon * blend;
+    specularEnvG += (horizon.y - specularEnvG) * specularHorizon * blend;
+    specularEnvB += (horizon.z - specularEnvB) * specularHorizon * blend;
+
     const ambientR =
-      (1 - ksAmbientX) * baseColor.x * ambientDiffuseFactor +
-      (f0x * envBrdfA + envBrdfB) * environmentIntensity;
+      (1 - ksAmbientX) * baseColor.x * diffuseEnvR * ambientDiffuseFactor +
+      (f0x * envBrdfA + envBrdfB) * specularEnvR;
     const ambientG =
-      (1 - ksAmbientY) * baseColor.y * ambientDiffuseFactor +
-      (f0y * envBrdfA + envBrdfB) * environmentIntensity;
+      (1 - ksAmbientY) * baseColor.y * diffuseEnvG * ambientDiffuseFactor +
+      (f0y * envBrdfA + envBrdfB) * specularEnvG;
     const ambientB =
-      (1 - ksAmbientZ) * baseColor.z * ambientDiffuseFactor +
-      (f0z * envBrdfA + envBrdfB) * environmentIntensity;
+      (1 - ksAmbientZ) * baseColor.z * diffuseEnvB * ambientDiffuseFactor +
+      (f0z * envBrdfA + envBrdfB) * specularEnvB;
 
     return new Vector3(
       (ambientR + directR) * exposure,
