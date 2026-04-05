@@ -5,8 +5,8 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Software Renderer</title>
-    <script type="module" crossorigin src="/js-renderer/assets/index-5Q-L2RZX.js"></script>
-    <link rel="stylesheet" crossorigin href="/js-renderer/assets/index-DxNzN7GE.css">
+    <script type="module" crossorigin src="/js-renderer/assets/index-DfTaZ7y6.js"></script>
+    <link rel="stylesheet" crossorigin href="/js-renderer/assets/index-BIPrhb-F.css">
   </head>
   <body>
     <div id="app"></div>
@@ -25,7 +25,7 @@
             <option value="dice">Dice (20)</option>
             <option value="rock">Rock (500)</option>
             <option value="hydrant">Hydrant (3k)</option>
-            <option value="dog">Dog (10k)</option>
+            <option value="treasure">Treasure (10k)</option>
             <option value="head">Head (50k)</option>
             <option value="dragon">Dragon (100k)</option>
             <option value="spartan">Spartan (300k)</option>
@@ -48,9 +48,20 @@
               <button
                 type="button"
                 class="shading-option is-active"
+                data-shading-index="9"
+                data-shading-value="ibl"
+                aria-pressed="true"
+              >
+                IBL
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="shading-option"
                 data-shading-index="8"
                 data-shading-value="pbr"
-                aria-pressed="true"
+                aria-pressed="false"
               >
                 PBR
               </button>
@@ -150,9 +161,9 @@
             class="shading-slider"
             type="range"
             min="0"
-            max="8"
+            max="9"
             step="1"
-            value="8"
+            value="9"
             aria-label="Shading"
           />
         </div>
