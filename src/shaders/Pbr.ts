@@ -28,7 +28,7 @@ const shadowBias = 0.01;
 const lightIntensity = 3.14;
 const exposure = 1;
 
-const ambientIntensity = 0.25;
+const environmentIntensity = 0.05;
 
 // This shader keeps a few math-heavy sections expanded inline on purpose for
 // performance in the software renderer hot path.
@@ -173,7 +173,7 @@ export class PbrShader extends BaseShader {
     const ksAmbientX = f0x + (f90x - f0x) * ambientFresnelFactor;
     const ksAmbientY = f0y + (f90y - f0y) * ambientFresnelFactor;
     const ksAmbientZ = f0z + (f90z - f0z) * ambientFresnelFactor;
-    const ambientDiffuseFactor = (1 - metallic) * ambientIntensity;
+    const ambientDiffuseFactor = (1 - metallic) * environmentIntensity;
     const rx = 1 - roughness;
     const a004 =
       Math.min(rx * rx, Math.pow(2, -9.28 * nDotV)) * rx +
@@ -182,13 +182,13 @@ export class PbrShader extends BaseShader {
     const envBrdfB = 1.04 * a004 + (-0.04 + 0.022 * roughness);
     const ambientR =
       (1 - ksAmbientX) * baseColor.x * ambientDiffuseFactor +
-      (ksAmbientX * envBrdfA + envBrdfB) * ambientIntensity;
+      (f0x * envBrdfA + envBrdfB) * environmentIntensity;
     const ambientG =
       (1 - ksAmbientY) * baseColor.y * ambientDiffuseFactor +
-      (ksAmbientY * envBrdfA + envBrdfB) * ambientIntensity;
+      (f0y * envBrdfA + envBrdfB) * environmentIntensity;
     const ambientB =
       (1 - ksAmbientZ) * baseColor.z * ambientDiffuseFactor +
-      (ksAmbientZ * envBrdfA + envBrdfB) * ambientIntensity;
+      (f0z * envBrdfA + envBrdfB) * environmentIntensity;
 
     return new Vector3(
       (ambientR + directR) * exposure,
