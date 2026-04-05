@@ -390,7 +390,7 @@ canvas.onwheel = (e) => {
 canvas.oncontextmenu = (e) => e.preventDefault();
 
 window.addEventListener("keydown", (event) => {
-  if (modelDd.value === "dog" && event.key.toLowerCase() === "n") {
+  if (modelDd.value !== "nyxy" && event.key.toLowerCase() === "n") {
     modelDd.value = "nyxy";
     modelDd.dispatchEvent(new Event("change"));
   }
