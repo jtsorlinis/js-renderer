@@ -25,17 +25,6 @@ export const toneMapLinear = (colour: Vector3, exposure: number) => {
   );
 };
 
-export const toneMapReinhard = (colour: Vector3, exposure: number) => {
-  const x = colour.x * exposure;
-  const y = colour.y * exposure;
-  const z = colour.z * exposure;
-  return new Vector3(
-    x / (1 + x),
-    y / (1 + y),
-    z / (1 + z),
-  );
-};
-
 export const fresnelSchlick = (cosTheta: number, f0: Vector3) => {
   const factor = Math.pow(1 - saturate(cosTheta), 5);
   return new Vector3(
