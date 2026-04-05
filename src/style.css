@@ -36,6 +36,7 @@ body {
   flex-direction: column;
   padding: 1rem;
   gap: 1rem;
+  overflow: auto;
 }
 
 .title {
