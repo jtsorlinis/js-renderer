@@ -19,44 +19,29 @@ const specStr = 0.5;
 const shininess = 32;
 const ambient = 0.05;
 
-export class NormalMappedShader extends BaseShader {
+export class TexturedShader extends BaseShader {
   // Uniforms are set per draw call from `main.ts`.
   uniforms!: Uniforms;
 
   // Per-vertex data passed from vertex -> fragment.
   vUV = this.varying<Vector2>();
-  vLightDirTangent = this.varying<Vector3>();
-  vViewDirTangent = this.varying<Vector3>();
+  vModelPos = this.varying<Vector3>();
+  vNormal = this.varying<Vector3>();
+  vTangent = this.varying<Vector4>();
 
   vertex = (): Vector4 => {
     // Read the source vertex attributes from the active mesh.
     const model = this.uniforms.model;
     const i = this.vertexId;
-    const normal = model.normals[i];
+    const N = model.normals[i];
     const tangent = model.tangents[i];
-    const bitangent = normal.cross(tangent).normalize().scaleInPlace(tangent.w);
     const modelPos = model.vertices[i];
-
-    // Build lighting vectors in tangent space so sampled normal map values
-    // can be dotted directly in fragment().
-    const lightDirTangent = new Vector3(
-      tangent.dot3(this.uniforms.mLightDir),
-      bitangent.dot(this.uniforms.mLightDir),
-      normal.dot(this.uniforms.mLightDir),
-    );
-
-    // Same conversion for view direction.
-    const viewDir = this.uniforms.mCamPos.subtract(modelPos).normalize();
-    const viewDirTangent = new Vector3(
-      tangent.dot3(viewDir),
-      bitangent.dot(viewDir),
-      normal.dot(viewDir),
-    );
 
     // Emit varyings for interpolation across the triangle.
     this.v2f(this.vUV, model.uvs[i]);
-    this.v2f(this.vLightDirTangent, lightDirTangent);
-    this.v2f(this.vViewDirTangent, viewDirTangent);
+    this.v2f(this.vNormal, N);
+    this.v2f(this.vTangent, tangent);
+    this.v2f(this.vModelPos, modelPos);
 
     // Final clip-space position for rasterization.
     return this.uniforms.mvp.transformPoint4(modelPos);
@@ -65,14 +50,27 @@ export class NormalMappedShader extends BaseShader {
   fragment = () => {
     // Read interpolated values at this pixel.
     const uv = this.interpolateVec2(this.vUV);
-    const lightDir = this.interpolateVec3(this.vLightDirTangent).normalize();
-    const viewDir = this.interpolateVec3(this.vViewDirTangent).normalize();
+    const modelPos = this.interpolateVec3(this.vModelPos);
+    const tangent4 = this.interpolateVec4(this.vTangent);
+    const tangent = tangent4.xyz;
+    const handedNess = tangent4.w < 0 ? -1 : 1;
+
+    const N = this.interpolateVec3(this.vNormal).normalize();
+    const T = tangent.subtractInPlace(N.scale(N.dot(tangent))).normalize();
+    const B = N.cross(T).scaleInPlace(handedNess);
 
     // Sample material inputs.
     const colour = this.sample(this.uniforms.texture, uv);
-    const normal = this.sample(this.uniforms.normalTexture, uv);
+    const normalTS = this.sample(this.uniforms.normalTexture, uv);
 
-    // Blinn-Phong shading in tangent space.
+    const normal = T.scaleInPlace(normalTS.x)
+      .addInPlace(B.scaleInPlace(normalTS.y))
+      .addInPlace(N.scaleInPlace(normalTS.z))
+      .normalize();
+
+    // Blinn-Phong shading
+    const lightDir = this.uniforms.mLightDir;
+    const viewDir = this.uniforms.mCamPos.subtract(modelPos).normalize();
     const halfWayDir = viewDir.subtractInPlace(lightDir).normalize();
     let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
     spec *= specStr;

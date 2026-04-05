@@ -35,7 +35,7 @@ export class Vector3 {
     return new Vector4(this.x, this.y, this.z, w);
   }
 
-  public cross(v: Vector3) {
+  public cross(v: Vector3 | Vector4) {
     return new Vector3(
       this.y * v.z - this.z * v.y,
       this.z * v.x - this.x * v.z,

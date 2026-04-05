@@ -38,7 +38,7 @@ export class NormalMappedShadowsShader extends BaseShader {
     const i = this.vertexId;
     const normal = model.normals[i];
     const tangent = model.tangents[i];
-    const bitangent = model.bitangents[i];
+    const bitangent = normal.cross(tangent).normalize().scaleInPlace(tangent.w);
     const modelPos = model.vertices[i];
 
     // Build lighting vectors in tangent space so sampled normal map values
