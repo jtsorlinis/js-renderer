@@ -18,8 +18,8 @@ const modelAssets: Record<string, ModelAssetSource> = {
   hydrant: {
     meshUrl: assetPath("hydrant.glb"),
   },
-  dog: {
-    meshUrl: assetPath("dog.glb"),
+  treasure: {
+    meshUrl: assetPath("treasure.glb"),
     scale: 1.1,
   },
   head: {
