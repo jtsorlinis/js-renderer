@@ -10,6 +10,7 @@ import {
   geometrySmith,
   saturate,
 } from "./pbrHelpers";
+import { buildProceduralIbl } from "./IblHelpers";
 
 export interface Uniforms {
   model: Verts;
@@ -33,6 +34,15 @@ const sky = new Vector3(0.46, 0.42, 0.39);
 const horizon = new Vector3(0.72, 0.63, 0.54);
 const ground = new Vector3(0.07, 0.055, 0.045);
 const blend = 0.18;
+const {
+  diffuseIrradianceLut,
+  diffuseIrradianceLutSize,
+  specularPrefilterLut,
+  specularPrefilterUpLutSize,
+  specularPrefilterRoughnessLutSize,
+  specularBrdfLut,
+  specularBrdfLutSize,
+} = buildProceduralIbl({ sky, horizon, ground, blend });
 
 // This shader keeps a few math-heavy sections expanded inline on purpose for
 // performance in the software renderer hot path.
@@ -182,8 +192,8 @@ export class PbrShader extends BaseShader {
         lightScale;
     }
 
-    // Approximate IBL without an environment texture by evaluating a simple
-    // sky/horizon/ground hemi-light in tangent space.
+    // Ambient uses a diffuse irradiance integral plus split-sum style specular
+    // from the same procedural environment.
     const ambientFresnelFactor = Math.pow(1 - saturate(nDotV), 5);
     const f90x = Math.max(1 - roughness, f0x);
     const f90y = Math.max(1 - roughness, f0y);
@@ -192,21 +202,32 @@ export class PbrShader extends BaseShader {
     const ksAmbientY = f0y + (f90y - f0y) * ambientFresnelFactor;
     const ksAmbientZ = f0z + (f90z - f0z) * ambientFresnelFactor;
     const ambientDiffuseFactor = 1 - metallic;
-    const rx = 1 - roughness;
-    const a004 =
-      Math.min(rx * rx, Math.pow(2, -9.28 * nDotV)) * rx +
-      (0.0425 - 0.0275 * roughness);
-    const envBrdfA = -1.04 * a004 + (1.04 - 0.572 * roughness);
-    const envBrdfB = 1.04 * a004 + (-0.04 + 0.022 * roughness);
     const normalUp = normal.dot(worldUp);
-    const diffuseHemi = saturate(normalUp * 0.5 + 0.5);
-    const diffuseHorizon = 1 - Math.abs(normalUp);
-    let diffuseEnvR = ground.x + (sky.x - ground.x) * diffuseHemi;
-    let diffuseEnvG = ground.y + (sky.y - ground.y) * diffuseHemi;
-    let diffuseEnvB = ground.z + (sky.z - ground.z) * diffuseHemi;
-    diffuseEnvR += (horizon.x - diffuseEnvR) * diffuseHorizon * blend;
-    diffuseEnvG += (horizon.y - diffuseEnvG) * diffuseHorizon * blend;
-    diffuseEnvB += (horizon.z - diffuseEnvB) * diffuseHorizon * blend;
+    const diffuseLutCoord =
+      saturate(normalUp * 0.5 + 0.5) * (diffuseIrradianceLutSize - 1);
+    const diffuseLutIndex = Math.floor(diffuseLutCoord);
+    const diffuseLutNext = Math.min(
+      diffuseLutIndex + 1,
+      diffuseIrradianceLutSize - 1,
+    );
+    const diffuseLutBlend = diffuseLutCoord - diffuseLutIndex;
+    const diffuseLutBase = diffuseLutIndex * 3;
+    const diffuseLutBaseNext = diffuseLutNext * 3;
+    const diffuseEnvR =
+      diffuseIrradianceLut[diffuseLutBase] +
+      (diffuseIrradianceLut[diffuseLutBaseNext] -
+        diffuseIrradianceLut[diffuseLutBase]) *
+        diffuseLutBlend;
+    const diffuseEnvG =
+      diffuseIrradianceLut[diffuseLutBase + 1] +
+      (diffuseIrradianceLut[diffuseLutBaseNext + 1] -
+        diffuseIrradianceLut[diffuseLutBase + 1]) *
+        diffuseLutBlend;
+    const diffuseEnvB =
+      diffuseIrradianceLut[diffuseLutBase + 2] +
+      (diffuseIrradianceLut[diffuseLutBaseNext + 2] -
+        diffuseIrradianceLut[diffuseLutBase + 2]) *
+        diffuseLutBlend;
 
     const reflectionScale = 2 * nDotV;
     const reflectionX = normal.x * reflectionScale - viewDir.x;
@@ -216,14 +237,108 @@ export class PbrShader extends BaseShader {
       reflectionX * worldUp.x +
       reflectionY * worldUp.y +
       reflectionZ * worldUp.z;
-    const specularHemi = saturate(reflectionUp * 0.5 + 0.5);
-    const specularHorizon = 1 - Math.abs(reflectionUp);
-    let specularEnvR = ground.x + (sky.x - ground.x) * specularHemi;
-    let specularEnvG = ground.y + (sky.y - ground.y) * specularHemi;
-    let specularEnvB = ground.z + (sky.z - ground.z) * specularHemi;
-    specularEnvR += (horizon.x - specularEnvR) * specularHorizon * blend;
-    specularEnvG += (horizon.y - specularEnvG) * specularHorizon * blend;
-    specularEnvB += (horizon.z - specularEnvB) * specularHorizon * blend;
+    const specularUpCoord =
+      saturate(reflectionUp * 0.5 + 0.5) * (specularPrefilterUpLutSize - 1);
+    const specularUpIndex = Math.floor(specularUpCoord);
+    const specularUpNext = Math.min(
+      specularUpIndex + 1,
+      specularPrefilterUpLutSize - 1,
+    );
+    const specularUpBlend = specularUpCoord - specularUpIndex;
+    const specularRoughnessCoord =
+      roughness * (specularPrefilterRoughnessLutSize - 1);
+    const specularRoughnessIndex = Math.floor(specularRoughnessCoord);
+    const specularRoughnessNext = Math.min(
+      specularRoughnessIndex + 1,
+      specularPrefilterRoughnessLutSize - 1,
+    );
+    const specularRoughnessBlend =
+      specularRoughnessCoord - specularRoughnessIndex;
+    const specularBase00 =
+      (specularRoughnessIndex * specularPrefilterUpLutSize + specularUpIndex) *
+      3;
+    const specularBase10 =
+      (specularRoughnessIndex * specularPrefilterUpLutSize + specularUpNext) *
+      3;
+    const specularBase01 =
+      (specularRoughnessNext * specularPrefilterUpLutSize + specularUpIndex) *
+      3;
+    const specularBase11 =
+      (specularRoughnessNext * specularPrefilterUpLutSize + specularUpNext) * 3;
+    const specularEnvR0 =
+      specularPrefilterLut[specularBase00] +
+      (specularPrefilterLut[specularBase10] -
+        specularPrefilterLut[specularBase00]) *
+        specularUpBlend;
+    const specularEnvR1 =
+      specularPrefilterLut[specularBase01] +
+      (specularPrefilterLut[specularBase11] -
+        specularPrefilterLut[specularBase01]) *
+        specularUpBlend;
+    const specularEnvG0 =
+      specularPrefilterLut[specularBase00 + 1] +
+      (specularPrefilterLut[specularBase10 + 1] -
+        specularPrefilterLut[specularBase00 + 1]) *
+        specularUpBlend;
+    const specularEnvG1 =
+      specularPrefilterLut[specularBase01 + 1] +
+      (specularPrefilterLut[specularBase11 + 1] -
+        specularPrefilterLut[specularBase01 + 1]) *
+        specularUpBlend;
+    const specularEnvB0 =
+      specularPrefilterLut[specularBase00 + 2] +
+      (specularPrefilterLut[specularBase10 + 2] -
+        specularPrefilterLut[specularBase00 + 2]) *
+        specularUpBlend;
+    const specularEnvB1 =
+      specularPrefilterLut[specularBase01 + 2] +
+      (specularPrefilterLut[specularBase11 + 2] -
+        specularPrefilterLut[specularBase01 + 2]) *
+        specularUpBlend;
+    const specularEnvR =
+      specularEnvR0 + (specularEnvR1 - specularEnvR0) * specularRoughnessBlend;
+    const specularEnvG =
+      specularEnvG0 + (specularEnvG1 - specularEnvG0) * specularRoughnessBlend;
+    const specularEnvB =
+      specularEnvB0 + (specularEnvB1 - specularEnvB0) * specularRoughnessBlend;
+
+    const brdfViewCoord = nDotV * (specularBrdfLutSize - 1);
+    const brdfViewIndex = Math.floor(brdfViewCoord);
+    const brdfViewNext = Math.min(brdfViewIndex + 1, specularBrdfLutSize - 1);
+    const brdfViewBlend = brdfViewCoord - brdfViewIndex;
+    const brdfRoughnessCoord = roughness * (specularBrdfLutSize - 1);
+    const brdfRoughnessIndex = Math.floor(brdfRoughnessCoord);
+    const brdfRoughnessNext = Math.min(
+      brdfRoughnessIndex + 1,
+      specularBrdfLutSize - 1,
+    );
+    const brdfRoughnessBlend = brdfRoughnessCoord - brdfRoughnessIndex;
+    const brdfBase00 =
+      (brdfRoughnessIndex * specularBrdfLutSize + brdfViewIndex) * 2;
+    const brdfBase10 =
+      (brdfRoughnessIndex * specularBrdfLutSize + brdfViewNext) * 2;
+    const brdfBase01 =
+      (brdfRoughnessNext * specularBrdfLutSize + brdfViewIndex) * 2;
+    const brdfBase11 =
+      (brdfRoughnessNext * specularBrdfLutSize + brdfViewNext) * 2;
+    const brdfA0 =
+      specularBrdfLut[brdfBase00] +
+      (specularBrdfLut[brdfBase10] - specularBrdfLut[brdfBase00]) *
+        brdfViewBlend;
+    const brdfA1 =
+      specularBrdfLut[brdfBase01] +
+      (specularBrdfLut[brdfBase11] - specularBrdfLut[brdfBase01]) *
+        brdfViewBlend;
+    const brdfB0 =
+      specularBrdfLut[brdfBase00 + 1] +
+      (specularBrdfLut[brdfBase10 + 1] - specularBrdfLut[brdfBase00 + 1]) *
+        brdfViewBlend;
+    const brdfB1 =
+      specularBrdfLut[brdfBase01 + 1] +
+      (specularBrdfLut[brdfBase11 + 1] - specularBrdfLut[brdfBase01 + 1]) *
+        brdfViewBlend;
+    const envBrdfA = brdfA0 + (brdfA1 - brdfA0) * brdfRoughnessBlend;
+    const envBrdfB = brdfB0 + (brdfB1 - brdfB0) * brdfRoughnessBlend;
 
     const ambientR =
       (1 - ksAmbientX) * baseColor.x * diffuseEnvR * ambientDiffuseFactor +
