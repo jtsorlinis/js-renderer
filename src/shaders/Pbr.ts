@@ -7,12 +7,8 @@ import {
   EPSILON,
   INV_PI,
   distributionGGX,
-  fresnelSchlick,
-  fresnelSchlickRoughness,
   geometrySmith,
-  mixVec3,
   saturate,
-  toneMapLinear,
 } from "./pbrHelpers";
 
 export interface Uniforms {
@@ -34,6 +30,8 @@ const exposure = 1;
 
 const ambientIntensity = 0.05;
 
+// This shader keeps a few math-heavy sections expanded inline on purpose for
+// performance in the software renderer hot path.
 export class PbrShader extends BaseShader {
   uniforms!: Uniforms;
 
@@ -47,7 +45,25 @@ export class PbrShader extends BaseShader {
     const i = this.vertexId;
     const normal = model.normals[i];
     const tangent = model.tangents[i];
-    const bitangent = normal.cross(tangent).normalize().scaleInPlace(tangent.w);
+
+    // Inlined equivalent to normalize(cross(N, T)) * tangent.w.
+    const bitangentX = normal.y * tangent.z - normal.z * tangent.y;
+    const bitangentY = normal.z * tangent.x - normal.x * tangent.z;
+    const bitangentZ = normal.x * tangent.y - normal.y * tangent.x;
+    const bitangentLengthSq =
+      bitangentX * bitangentX +
+      bitangentY * bitangentY +
+      bitangentZ * bitangentZ;
+    const bitangentScale =
+      bitangentLengthSq > 0.00000001
+        ? tangent.w / Math.sqrt(bitangentLengthSq)
+        : 0;
+    const bitangent = new Vector3(
+      bitangentX * bitangentScale,
+      bitangentY * bitangentScale,
+      bitangentZ * bitangentScale,
+    );
+
     const modelPos = model.vertices[i];
     const lightDirTangent = new Vector3(
       tangent.dot3(this.uniforms.mLightDir),
@@ -100,19 +116,28 @@ export class PbrShader extends BaseShader {
     const metallic = saturate(
       metallicRoughness.z * this.uniforms.pbrMaterial.metallicFactor,
     );
-    const f0 = mixVec3(DIELECTRIC_F0, baseColor, metallic);
+    // Inlined equivalent to the usual vec3 F0/Fresnel lighting path to reduce
+    // fragment allocations in this hot shader.
+    const f0x = DIELECTRIC_F0.x + (baseColor.x - DIELECTRIC_F0.x) * metallic;
+    const f0y = DIELECTRIC_F0.y + (baseColor.y - DIELECTRIC_F0.y) * metallic;
+    const f0z = DIELECTRIC_F0.z + (baseColor.z - DIELECTRIC_F0.z) * metallic;
 
     const lightDir = lightDirTangent.scaleInPlace(-1);
     const nDotL = saturate(normal.dot(lightDir));
     const nDotV = saturate(normal.dot(viewDir));
     const halfDir = lightDir.addInPlace(viewDir);
 
-    let directLighting = new Vector3();
+    let directR = 0;
+    let directG = 0;
+    let directB = 0;
     if (nDotL > 0 && nDotV > 0 && halfDir.lengthSq() > EPSILON) {
       halfDir.normalize();
       const nDotH = saturate(normal.dot(halfDir));
       const vDotH = saturate(viewDir.dot(halfDir));
-      const fresnel = fresnelSchlick(vDotH, f0);
+      const fresnelFactor = Math.pow(1 - saturate(vDotH), 5);
+      const fresnelX = f0x + (1 - f0x) * fresnelFactor;
+      const fresnelY = f0y + (1 - f0y) * fresnelFactor;
+      const fresnelZ = f0z + (1 - f0z) * fresnelFactor;
       const distribution = distributionGGX(nDotH, roughness);
       const geometry = geometrySmith(nDotV, nDotL, roughness);
       const specularFactor =
@@ -120,39 +145,49 @@ export class PbrShader extends BaseShader {
       const diffuseFactor = (1 - metallic) * INV_PI;
       const lightScale = nDotL * shadow * lightIntensity;
 
-      // Keep the BRDF combine readable while avoiding vector churn in the fragment hot path.
-      const directR =
-        ((1 - fresnel.x) * diffuseFactor * baseColor.x +
-          fresnel.x * specularFactor) *
+      // Inlined equivalent to the usual vec3 BRDF combine.
+      directR =
+        ((1 - fresnelX) * diffuseFactor * baseColor.x +
+          fresnelX * specularFactor) *
         this.uniforms.lightCol.x *
         lightScale;
-      const directG =
-        ((1 - fresnel.y) * diffuseFactor * baseColor.y +
-          fresnel.y * specularFactor) *
+      directG =
+        ((1 - fresnelY) * diffuseFactor * baseColor.y +
+          fresnelY * specularFactor) *
         this.uniforms.lightCol.y *
         lightScale;
-      const directB =
-        ((1 - fresnel.z) * diffuseFactor * baseColor.z +
-          fresnel.z * specularFactor) *
+      directB =
+        ((1 - fresnelZ) * diffuseFactor * baseColor.z +
+          fresnelZ * specularFactor) *
         this.uniforms.lightCol.z *
         lightScale;
-
-      directLighting = new Vector3(directR, directG, directB);
     }
 
+    // Inlined equivalent to the usual vec3 ambient Fresnel/specular fallback.
     // Direct-light-only PBR still needs a small environment stand-in without IBL
-    const ksAmbient = fresnelSchlickRoughness(nDotV, f0, roughness);
+    const ambientFresnelFactor = Math.pow(1 - saturate(nDotV), 5);
+    const f90x = Math.max(1 - roughness, f0x);
+    const f90y = Math.max(1 - roughness, f0y);
+    const f90z = Math.max(1 - roughness, f0z);
+    const ksAmbientX = f0x + (f90x - f0x) * ambientFresnelFactor;
+    const ksAmbientY = f0y + (f90y - f0y) * ambientFresnelFactor;
+    const ksAmbientZ = f0z + (f90z - f0z) * ambientFresnelFactor;
     const ambientDiffuseFactor = (1 - metallic) * ambientIntensity;
     const ambientSpecularFactor = ambientIntensity * (1 - roughness * 0.5);
-    const ambient = new Vector3(
-      (1 - ksAmbient.x) * baseColor.x * ambientDiffuseFactor +
-        ksAmbient.x * ambientSpecularFactor,
-      (1 - ksAmbient.y) * baseColor.y * ambientDiffuseFactor +
-        ksAmbient.y * ambientSpecularFactor,
-      (1 - ksAmbient.z) * baseColor.z * ambientDiffuseFactor +
-        ksAmbient.z * ambientSpecularFactor,
-    );
+    const ambientR =
+      (1 - ksAmbientX) * baseColor.x * ambientDiffuseFactor +
+      ksAmbientX * ambientSpecularFactor;
+    const ambientG =
+      (1 - ksAmbientY) * baseColor.y * ambientDiffuseFactor +
+      ksAmbientY * ambientSpecularFactor;
+    const ambientB =
+      (1 - ksAmbientZ) * baseColor.z * ambientDiffuseFactor +
+      ksAmbientZ * ambientSpecularFactor;
 
-    return toneMapLinear(ambient.addInPlace(directLighting), exposure);
+    return new Vector3(
+      (ambientR + directR) * exposure,
+      (ambientG + directG) * exposure,
+      (ambientB + directB) * exposure,
+    );
   };
 }
