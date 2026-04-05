@@ -46,9 +46,20 @@
               <button
                 type="button"
                 class="shading-option is-active"
+                data-shading-index="9"
+                data-shading-value="ibl"
+                aria-pressed="true"
+              >
+                IBL
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="shading-option"
                 data-shading-index="8"
                 data-shading-value="pbr"
-                aria-pressed="true"
+                aria-pressed="false"
               >
                 PBR
               </button>
@@ -148,9 +159,9 @@
             class="shading-slider"
             type="range"
             min="0"
-            max="8"
+            max="9"
             step="1"
-            value="8"
+            value="9"
             aria-label="Shading"
           />
         </div>
