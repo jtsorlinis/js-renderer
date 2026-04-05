@@ -92,14 +92,14 @@ export const resolveShadingSelection = (
       };
     case "culledWireframe":
       return {
-        material: "smooth",
+        material: "unlit",
         renderMode: "culledWireframe",
         useShadows: false,
         normalizedValue: value,
       };
     default:
       return {
-        material: "smooth",
+        material: "unlit",
         renderMode: "wireframe",
         useShadows: false,
         normalizedValue: "wireframe",
