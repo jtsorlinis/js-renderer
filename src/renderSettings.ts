@@ -1,4 +1,5 @@
 export type MaterialMode =
+  | "ibl"
   | "pbr"
   | "normalMappedShadows"
   | "normalMapped"
@@ -24,14 +25,22 @@ export const resolveShadingSelection = (
 
   if (
     !canUseTexturedModes &&
-    (value.includes("pbr") ||
-      value.includes("textured") ||
+    (value === "ibl" ||
+      value === "pbr" ||
+      value === "textured" ||
       value.includes("normalMapped"))
   ) {
     value = "smooth";
   }
 
   switch (value) {
+    case "ibl":
+      return {
+        material: "ibl",
+        renderMode: "filled",
+        useShadows: true,
+        normalizedValue: value,
+      };
     case "pbr":
       return {
         material: "pbr",

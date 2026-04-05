@@ -25,6 +25,7 @@ import { DepthShader } from "./shaders/DepthShader";
 import { NormalMappedShader } from "./shaders/NormalMapped";
 import { NormalMappedShadowsShader } from "./shaders/NormalMappedShadows";
 import { PbrShader } from "./shaders/Pbr";
+import { IblShader } from "./shaders/Ibl";
 import { resolveShadingSelection, type RenderMode } from "./renderSettings";
 
 const CANVAS_WIDTH = 800;
@@ -157,6 +158,7 @@ let modelScale = new Vector3(1, 1, 1);
 let customGlbFile: File | null = null;
 
 const shaders = {
+  ibl: new IblShader(),
   pbr: new PbrShader(),
   normalMappedShadows: new NormalMappedShadowsShader(),
   normalMapped: new NormalMappedShader(),
