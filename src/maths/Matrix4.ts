@@ -125,7 +125,7 @@ export class Matrix4 {
     return m;
   }
 
-  static Ortho(orthoSize: number, aspectRatio: number, near = 0.1, far = 1000) {
+  static Ortho(orthoSize: number, aspectRatio: number, near = 0.1, far = 5) {
     const orthoMat = Matrix4.Identity();
     orthoMat.m[0] = 1 / (orthoSize * aspectRatio);
     orthoMat.m[5] = 1 / orthoSize;
@@ -134,7 +134,7 @@ export class Matrix4 {
     return orthoMat;
   }
 
-  static Perspective(fov: number, aspectRatio: number, near = 0.1, far = 1000) {
+  static Perspective(fov: number, aspectRatio: number, near = 0.1, far = 100) {
     const perspectiveMat = Matrix4.Identity();
 
     const fovRad = fov * (Math.PI / 180);

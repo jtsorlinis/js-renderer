@@ -323,7 +323,6 @@ const draw = () => {
   // 5) Select active material shader and update uniforms.
   const shader = shaders[renderSettings.shaderKey];
 
-  depthShader.uniforms = { model, lightSpaceMat };
   shader.uniforms = {
     model,
     modelMat,
@@ -344,6 +343,7 @@ const draw = () => {
 
   // 6) Optional shadow pass first, then visible color pass.
   if (renderSettings.useShadows) {
+    depthShader.uniforms = { model, clipMat: lightSpaceMat };
     renderMesh(depthShader, shadowMap, "filled", shadowBuffer);
   }
 
