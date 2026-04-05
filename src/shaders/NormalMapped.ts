@@ -40,7 +40,7 @@ export class NormalMappedShader extends BaseShader {
     // Build lighting vectors in tangent space so sampled normal map values
     // can be dotted directly in fragment().
     const lightDirTangent = new Vector3(
-      tangent.dot(this.uniforms.mLightDir),
+      tangent.dot3(this.uniforms.mLightDir),
       bitangent.dot(this.uniforms.mLightDir),
       normal.dot(this.uniforms.mLightDir),
     );
@@ -48,7 +48,7 @@ export class NormalMappedShader extends BaseShader {
     // Same conversion for view direction.
     const viewDir = this.uniforms.mCamPos.subtract(modelPos).normalize();
     const viewDirTangent = new Vector3(
-      tangent.dot(viewDir),
+      tangent.dot3(viewDir),
       bitangent.dot(viewDir),
       normal.dot(viewDir),
     );
