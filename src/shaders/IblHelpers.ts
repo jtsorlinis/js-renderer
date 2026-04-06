@@ -9,9 +9,12 @@ export interface IblData {
   specularPrefilterMap: Float32Array;
   specularPrefilterMapWidth: number;
   specularPrefilterMapHeight: number;
+  specularPrefilterLayerStride: number;
   specularPrefilterRoughnessLutSize: number;
+  specularPrefilterRoughnessMaxIndex: number;
   specularBrdfLut: Float32Array;
   specularBrdfLutSize: number;
+  specularBrdfLutMaxIndex: number;
 }
 
 const TAU = Math.PI * 2;
@@ -32,8 +35,34 @@ const clampSignedUnit = (value: number) => {
   return Math.max(-1, Math.min(1, value));
 };
 
-const wrapUnit = (value: number) => {
+export const wrapUnit = (value: number) => {
   return value - Math.floor(value);
+};
+
+export const sampleLatLongMapInto = (
+  data: Float32Array,
+  width: number,
+  height: number,
+  u: number,
+  v: number,
+  out: Vector3,
+  layerIndex = 0,
+  layerStride = width * height * 3,
+) => {
+  const xIndex = Math.max(
+    0,
+    Math.min(width - 1, Math.round(wrapUnit(u) * (width - 1))),
+  );
+  const yIndex = Math.max(
+    0,
+    Math.min(height - 1, Math.round(v * (height - 1))),
+  );
+  const layerOffset = layerIndex * layerStride;
+  const base = layerOffset + (yIndex * width + xIndex) * 3;
+  out.x = data[base];
+  out.y = data[base + 1];
+  out.z = data[base + 2];
+  return out;
 };
 
 const directionToLatLongUv = (x: number, y: number, z: number) => {
@@ -113,9 +142,20 @@ const sampleLatLongData = (
   };
 };
 
-const sampleEnvironment = (texture: Texture, x: number, y: number, z: number) => {
+const sampleEnvironment = (
+  texture: Texture,
+  x: number,
+  y: number,
+  z: number,
+) => {
   const uv = directionToLatLongUv(x, y, z);
-  return sampleLatLongData(texture.data, texture.width, texture.height, uv.u, uv.v);
+  return sampleLatLongData(
+    texture.data,
+    texture.width,
+    texture.height,
+    uv.u,
+    uv.v,
+  );
 };
 
 const wrapAngle = (angle: number) => {
@@ -448,7 +488,11 @@ export const buildEnvironmentIbl = (environmentTexture: Texture): IblData => {
     diffuseIrradianceMapHeight,
     specularPrefilterMapWidth,
     specularPrefilterMapHeight,
+    specularPrefilterLayerStride:
+      specularPrefilterMapWidth * specularPrefilterMapHeight * 3,
     specularPrefilterRoughnessLutSize,
+    specularPrefilterRoughnessMaxIndex: specularPrefilterRoughnessLutSize - 1,
     specularBrdfLutSize,
+    specularBrdfLutMaxIndex: specularBrdfLutSize - 1,
   };
 };
