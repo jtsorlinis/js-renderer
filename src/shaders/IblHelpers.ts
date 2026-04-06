@@ -1,4 +1,5 @@
 import { Texture } from "../drawing";
+import { Vector3 } from "../maths";
 import { EPSILON, INV_PI } from "./pbrHelpers";
 
 export interface IblData {
@@ -25,6 +26,7 @@ const specularPrefilterRoughnessLutSize = 16;
 const specularPrefilterSampleCount = 64;
 const specularBrdfLutSize = 32;
 const specularBrdfSampleCount = 96;
+const SUN_LUMINANCE_THRESHOLD = 0.98;
 
 const clampSignedUnit = (value: number) => {
   return Math.max(-1, Math.min(1, value));
@@ -114,6 +116,99 @@ const sampleLatLongData = (
 const sampleEnvironment = (texture: Texture, x: number, y: number, z: number) => {
   const uv = directionToLatLongUv(x, y, z);
   return sampleLatLongData(texture.data, texture.width, texture.height, uv.u, uv.v);
+};
+
+const wrapAngle = (angle: number) => {
+  while (angle <= -Math.PI) {
+    angle += TAU;
+  }
+
+  while (angle > Math.PI) {
+    angle -= TAU;
+  }
+
+  return angle;
+};
+
+const directionToYaw = (direction: Vector3) => {
+  return Math.atan2(direction.x, direction.z);
+};
+
+export const estimateEnvironmentSunDirection = (texture: Texture) => {
+  let maxLuminance = 0;
+
+  for (let i = 0; i < texture.data.length; i += 3) {
+    const luminance =
+      texture.data[i] * 0.2126 +
+      texture.data[i + 1] * 0.7152 +
+      texture.data[i + 2] * 0.0722;
+    maxLuminance = Math.max(maxLuminance, luminance);
+  }
+
+  if (maxLuminance <= 0) {
+    return Vector3.Forward;
+  }
+
+  const luminanceThreshold = maxLuminance * SUN_LUMINANCE_THRESHOLD;
+  let sunX = 0;
+  let sunY = 0;
+  let sunZ = 0;
+  let totalWeight = 0;
+
+  for (let y = 0; y < texture.height; y++) {
+    const v = (y + 0.5) / texture.height;
+    const theta = v * Math.PI;
+    const sinTheta = Math.sin(theta);
+    const dirY = Math.cos(theta);
+
+    for (let x = 0; x < texture.width; x++) {
+      const base = (y * texture.width + x) * 3;
+      const luminance =
+        texture.data[base] * 0.2126 +
+        texture.data[base + 1] * 0.7152 +
+        texture.data[base + 2] * 0.0722;
+      if (luminance < luminanceThreshold) {
+        continue;
+      }
+
+      const u = (x + 0.5) / texture.width;
+      const phi = (u - 0.5) * TAU;
+      const weight = luminance * luminance * Math.max(sinTheta, 0.001);
+
+      sunX += Math.sin(phi) * sinTheta * weight;
+      sunY += dirY * weight;
+      sunZ += Math.cos(phi) * sinTheta * weight;
+      totalWeight += weight;
+    }
+  }
+
+  if (totalWeight <= 0) {
+    return Vector3.Forward;
+  }
+
+  return new Vector3(
+    sunX / totalWeight,
+    sunY / totalWeight,
+    sunZ / totalWeight,
+  ).normalize();
+};
+
+export const estimateEnvironmentYaw = (texture: Texture, lightDir: Vector3) => {
+  const sunDirection = estimateEnvironmentSunDirection(texture);
+  const lightDirectionToSource = lightDir.scale(-1);
+  const sunLengthSq =
+    sunDirection.x * sunDirection.x + sunDirection.z * sunDirection.z;
+  const lightLengthSq =
+    lightDirectionToSource.x * lightDirectionToSource.x +
+    lightDirectionToSource.z * lightDirectionToSource.z;
+
+  if (sunLengthSq <= Number.EPSILON || lightLengthSq <= Number.EPSILON) {
+    return 0;
+  }
+
+  return wrapAngle(
+    directionToYaw(lightDirectionToSource) - directionToYaw(sunDirection),
+  );
 };
 
 const radicalInverseVdc = (bits: number) => {
