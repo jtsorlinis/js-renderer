@@ -160,12 +160,9 @@ export class PbrShader extends BaseShader {
     }
 
     // Keep the direct-light PBR step readable with a tiny material-aware fill
-    const ambientR =
-      (baseColor.x * (1 - metallic) + f0x) * ambientIntensity;
-    const ambientG =
-      (baseColor.y * (1 - metallic) + f0y) * ambientIntensity;
-    const ambientB =
-      (baseColor.z * (1 - metallic) + f0z) * ambientIntensity;
+    const ambientR = (baseColor.x * (1 - metallic) + f0x) * ambientIntensity;
+    const ambientG = (baseColor.y * (1 - metallic) + f0y) * ambientIntensity;
+    const ambientB = (baseColor.z * (1 - metallic) + f0z) * ambientIntensity;
 
     return new Vector3(
       (ambientR + directR) * exposure,
