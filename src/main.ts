@@ -36,7 +36,7 @@ import { loadHdrTexture } from "./utils/hdrLoader";
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
 const SHADOW_MAP_SIZE = 512;
-const ROTATION_SPEED = 0;
+const ROTATION_SPEED = 0.2;
 const ROTATE_SENSITIVITY = 250;
 const PAN_SENSITIVITY = 250;
 const ZOOM_SENSITIVITY = 100;
