@@ -10,7 +10,12 @@ import {
   geometrySmith,
   saturate,
 } from "./pbrHelpers";
-import { sampleLatLongMapInto, type IblData, wrapUnit } from "./IblHelpers";
+import {
+  sampleLatLongMapInto,
+  type IblData,
+  wrapUnit,
+  INV_TAU,
+} from "./IblHelpers";
 
 export interface Uniforms {
   model: Verts;
@@ -33,8 +38,6 @@ export interface Uniforms {
 const shadowBias = 0.01;
 const lightIntensity = 3.14;
 const exposure = 1;
-const TAU = Math.PI * 2;
-const INV_TAU = 1 / TAU;
 
 // This shader keeps a few math-heavy sections expanded inline on purpose for
 // performance in the software renderer hot path.
@@ -44,8 +47,7 @@ export class IblShader extends BaseShader {
   vUV = this.varying<Vector2>();
   vViewDirWorld = this.varying<Vector3>();
   vWorldNormal = this.varying<Vector3>();
-  vWorldTangent = this.varying<Vector3>();
-  vTangentHandedness = this.varying<number>();
+  vWorldTangent = this.varying<Vector4>();
   vLightSpacePos = this.varying<Vector3>();
 
   private diffuseEnv = new Vector3();
@@ -62,8 +64,8 @@ export class IblShader extends BaseShader {
       .transformDirection(normal)
       .normalize();
     const worldTangent = this.uniforms.modelMat
-      .transformDirection(tangent.xyz)
-      .normalize();
+      .transformDirection4(tangent)
+      .normalize3();
     const viewDirWorld = this.uniforms.camPos.subtract(worldPos).normalize();
 
     const lightSpacePos = this.uniforms.lightSpaceMat.transformPoint(modelPos);
@@ -74,7 +76,6 @@ export class IblShader extends BaseShader {
     this.v2f(this.vViewDirWorld, viewDirWorld);
     this.v2f(this.vWorldNormal, worldNormal);
     this.v2f(this.vWorldTangent, worldTangent);
-    this.v2f(this.vTangentHandedness, tangent.w);
     this.v2f(this.vLightSpacePos, lightSpacePos);
 
     return this.uniforms.mvp.transformPoint4(modelPos);
@@ -84,8 +85,8 @@ export class IblShader extends BaseShader {
     const ibl = this.uniforms.iblData;
     const uv = this.interpolateVec2(this.vUV);
     const viewDir = this.interpolateVec3(this.vViewDirWorld).normalize();
-    const tangent = this.interpolateVec3(this.vWorldTangent);
-    const handedness = this.interpolate(this.vTangentHandedness) < 0 ? -1 : 1;
+    const tangent = this.interpolateVec4(this.vWorldTangent);
+    const handedness = tangent.w < 0 ? -1 : 1;
     const surfaceNormal = this.interpolateVec3(this.vWorldNormal).normalize();
 
     const tangentProjection =

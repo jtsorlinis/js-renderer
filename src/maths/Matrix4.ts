@@ -199,6 +199,15 @@ export class Matrix4 {
     return this.multiplyVector3(v, 0);
   }
 
+  public transformDirection4(v: Vector4) {
+    return new Vector4(
+      this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z,
+      this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z,
+      this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z,
+      v.w,
+    );
+  }
+
   public multiply(m: Matrix4) {
     const a = this.m;
     const b = m.m;

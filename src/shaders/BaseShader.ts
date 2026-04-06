@@ -23,28 +23,28 @@ export abstract class BaseShader {
     return Array<T>(3);
   };
 
-  interpolate = (vals: number[]) => {
-    return vals[0] * this.bc.u + vals[1] * this.bc.v + vals[2] * this.bc.w;
+  interpolate = (a: number, b: number, c: number) => {
+    return a * this.bc.u + b * this.bc.v + c * this.bc.w;
   };
 
   interpolateVec2 = (vals: Vector2[]) => {
-    const x = this.interpolate([vals[0].x, vals[1].x, vals[2].x]);
-    const y = this.interpolate([vals[0].y, vals[1].y, vals[2].y]);
+    const x = this.interpolate(vals[0].x, vals[1].x, vals[2].x);
+    const y = this.interpolate(vals[0].y, vals[1].y, vals[2].y);
     return new Vector2(x, y);
   };
 
   interpolateVec3 = (vals: Vector3[]) => {
-    const x = this.interpolate([vals[0].x, vals[1].x, vals[2].x]);
-    const y = this.interpolate([vals[0].y, vals[1].y, vals[2].y]);
-    const z = this.interpolate([vals[0].z, vals[1].z, vals[2].z]);
+    const x = this.interpolate(vals[0].x, vals[1].x, vals[2].x);
+    const y = this.interpolate(vals[0].y, vals[1].y, vals[2].y);
+    const z = this.interpolate(vals[0].z, vals[1].z, vals[2].z);
     return new Vector3(x, y, z);
   };
 
   interpolateVec4 = (vals: Vector4[]) => {
-    const x = this.interpolate([vals[0].x, vals[1].x, vals[2].x]);
-    const y = this.interpolate([vals[0].y, vals[1].y, vals[2].y]);
-    const z = this.interpolate([vals[0].z, vals[1].z, vals[2].z]);
-    const w = this.interpolate([vals[0].w, vals[1].w, vals[2].w]);
+    const x = this.interpolate(vals[0].x, vals[1].x, vals[2].x);
+    const y = this.interpolate(vals[0].y, vals[1].y, vals[2].y);
+    const z = this.interpolate(vals[0].z, vals[1].z, vals[2].z);
+    const w = this.interpolate(vals[0].w, vals[1].w, vals[2].w);
     return new Vector4(x, y, z, w);
   };
 
