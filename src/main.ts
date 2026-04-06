@@ -313,7 +313,6 @@ const draw = () => {
   const lightProjMat = Matrix4.Ortho(shadowOrthoSize, 1, 1, 10);
   const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
   const mLightDir = invModelMat.transformDirection(lightDir).normalize();
-  const mWorldUp = invModelMat.transformDirection(Vector3.Up).normalize();
   const mCamPos = invModelMat.transformPoint(camPos);
 
   // 4) Build camera transform and final clip transform.
@@ -333,7 +332,6 @@ const draw = () => {
     normalMat,
     lightDir,
     mLightDir,
-    mWorldUp,
     lightCol,
     camPos,
     mCamPos,
