@@ -29,6 +29,15 @@ export class Vector4 {
     return this.x * v.x + this.y * v.y + this.z * v.z;
   }
 
+  public normalize3() {
+    const invLength =
+      1 / Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+    this.x *= invLength;
+    this.y *= invLength;
+    this.z *= invLength;
+    return this;
+  }
+
   truncate() {
     return new Vector4(~~this.x, ~~this.y, ~~this.z, ~~this.w);
   }

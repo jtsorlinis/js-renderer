@@ -17,8 +17,8 @@ export interface IblData {
   specularBrdfLutMaxIndex: number;
 }
 
-const TAU = Math.PI * 2;
-const INV_TAU = 1 / TAU;
+export const TAU = Math.PI * 2;
+export const INV_TAU = 1 / TAU;
 const diffuseIrradianceMapWidth = 32;
 const diffuseIrradianceMapHeight = 16;
 const diffuseIrradianceThetaSamples = 16;
