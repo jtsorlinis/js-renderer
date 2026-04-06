@@ -36,7 +36,7 @@ import { loadHdrTexture } from "./utils/hdrLoader";
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
 const SHADOW_MAP_SIZE = 512;
-const ROTATION_SPEED = 0.2;
+const ROTATION_SPEED = 0;
 const ROTATE_SENSITIVITY = 250;
 const PAN_SENSITIVITY = 250;
 const ZOOM_SENSITIVITY = 100;
@@ -144,6 +144,7 @@ const hdrEnvironment = await loadHdrTexture(
 
 // Scene and camera
 const lightDir = new Vector3(0, -1, 1).normalize();
+const negLightDir = lightDir.scale(-1);
 const lightCol = new Vector3(1, 1, 1);
 const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
 const envYawSin = Math.sin(envYaw);
@@ -337,6 +338,7 @@ const draw = () => {
     mvp,
     normalMat,
     lightDir,
+    negLightDir,
     envYawSin,
     envYawCos,
     mLightDir,
