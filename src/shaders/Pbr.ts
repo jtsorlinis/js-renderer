@@ -36,37 +36,16 @@ export class PbrShader extends BaseShader {
 
   vUV = this.varying<Vector2>();
   vLightSpacePos = this.varying<Vector3>();
-  vLightDirTangent = this.varying<Vector3>();
-  vViewDirTangent = this.varying<Vector3>();
+  vModelPos = this.varying<Vector3>();
+  vNormal = this.varying<Vector3>();
+  vTangent = this.varying<Vector4>();
 
   vertex = (): Vector4 => {
     const model = this.uniforms.model;
     const i = this.vertexId;
     const normal = model.normals[i];
     const tangent = model.tangents[i];
-
-    // Scalarised version of the following for performance:
-    // bitangent = normal.cross(tangent).normalize().scaleInPlace(tangent.w);
-    const Bx = normal.y * tangent.z - normal.z * tangent.y;
-    const By = normal.z * tangent.x - normal.x * tangent.z;
-    const Bz = normal.x * tangent.y - normal.y * tangent.x;
-    const BLengthSq = Bx * Bx + By * By + Bz * Bz;
-    const BScale = BLengthSq > 1e-8 ? tangent.w / Math.sqrt(BLengthSq) : 0;
-    const bitangent = new Vector3(Bx * BScale, By * BScale, Bz * BScale);
-
     const modelPos = model.vertices[i];
-    const lightDirTangent = new Vector3(
-      tangent.dot3(this.uniforms.mLightDir),
-      bitangent.dot(this.uniforms.mLightDir),
-      normal.dot(this.uniforms.mLightDir),
-    );
-
-    const viewDir = this.uniforms.mCamPos.subtract(modelPos).normalize();
-    const viewDirTangent = new Vector3(
-      tangent.dot3(viewDir),
-      bitangent.dot(viewDir),
-      normal.dot(viewDir),
-    );
 
     const lightSpacePos = this.uniforms.lightSpaceMat.transformPoint(modelPos);
     lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
@@ -74,8 +53,9 @@ export class PbrShader extends BaseShader {
 
     this.v2f(this.vUV, model.uvs[i]);
     this.v2f(this.vLightSpacePos, lightSpacePos);
-    this.v2f(this.vLightDirTangent, lightDirTangent);
-    this.v2f(this.vViewDirTangent, viewDirTangent);
+    this.v2f(this.vModelPos, modelPos);
+    this.v2f(this.vNormal, normal);
+    this.v2f(this.vTangent, tangent);
 
     return this.uniforms.mvp.transformPoint4(modelPos);
   };
@@ -83,15 +63,34 @@ export class PbrShader extends BaseShader {
   fragment = () => {
     const uv = this.interpolateVec2(this.vUV);
     const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
-    const lightDirTangent = this.interpolateVec3(
-      this.vLightDirTangent,
-    ).normalize();
-    const viewDir = this.interpolateVec3(this.vViewDirTangent).normalize();
+    const modelPos = this.interpolateVec3(this.vModelPos);
+    const vNormal = this.interpolateVec3(this.vNormal).normalize();
+    const tangent = this.interpolateVec4(this.vTangent);
+    const handedness = tangent.w < 0 ? -1 : 1;
 
     const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
     const shadow = lightSpacePos.z - shadowBias > depth ? 0 : 1;
 
-    const normal = this.sample(this.uniforms.normalTexture, uv);
+    const tDotN = tangent.dot3(vNormal);
+    const Tx = tangent.x - vNormal.x * tDotN;
+    const Ty = tangent.y - vNormal.y * tDotN;
+    const Tz = tangent.z - vNormal.z * tDotN;
+    const TLenSq = Tx * Tx + Ty * Ty + Tz * Tz;
+    const TScale = TLenSq > EPSILON ? 1 / Math.sqrt(TLenSq) : 0;
+    const T = new Vector3(Tx * TScale, Ty * TScale, Tz * TScale);
+
+    const Bx = (vNormal.y * T.z - vNormal.z * T.y) * handedness;
+    const By = (vNormal.z * T.x - vNormal.x * T.z) * handedness;
+    const Bz = (vNormal.x * T.y - vNormal.y * T.x) * handedness;
+
+    const normalTS = this.sample(this.uniforms.normalTexture, uv);
+    const Nx = T.x * normalTS.x + Bx * normalTS.y + vNormal.x * normalTS.z;
+    const Ny = T.y * normalTS.x + By * normalTS.y + vNormal.y * normalTS.z;
+    const Nz = T.z * normalTS.x + Bz * normalTS.y + vNormal.z * normalTS.z;
+    const NLenSq = Nx * Nx + Ny * Ny + Nz * Nz;
+    const NScale = NLenSq > EPSILON ? 1 / Math.sqrt(NLenSq) : 0;
+    const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
+
     const baseColor = this.sample(this.uniforms.texture, uv).multiplyInPlace(
       this.uniforms.pbrMaterial.baseColorFactor,
     );
@@ -110,17 +109,24 @@ export class PbrShader extends BaseShader {
     const f0y = DIELECTRIC_F0.y + (baseColor.y - DIELECTRIC_F0.y) * metallic;
     const f0z = DIELECTRIC_F0.z + (baseColor.z - DIELECTRIC_F0.z) * metallic;
 
-    const lightDir = lightDirTangent.scaleInPlace(-1);
-    const nDotL = saturate(normal.dot(lightDir));
-    const nDotV = saturate(normal.dot(viewDir));
-    const halfDir = lightDir.addInPlace(viewDir);
+    const lightDir = this.uniforms.mLightDir.scale(-1);
+    const viewDir = this.uniforms.mCamPos.subtract(modelPos).normalize();
+    const nDotL = saturate(
+      normal.x * lightDir.x + normal.y * lightDir.y + normal.z * lightDir.z,
+    );
+    const nDotV = saturate(
+      normal.x * viewDir.x + normal.y * viewDir.y + normal.z * viewDir.z,
+    );
+    const halfDir = lightDir.add(viewDir);
 
     let directR = 0;
     let directG = 0;
     let directB = 0;
     if (nDotL > 0 && nDotV > 0 && halfDir.lengthSq() > EPSILON) {
       halfDir.normalize();
-      const nDotH = saturate(normal.dot(halfDir));
+      const nDotH = saturate(
+        normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z,
+      );
       const vDotH = saturate(viewDir.dot(halfDir));
       const fresnelFactor = Math.pow(1 - saturate(vDotH), 5);
       const fresnelX = f0x + (1 - f0x) * fresnelFactor;
