@@ -77,8 +77,8 @@ export class NormalMappedTBNShader extends BaseShader {
     const Ny = T.y * normalTS.x + B.y * normalTS.y + vNormal.y * normalTS.z;
     const Nz = T.z * normalTS.x + B.z * normalTS.y + vNormal.z * normalTS.z;
     const NLengthSq = Nx * Nx + Ny * Ny + Nz * Nz;
-    const Nscale = NLengthSq > 0.000001 ? 1 / Math.sqrt(NLengthSq) : 0;
-    const normal = new Vector3(Nx * Nscale, Ny * Nscale, Nz * Nscale);
+    const NScale = NLengthSq > 1e-8 ? 1 / Math.sqrt(NLengthSq) : 0;
+    const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
 
     // Blinn-Phong shading
     const lightDir = this.uniforms.mLightDir;

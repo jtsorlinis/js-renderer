@@ -87,67 +87,52 @@ export class IblShader extends BaseShader {
     const tangent = this.interpolateVec3(this.vWorldTangent);
     const handedness = this.interpolate(this.vTangentHandedness) < 0 ? -1 : 1;
     const surfaceNormal = this.interpolateVec3(this.vWorldNormal).normalize();
-    const baseNormalX = surfaceNormal.x;
-    const baseNormalY = surfaceNormal.y;
-    const baseNormalZ = surfaceNormal.z;
-    const viewDirX = viewDir.x;
-    const viewDirY = viewDir.y;
-    const viewDirZ = viewDir.z;
-    const lightDir = this.uniforms.negLightDir;
-    const lightDirX = lightDir.x;
-    const lightDirY = lightDir.y;
-    const lightDirZ = lightDir.z;
-    const envYawSin = this.uniforms.envYawSin;
-    const envYawCos = this.uniforms.envYawCos;
 
-    // Rebuild an orthonormal tangent basis with scalar math to keep the normal
-    // map path cheap without hiding the actual work behind vector helpers.
-    const tangentDotNormal =
-      baseNormalX * tangent.x + baseNormalY * tangent.y + baseNormalZ * tangent.z;
-    let tangentOrthoX = tangent.x - baseNormalX * tangentDotNormal;
-    let tangentOrthoY = tangent.y - baseNormalY * tangentDotNormal;
-    let tangentOrthoZ = tangent.z - baseNormalZ * tangentDotNormal;
+    const tangentProjection =
+      surfaceNormal.x * tangent.x +
+      surfaceNormal.y * tangent.y +
+      surfaceNormal.z * tangent.z;
+    let tangentOrthoX = tangent.x - surfaceNormal.x * tangentProjection;
+    let tangentOrthoY = tangent.y - surfaceNormal.y * tangentProjection;
+    let tangentOrthoZ = tangent.z - surfaceNormal.z * tangentProjection;
     const tangentOrthoLengthSq =
       tangentOrthoX * tangentOrthoX +
       tangentOrthoY * tangentOrthoY +
       tangentOrthoZ * tangentOrthoZ;
-    const invTangentOrthoLength =
+    const tangentOrthoScale =
       tangentOrthoLengthSq > EPSILON ? 1 / Math.sqrt(tangentOrthoLengthSq) : 0;
-    tangentOrthoX *= invTangentOrthoLength;
-    tangentOrthoY *= invTangentOrthoLength;
-    tangentOrthoZ *= invTangentOrthoLength;
+    tangentOrthoX *= tangentOrthoScale;
+    tangentOrthoY *= tangentOrthoScale;
+    tangentOrthoZ *= tangentOrthoScale;
     const bitangentX =
-      (baseNormalY * tangentOrthoZ - baseNormalZ * tangentOrthoY) * handedness;
+      (surfaceNormal.y * tangentOrthoZ - surfaceNormal.z * tangentOrthoY) *
+      handedness;
     const bitangentY =
-      (baseNormalZ * tangentOrthoX - baseNormalX * tangentOrthoZ) * handedness;
+      (surfaceNormal.z * tangentOrthoX - surfaceNormal.x * tangentOrthoZ) *
+      handedness;
     const bitangentZ =
-      (baseNormalX * tangentOrthoY - baseNormalY * tangentOrthoX) * handedness;
-
-    // Apply the tangent-space normal map and renormalize the resulting world
-    // normal entirely in scalar form.
+      (surfaceNormal.x * tangentOrthoY - surfaceNormal.y * tangentOrthoX) *
+      handedness;
     const normalTexel = this.sample(this.uniforms.normalTexture, uv);
-    const normalTexelX = normalTexel.x;
-    const normalTexelY = normalTexel.y;
-    const normalTexelZ = normalTexel.z;
     let normalX =
-      tangentOrthoX * normalTexelX +
-      bitangentX * normalTexelY +
-      baseNormalX * normalTexelZ;
+      tangentOrthoX * normalTexel.x +
+      bitangentX * normalTexel.y +
+      surfaceNormal.x * normalTexel.z;
     let normalY =
-      tangentOrthoY * normalTexelX +
-      bitangentY * normalTexelY +
-      baseNormalY * normalTexelZ;
+      tangentOrthoY * normalTexel.x +
+      bitangentY * normalTexel.y +
+      surfaceNormal.y * normalTexel.z;
     let normalZ =
-      tangentOrthoZ * normalTexelX +
-      bitangentZ * normalTexelY +
-      baseNormalZ * normalTexelZ;
+      tangentOrthoZ * normalTexel.x +
+      bitangentZ * normalTexel.y +
+      surfaceNormal.z * normalTexel.z;
     const normalLengthSq =
       normalX * normalX + normalY * normalY + normalZ * normalZ;
-    const invMappedNormalLength =
+    const normalScale =
       normalLengthSq > EPSILON ? 1 / Math.sqrt(normalLengthSq) : 0;
-    normalX *= invMappedNormalLength;
-    normalY *= invMappedNormalLength;
-    normalZ *= invMappedNormalLength;
+    normalX *= normalScale;
+    normalY *= normalScale;
+    normalZ *= normalScale;
     const baseColor = this.sample(this.uniforms.texture, uv).multiplyInPlace(
       this.uniforms.pbrMaterial.baseColorFactor,
     );
@@ -166,8 +151,13 @@ export class IblShader extends BaseShader {
     const f0y = DIELECTRIC_F0.y + (baseColor.y - DIELECTRIC_F0.y) * metallic;
     const f0z = DIELECTRIC_F0.z + (baseColor.z - DIELECTRIC_F0.z) * metallic;
 
-    const nDotL = saturate(normalX * lightDirX + normalY * lightDirY + normalZ * lightDirZ);
-    const nDotV = saturate(normalX * viewDirX + normalY * viewDirY + normalZ * viewDirZ);
+    const lightDir = this.uniforms.negLightDir;
+    const nDotL = saturate(
+      normalX * lightDir.x + normalY * lightDir.y + normalZ * lightDir.z,
+    );
+    const nDotV = saturate(
+      normalX * viewDir.x + normalY * viewDir.y + normalZ * viewDir.z,
+    );
     const halfDir = lightDir.add(viewDir);
 
     let directR = 0;
@@ -178,15 +168,10 @@ export class IblShader extends BaseShader {
       const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
       const shadow = lightSpacePos.z - shadowBias > depth ? 0 : 1;
       halfDir.normalize();
-      const halfDirX = halfDir.x;
-      const halfDirY = halfDir.y;
-      const halfDirZ = halfDir.z;
       const nDotH = saturate(
-        normalX * halfDirX + normalY * halfDirY + normalZ * halfDirZ,
+        normalX * halfDir.x + normalY * halfDir.y + normalZ * halfDir.z,
       );
-      const vDotH = saturate(
-        viewDirX * halfDirX + viewDirY * halfDirY + viewDirZ * halfDirZ,
-      );
+      const vDotH = saturate(viewDir.dot(halfDir));
       const fresnelBase = 1 - vDotH;
       const fresnelBaseSq = fresnelBase * fresnelBase;
       const fresnelFactor = fresnelBaseSq * fresnelBaseSq * fresnelBase;
@@ -230,8 +215,10 @@ export class IblShader extends BaseShader {
     const ksAmbientY = f0y + (f90y - f0y) * ambientFresnelFactor;
     const ksAmbientZ = f0z + (f90z - f0z) * ambientFresnelFactor;
     const ambientDiffuseFactor = 1 - metallic;
-    const diffuseDirX = normalX * envYawCos - normalZ * envYawSin;
-    const diffuseDirZ = normalX * envYawSin + normalZ * envYawCos;
+    const diffuseDirX =
+      normalX * this.uniforms.envYawCos - normalZ * this.uniforms.envYawSin;
+    const diffuseDirZ =
+      normalX * this.uniforms.envYawSin + normalZ * this.uniforms.envYawCos;
     const diffuseU = wrapUnit(
       Math.atan2(diffuseDirX, diffuseDirZ) * INV_TAU + 0.5,
     );
@@ -246,11 +233,15 @@ export class IblShader extends BaseShader {
     );
 
     const reflectionScale = 2 * nDotV;
-    const reflectionX = normalX * reflectionScale - viewDirX;
-    const reflectionY = normalY * reflectionScale - viewDirY;
-    const reflectionZ = normalZ * reflectionScale - viewDirZ;
-    const rotatedReflectionX = reflectionX * envYawCos - reflectionZ * envYawSin;
-    const rotatedReflectionZ = reflectionX * envYawSin + reflectionZ * envYawCos;
+    const reflectionX = normalX * reflectionScale - viewDir.x;
+    const reflectionY = normalY * reflectionScale - viewDir.y;
+    const reflectionZ = normalZ * reflectionScale - viewDir.z;
+    const rotatedReflectionX =
+      reflectionX * this.uniforms.envYawCos -
+      reflectionZ * this.uniforms.envYawSin;
+    const rotatedReflectionZ =
+      reflectionX * this.uniforms.envYawSin +
+      reflectionZ * this.uniforms.envYawCos;
     const reflectionU = wrapUnit(
       Math.atan2(rotatedReflectionX, rotatedReflectionZ) * INV_TAU + 0.5,
     );
