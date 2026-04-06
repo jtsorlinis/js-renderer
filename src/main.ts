@@ -30,6 +30,7 @@ import {
   buildEnvironmentIbl,
   estimateEnvironmentYaw,
 } from "./shaders/IblHelpers";
+import { PathTracer } from "./pathTracing/PathTracer";
 import { resolveShadingSelection, type RenderMode } from "./renderSettings";
 import { loadHdrTexture } from "./utils/hdrLoader";
 
@@ -41,6 +42,7 @@ const ROTATE_SENSITIVITY = 250;
 const PAN_SENSITIVITY = 250;
 const ZOOM_SENSITIVITY = 100;
 const FPS_UPDATE_INTERVAL_MS = 250;
+const PATH_TRACE_FRAME_BUDGET_MS = 16;
 
 // UI handles
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -59,6 +61,11 @@ const modelDd = document.getElementById("modelDd") as HTMLSelectElement;
 const loadGlbBtn = document.getElementById("loadGlbBtn") as HTMLButtonElement;
 const glbInput = document.getElementById("glbInput") as HTMLInputElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+let pathTraceInteractive = true;
+
+const markPathTraceInteractive = () => {
+  pathTraceInteractive = true;
+};
 
 const getShadingButton = () => {
   return shadingList.querySelector<HTMLButtonElement>(
@@ -91,9 +98,13 @@ shadingList.addEventListener("click", (event) => {
   const button = target.closest(".shading-option") as HTMLButtonElement;
   shadingSlider.value = button?.dataset.shadingIndex || shadingSlider.value;
   syncShadingButtons();
+  markPathTraceInteractive();
 });
 
-shadingSlider.addEventListener("input", syncShadingButtons);
+shadingSlider.addEventListener("input", () => {
+  syncShadingButtons();
+  markPathTraceInteractive();
+});
 
 let aspectRatio = CANVAS_WIDTH / CANVAS_HEIGHT;
 
@@ -181,13 +192,15 @@ const shaders = {
 
 type ShaderKey = keyof typeof shaders;
 type RenderSettings = {
-  shaderKey: ShaderKey;
+  material: ShaderKey | "pathTrace";
   renderMode: RenderMode;
   useShadows: boolean;
 };
 
 const depthShader = new DepthShader();
+const pathTracer = new PathTracer();
 const triVerts: Vector4[] = [];
+let pathTraceStatsText = "";
 
 const updateModelStats = () => {
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
@@ -197,6 +210,7 @@ const updateModelStats = () => {
 const resetModelTransform = () => {
   modelRotation.set(0, Math.PI / 2, 0);
   camPos.set(0, 0, -2.5);
+  markPathTraceInteractive();
 };
 
 let activeModelRequest = 0;
@@ -208,6 +222,7 @@ const applyModelOption = (selectedModel: ModelOption) => {
   pbrMaterial = selectedModel.pbrMaterial;
   shadowOrthoSize = getModelRadius(model);
   updateModelStats();
+  markPathTraceInteractive();
 };
 
 const setModel = async (modelKey: ModelKey, resetTransform = true) => {
@@ -239,6 +254,7 @@ const loadSelectedGlb = async (file: File, resetTransform = true) => {
 };
 
 highResCb.addEventListener("change", () => {
+  markPathTraceInteractive();
   setRenderResolution(highResCb.checked ? 2 : 1);
   if (!setHighResTextureLimits(highResCb.checked)) return;
   if (customGlbFile) {
@@ -247,6 +263,8 @@ highResCb.addEventListener("change", () => {
   }
   setModel(modelDd.value as ModelKey, false);
 });
+
+orthographicCb.addEventListener("change", markPathTraceInteractive);
 
 const getRenderSettings = (): RenderSettings => {
   const shadingValue = getShadingButton()?.dataset.shadingValue || "wireframe";
@@ -258,7 +276,7 @@ const getRenderSettings = (): RenderSettings => {
     setShadingValue(selection.normalizedValue);
   }
   return {
-    shaderKey: selection.material,
+    material: selection.material,
     renderMode: selection.renderMode,
     useShadows: selection.useShadows,
   };
@@ -303,17 +321,52 @@ const update = (dt: number) => {
 };
 
 const draw = () => {
-  // 1) Clear all render targets for a new frame.
-  frameBuffer.clear();
-  zBuffer.clear(1000);
-  shadowMap.clear(1000);
-
   const renderSettings = getRenderSettings();
 
-  // 2) Build model-space transforms.
+  // 1) Build model-space transforms.
   const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
   const invModelMat = modelMat.invert();
   const normalMat = invModelMat.transpose();
+
+  if (renderSettings.material === "pathTrace") {
+    const preview = pathTraceInteractive;
+    pathTraceInteractive = false;
+    const pathTraceInfo = pathTracer.render(
+      frameBuffer,
+      {
+        environment: hdrEnvironment,
+        envYawCos,
+        envYawSin,
+        lightColor: lightCol,
+        lightDirectionToLight: negLightDir,
+        model,
+        modelMat,
+        invModelMat,
+        normalMat,
+        normalTexture,
+        pbrMaterial,
+        texture,
+      },
+      {
+        aspectRatio,
+        cameraOrthoSize,
+        orthographic: orthographicCb.checked,
+        position: camPos,
+      },
+      preview,
+      PATH_TRACE_FRAME_BUDGET_MS,
+    );
+    pathTraceStatsText = `${pathTraceInfo.sampleCount.toFixed(1)} samples (${pathTraceInfo.preview ? "preview" : "refine"})`;
+    ctx.putImageData(imageData, 0, 0);
+    return;
+  }
+
+  pathTraceStatsText = "";
+
+  // 2) Clear all render targets for a new frame.
+  frameBuffer.clear();
+  zBuffer.clear(1000);
+  shadowMap.clear(1000);
 
   // 3) Build light-space transform (for shadow mapping).
   const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), Vector3.Zero);
@@ -330,7 +383,7 @@ const draw = () => {
   const mvp = projMat.multiply(viewMat).multiply(modelMat);
 
   // 5) Select active material shader and update uniforms.
-  const shader = shaders[renderSettings.shaderKey];
+  const shader = shaders[renderSettings.material];
 
   shader.uniforms = {
     model,
@@ -376,7 +429,9 @@ const loop = () => {
 
   if (now - lastFpsUiUpdate >= FPS_UPDATE_INTERVAL_MS) {
     const fps = frameIntervalMs > 0 ? 1000 / frameIntervalMs : 0;
-    fpsText.innerText = `${actualFrameTime.toFixed(0)} ms (${fps.toFixed(0)} fps)`;
+    fpsText.innerText = pathTraceStatsText
+      ? `${actualFrameTime.toFixed(0)} ms | ${pathTraceStatsText}`
+      : `${actualFrameTime.toFixed(0)} ms (${fps.toFixed(0)} fps)`;
     lastFpsUiUpdate = now;
   }
 
@@ -387,14 +442,17 @@ canvas.onmousemove = (e) => {
   if (e.buttons === 1) {
     modelRotation.y -= e.movementX / ROTATE_SENSITIVITY;
     modelRotation.x -= e.movementY / ROTATE_SENSITIVITY;
+    markPathTraceInteractive();
   } else if (e.buttons === 2 || e.buttons === 4) {
     camPos.x -= e.movementX / PAN_SENSITIVITY;
     camPos.y += e.movementY / PAN_SENSITIVITY;
+    markPathTraceInteractive();
   }
 };
 
 canvas.onwheel = (e) => {
   e.preventDefault();
+  markPathTraceInteractive();
   if (orthographicCb.checked) {
     cameraOrthoSize += e.deltaY / ZOOM_SENSITIVITY;
     cameraOrthoSize = Math.max(0.01, cameraOrthoSize);

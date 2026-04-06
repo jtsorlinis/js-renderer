@@ -1,4 +1,5 @@
 export type MaterialMode =
+  | "pathTrace"
   | "ibl"
   | "pbr"
   | "normalMappedShadows"
@@ -34,6 +35,13 @@ export const resolveShadingSelection = (
   }
 
   switch (value) {
+    case "pathTrace":
+      return {
+        material: "pathTrace",
+        renderMode: "filled",
+        useShadows: false,
+        normalizedValue: value,
+      };
     case "ibl":
       return {
         material: "ibl",

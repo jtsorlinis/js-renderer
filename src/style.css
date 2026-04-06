@@ -119,7 +119,7 @@ body {
   flex: 1;
   flex-direction: column;
   gap: 6px;
-  counter-reset: shading-step 10;
+  counter-reset: shading-step 11;
 }
 
 .shading-list li {
