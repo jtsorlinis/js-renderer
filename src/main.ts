@@ -26,12 +26,14 @@ import { NormalMappedShader } from "./shaders/NormalMapped";
 import { NormalMappedShadowsShader } from "./shaders/NormalMappedShadows";
 import { PbrShader } from "./shaders/Pbr";
 import { IblShader } from "./shaders/Ibl";
+import { buildEnvironmentIbl } from "./shaders/IblHelpers";
 import { resolveShadingSelection, type RenderMode } from "./renderSettings";
+import { loadHdrTexture } from "./utils/hdrLoader";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
 const SHADOW_MAP_SIZE = 512;
-const ROTATION_SPEED = 5;
+const ROTATION_SPEED = 0.2;
 const ROTATE_SENSITIVITY = 250;
 const PAN_SENSITIVITY = 250;
 const ZOOM_SENSITIVITY = 100;
@@ -132,6 +134,11 @@ const setRenderResolution = (scale = 1) => {
 setRenderResolution();
 window.addEventListener("resize", fitCanvas);
 setHighResTextureLimits(highResCb.checked);
+
+const hdrEnvironment = await loadHdrTexture(
+  `${import.meta.env.BASE_URL}environments/sunny.hdr`,
+);
+const iblData = buildEnvironmentIbl(hdrEnvironment);
 
 // Scene and camera
 const lightDir = new Vector3(0, -1, 1).normalize();
@@ -285,7 +292,7 @@ const renderMesh = (
 };
 
 const update = (dt: number) => {
-  modelRotation.y -= dt / ROTATION_SPEED;
+  modelRotation.y -= dt * ROTATION_SPEED;
 };
 
 const draw = () => {
@@ -299,7 +306,7 @@ const draw = () => {
   // 2) Build model-space transforms.
   const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
   const invModelMat = modelMat.invert();
-  const normalMat = modelMat.invert().transpose();
+  const normalMat = invModelMat.transpose();
 
   // 3) Build light-space transform (for shadow mapping).
   const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), Vector3.Zero);
@@ -333,6 +340,7 @@ const draw = () => {
     texture,
     normalTexture,
     pbrMaterial,
+    iblData,
     lightSpaceMat,
     shadowMap,
   };
