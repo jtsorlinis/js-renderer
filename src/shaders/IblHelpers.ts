@@ -25,9 +25,9 @@ const diffuseIrradianceThetaSamples = 16;
 const diffuseIrradiancePhiSamples = 32;
 const specularPrefilterMapWidth = 64;
 const specularPrefilterMapHeight = 32;
-const specularPrefilterRoughnessLutSize = 16;
+const specularPrefilterRoughnessLutSize = 32;
 const specularPrefilterSampleCount = 64;
-const specularBrdfLutSize = 32;
+const specularBrdfLutSize = 128;
 const specularBrdfSampleCount = 96;
 const SUN_LUMINANCE_THRESHOLD = 0.98;
 
