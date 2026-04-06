@@ -26,7 +26,10 @@ import { NormalMappedShader } from "./shaders/NormalMapped";
 import { NormalMappedShadowsShader } from "./shaders/NormalMappedShadows";
 import { PbrShader } from "./shaders/Pbr";
 import { IblShader } from "./shaders/Ibl";
-import { buildEnvironmentIbl } from "./shaders/IblHelpers";
+import {
+  buildEnvironmentIbl,
+  estimateEnvironmentYaw,
+} from "./shaders/IblHelpers";
 import { resolveShadingSelection, type RenderMode } from "./renderSettings";
 import { loadHdrTexture } from "./utils/hdrLoader";
 
@@ -138,11 +141,14 @@ setHighResTextureLimits(highResCb.checked);
 const hdrEnvironment = await loadHdrTexture(
   `${import.meta.env.BASE_URL}environments/sunny.hdr`,
 );
-const iblData = buildEnvironmentIbl(hdrEnvironment);
 
 // Scene and camera
 const lightDir = new Vector3(0, -1, 1).normalize();
 const lightCol = new Vector3(1, 1, 1);
+const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
+const envYawSin = Math.sin(envYaw);
+const envYawCos = Math.cos(envYaw);
+const iblData = buildEnvironmentIbl(hdrEnvironment);
 
 const camPos = new Vector3(0, 0, -2.5);
 let cameraOrthoSize = 1.5;
@@ -331,6 +337,8 @@ const draw = () => {
     mvp,
     normalMat,
     lightDir,
+    envYawSin,
+    envYawCos,
     mLightDir,
     lightCol,
     camPos,

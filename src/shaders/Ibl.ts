@@ -19,6 +19,8 @@ export interface Uniforms {
   normalMat: Matrix4;
   lightCol: Vector3;
   lightDir: Vector3;
+  envYawSin: number;
+  envYawCos: number;
   camPos: Vector3;
   texture: Texture;
   normalTexture: Texture;
@@ -206,8 +208,12 @@ export class IblShader extends BaseShader {
     const ksAmbientY = f0y + (f90y - f0y) * ambientFresnelFactor;
     const ksAmbientZ = f0z + (f90z - f0z) * ambientFresnelFactor;
     const ambientDiffuseFactor = 1 - metallic;
+    const diffuseDirX =
+      normal.x * this.uniforms.envYawCos - normal.z * this.uniforms.envYawSin;
+    const diffuseDirZ =
+      normal.x * this.uniforms.envYawSin + normal.z * this.uniforms.envYawCos;
     const diffuseU = this.wrapUnit(
-      Math.atan2(normal.x, normal.z) * INV_TAU + 0.5,
+      Math.atan2(diffuseDirX, diffuseDirZ) * INV_TAU + 0.5,
     );
     const diffuseV = Math.acos(Math.max(-1, Math.min(1, normal.y))) * INV_PI;
     this.sampleLatLongMap(
@@ -223,8 +229,14 @@ export class IblShader extends BaseShader {
     const reflectionX = normal.x * reflectionScale - viewDir.x;
     const reflectionY = normal.y * reflectionScale - viewDir.y;
     const reflectionZ = normal.z * reflectionScale - viewDir.z;
+    const rotatedReflectionX =
+      reflectionX * this.uniforms.envYawCos -
+      reflectionZ * this.uniforms.envYawSin;
+    const rotatedReflectionZ =
+      reflectionX * this.uniforms.envYawSin +
+      reflectionZ * this.uniforms.envYawCos;
     const reflectionU = this.wrapUnit(
-      Math.atan2(reflectionX, reflectionZ) * INV_TAU + 0.5,
+      Math.atan2(rotatedReflectionX, rotatedReflectionZ) * INV_TAU + 0.5,
     );
     const reflectionV =
       Math.acos(Math.max(-1, Math.min(1, reflectionY))) * INV_PI;
