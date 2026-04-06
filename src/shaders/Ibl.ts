@@ -30,10 +30,22 @@ const shadowBias = 0.01;
 const lightIntensity = 3.14;
 const exposure = 1;
 
-const sky = new Vector3(0.46, 0.42, 0.39);
-const horizon = new Vector3(0.72, 0.63, 0.54);
-const ground = new Vector3(0.07, 0.055, 0.045);
-const blend = 0.18;
+export const IBL_ENVIRONMENTS = {
+  default: {
+    sky: new Vector3(0.64, 0.62, 0.6),
+    horizon: new Vector3(0.9, 0.86, 0.82),
+    ground: new Vector3(0.12, 0.105, 0.1),
+    blend: 0.08,
+  },
+  legacy: {
+    sky: new Vector3(0.46, 0.42, 0.39),
+    horizon: new Vector3(0.72, 0.63, 0.54),
+    ground: new Vector3(0.07, 0.055, 0.045),
+    blend: 0.18,
+  },
+};
+
+const { sky, horizon, ground, blend } = IBL_ENVIRONMENTS.default;
 const {
   diffuseIrradianceLut,
   diffuseIrradianceLutSize,
