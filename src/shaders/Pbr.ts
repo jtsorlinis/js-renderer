@@ -45,23 +45,14 @@ export class PbrShader extends BaseShader {
     const normal = model.normals[i];
     const tangent = model.tangents[i];
 
-    // Inlined equivalent to normalize(cross(N, T)) * tangent.w.
-    const bitangentX = normal.y * tangent.z - normal.z * tangent.y;
-    const bitangentY = normal.z * tangent.x - normal.x * tangent.z;
-    const bitangentZ = normal.x * tangent.y - normal.y * tangent.x;
-    const bitangentLengthSq =
-      bitangentX * bitangentX +
-      bitangentY * bitangentY +
-      bitangentZ * bitangentZ;
-    const bitangentScale =
-      bitangentLengthSq > 0.00000001
-        ? tangent.w / Math.sqrt(bitangentLengthSq)
-        : 0;
-    const bitangent = new Vector3(
-      bitangentX * bitangentScale,
-      bitangentY * bitangentScale,
-      bitangentZ * bitangentScale,
-    );
+    // Scalarised version of the following for performance:
+    // bitangent = normal.cross(tangent).normalize().scaleInPlace(tangent.w);
+    const Bx = normal.y * tangent.z - normal.z * tangent.y;
+    const By = normal.z * tangent.x - normal.x * tangent.z;
+    const Bz = normal.x * tangent.y - normal.y * tangent.x;
+    const BLengthSq = Bx * Bx + By * By + Bz * Bz;
+    const BScale = BLengthSq > 1e-8 ? tangent.w / Math.sqrt(BLengthSq) : 0;
+    const bitangent = new Vector3(Bx * BScale, By * BScale, Bz * BScale);
 
     const modelPos = model.vertices[i];
     const lightDirTangent = new Vector3(
