@@ -2,41 +2,32 @@ import { Framebuffer, Texture } from "../drawing";
 import { linearChannelToSrgb } from "../drawing/Texture";
 import { Matrix4, Vector2, Vector3 } from "../maths";
 import { PathTraceBvh } from "./pathTracingBvh";
+import { PathTraceEnvironmentSampler } from "./pathTracingEnvironment";
 import {
   applyNormalMap,
   buildBasis,
   createCameraRay,
-  environmentUvToDirection,
   sampleEnvironment,
   sampleTexture,
 } from "./pathTracingHelpers";
 import {
   DIELECTRIC_F0,
   EPSILON,
-  INV_PI,
-  distributionGGX,
   fresnelSchlick,
-  geometrySmith,
   saturate,
 } from "../shaders/pbrHelpers";
+import {
+  evaluateDirectEnvironmentLighting,
+  evaluateDirectSunLighting,
+} from "./pathTracingLighting";
 import { type PbrMaterial } from "../utils/modelLoader";
 import { type LoadedModel } from "../utils/objLoader";
 
-const PREVIEW_RESOLUTION_SCALE = 0.25;
-const IDLE_RESOLUTION_SCALE = 1;
 const MAX_BOUNCES = 4;
 const RUSSIAN_ROULETTE_BOUNCE = 3;
 const RAY_EPSILON = 0.001;
 const RENDER_ENVIRONMENT = false;
 const RESET_EPSILON = 0.0001;
-const SUN_INTENSITY = 3.14;
-const ENVIRONMENT_PDF_EPSILON = 0.000001;
-
-interface EnvironmentLightSample {
-  direction: Vector3;
-  pdf: number;
-  radiance: Vector3;
-}
 
 interface HitRecord {
   baseColor: Vector3;
@@ -70,18 +61,10 @@ export interface PathTraceCamera {
   position: Vector3;
 }
 
-export interface PathTraceFrameInfo {
-  internalHeight: number;
-  internalWidth: number;
-  preview: boolean;
-  sampleCount: number;
-}
-
 export class PathTracer {
   private bvh = new PathTraceBvh();
   private accumulation = new Float32Array(0);
-  private environmentCdf = new Float32Array(0);
-  private environmentWeightTotal = 0;
+  private environmentSampler = new PathTraceEnvironmentSampler();
   private pixelSampleCounts = new Uint32Array(0);
   private internalWidth = 0;
   private internalHeight = 0;
@@ -94,39 +77,28 @@ export class PathTracer {
   private lastOrthographic = false;
   private lastCameraPosition = new Vector3(Number.NaN, Number.NaN, Number.NaN);
   private lastModelMatrix = new Float32Array(16).fill(Number.NaN);
-  private sampledEnvironment: Texture | null = null;
 
   render = (
     target: Framebuffer,
     scene: PathTraceScene,
     camera: PathTraceCamera,
-    preview: boolean,
     timeBudgetMs: number,
-  ): PathTraceFrameInfo => {
+  ) => {
     if (this.bvh.ensureGeometry(scene.model)) {
       this.needsReset = true;
     }
-    this.ensureEnvironmentSampling(scene.environment);
-    this.ensureResolution(target.width, target.height, preview);
+    if (this.environmentSampler.ensureSampling(scene.environment)) {
+      this.needsReset = true;
+    }
+    this.ensureResolution(target.width, target.height);
     this.syncAccumulationState(scene, camera);
     this.resetIfNeeded();
 
     const totalPixels = this.internalWidth * this.internalHeight;
-    const startWorkIndex = this.workIndex;
     const deadline = performance.now() + timeBudgetMs;
     let processedPixels = 0;
 
-    while (totalPixels > 0) {
-      if (processedPixels > 0) {
-        if (preview) {
-          if (this.workIndex === startWorkIndex) {
-            break;
-          }
-        } else if (performance.now() >= deadline) {
-          break;
-        }
-      }
-
+    while (totalPixels > 0 && (processedPixels === 0 || performance.now() < deadline)) {
       const pixelIndex = this.workIndex;
       const x = pixelIndex % this.internalWidth;
       const y = Math.floor(pixelIndex / this.internalWidth);
@@ -149,14 +121,7 @@ export class PathTracer {
 
     this.present(target);
 
-    return {
-      internalHeight: this.internalHeight,
-      internalWidth: this.internalWidth,
-      preview,
-      sampleCount: totalPixels
-        ? this.sampleCount + this.workIndex / totalPixels
-        : 0,
-    };
+    return totalPixels ? this.sampleCount + this.workIndex / totalPixels : 0;
   };
 
   private syncAccumulationState = (
@@ -198,13 +163,9 @@ export class PathTracer {
   private ensureResolution = (
     targetWidth: number,
     targetHeight: number,
-    preview: boolean,
   ) => {
-    const resolutionScale = preview
-      ? PREVIEW_RESOLUTION_SCALE
-      : IDLE_RESOLUTION_SCALE;
-    const width = Math.max(1, Math.floor(targetWidth * resolutionScale));
-    const height = Math.max(1, Math.floor(targetHeight * resolutionScale));
+    const width = Math.max(1, targetWidth);
+    const height = Math.max(1, targetHeight);
     if (width === this.internalWidth && height === this.internalHeight) {
       return;
     }
@@ -351,9 +312,13 @@ export class PathTracer {
     scene: PathTraceScene,
   ) => {
     const lightDir = scene.lightDirectionToLight;
-    const nDotL = saturate(hit.shadingNormal.dot(lightDir));
-    const nDotV = saturate(hit.shadingNormal.dot(viewDir));
-    if (nDotL <= 0 || nDotV <= 0) {
+    const contribution = evaluateDirectSunLighting(
+      hit,
+      viewDir,
+      lightDir,
+      scene.lightColor,
+    );
+    if (contribution.lengthSq() <= 0) {
       return Vector3.Zero;
     }
 
@@ -364,60 +329,30 @@ export class PathTracer {
       return Vector3.Zero;
     }
 
-    const halfDir = lightDir.add(viewDir);
-    if (halfDir.lengthSq() <= EPSILON) {
-      return Vector3.Zero;
-    }
-
-    halfDir.normalize();
-    const nDotH = saturate(hit.shadingNormal.dot(halfDir));
-    const vDotH = saturate(viewDir.dot(halfDir));
-    const fresnelFactor = Math.pow(1 - vDotH, 5);
-    const fresnelX = hit.f0.x + (1 - hit.f0.x) * fresnelFactor;
-    const fresnelY = hit.f0.y + (1 - hit.f0.y) * fresnelFactor;
-    const fresnelZ = hit.f0.z + (1 - hit.f0.z) * fresnelFactor;
-    const distribution = distributionGGX(nDotH, hit.roughness);
-    const geometry = geometrySmith(nDotV, nDotL, hit.roughness);
-    const specularFactor =
-      (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
-    const diffuseFactor = (1 - hit.metallic) * INV_PI;
-    const lightScale = nDotL * SUN_INTENSITY;
-
-    return new Vector3(
-      ((1 - fresnelX) * diffuseFactor * hit.baseColor.x +
-        fresnelX * specularFactor) *
-        scene.lightColor.x *
-        lightScale,
-      ((1 - fresnelY) * diffuseFactor * hit.baseColor.y +
-        fresnelY * specularFactor) *
-        scene.lightColor.y *
-        lightScale,
-      ((1 - fresnelZ) * diffuseFactor * hit.baseColor.z +
-        fresnelZ * specularFactor) *
-        scene.lightColor.z *
-        lightScale,
-    );
+    return contribution;
   };
 
   private evaluateDirectEnvironment = (
     hit: HitRecord,
     scene: PathTraceScene,
   ) => {
-    if (hit.metallic >= 1 || this.environmentWeightTotal <= 0) {
-      return Vector3.Zero;
-    }
-
-    const environmentSample = this.sampleEnvironmentLight(
+    const environmentSample = this.environmentSampler.sampleLight(
       scene.environment,
       scene.envYawCos,
       scene.envYawSin,
+      this.nextRandom,
     );
     if (!environmentSample) {
       return Vector3.Zero;
     }
 
-    const nDotL = saturate(hit.shadingNormal.dot(environmentSample.direction));
-    if (nDotL <= 0) {
+    const contribution = evaluateDirectEnvironmentLighting(
+      hit,
+      environmentSample.direction,
+      environmentSample.radiance,
+      environmentSample.pdf,
+    );
+    if (contribution.lengthSq() <= 0) {
       return Vector3.Zero;
     }
 
@@ -428,13 +363,7 @@ export class PathTracer {
       return Vector3.Zero;
     }
 
-    const diffuseScale =
-      ((1 - hit.metallic) * INV_PI * nDotL) / environmentSample.pdf;
-    return new Vector3(
-      hit.baseColor.x * environmentSample.radiance.x * diffuseScale,
-      hit.baseColor.y * environmentSample.radiance.y * diffuseScale,
-      hit.baseColor.z * environmentSample.radiance.z * diffuseScale,
-    );
+    return contribution;
   };
 
   private traceClosest = (
@@ -462,6 +391,8 @@ export class PathTracer {
       v0.z * baryW + v1.z * hit.baryU + v2.z * hit.baryV,
     );
     const position = scene.modelMat.transformPoint(positionModel);
+    const hasUvs = scene.model.uvs.length === scene.model.vertices.length;
+    const hasTangents = scene.model.tangents.length === scene.model.vertices.length;
 
     const normal0 = scene.model.normals[vertexOffset];
     const normal1 = scene.model.normals[vertexOffset + 1];
@@ -480,7 +411,7 @@ export class PathTracer {
       .normalize();
 
     let uv = new Vector2(0, 0);
-    if (scene.model.uvs.length === scene.model.vertices.length) {
+    if (hasUvs) {
       const uv0 = scene.model.uvs[vertexOffset];
       const uv1 = scene.model.uvs[vertexOffset + 1];
       const uv2 = scene.model.uvs[vertexOffset + 2];
@@ -490,10 +421,7 @@ export class PathTracer {
       );
     }
 
-    if (
-      scene.model.tangents.length === scene.model.vertices.length &&
-      scene.model.uvs.length === scene.model.vertices.length
-    ) {
+    if (hasTangents && hasUvs) {
       shadingNormal = applyNormalMap(
         shadingNormal,
         scene.model.tangents[vertexOffset],
@@ -518,14 +446,12 @@ export class PathTracer {
         : geometricNormal;
 
     const sampledBaseColor =
-      scene.model.uvs.length === scene.model.vertices.length
-        ? sampleTexture(scene.texture, uv)
-        : Vector3.One;
+      hasUvs ? sampleTexture(scene.texture, uv) : Vector3.One;
     const baseColor = sampledBaseColor.multiplyInPlace(
       scene.pbrMaterial.baseColorFactor,
     );
     const metallicRoughness =
-      scene.model.uvs.length === scene.model.vertices.length
+      hasUvs
         ? sampleTexture(scene.pbrMaterial.metallicRoughnessTexture, uv)
         : Vector3.One;
     const roughness = Math.max(
@@ -606,127 +532,28 @@ export class PathTracer {
     return this.bvh.intersect(originModel, directionModel, true) !== undefined;
   };
 
-  private ensureEnvironmentSampling = (environment: Texture) => {
-    if (this.sampledEnvironment === environment) {
-      return;
-    }
-
-    this.sampledEnvironment = environment;
-    this.needsReset = true;
-    this.environmentCdf = new Float32Array(
-      environment.width * environment.height,
-    );
-    this.environmentWeightTotal = 0;
-
-    for (let y = 0; y < environment.height; y++) {
-      const sinTheta = Math.sin(((y + 0.5) / environment.height) * Math.PI);
-      for (let x = 0; x < environment.width; x++) {
-        const weight =
-          this.getEnvironmentTexelLuminance(environment, x, y) * sinTheta;
-        this.environmentWeightTotal += weight;
-        this.environmentCdf[x + y * environment.width] =
-          this.environmentWeightTotal;
-      }
-    }
-  };
-
-  private sampleEnvironmentLight = (
-    environment: Texture,
-    envYawCos: number,
-    envYawSin: number,
-  ): EnvironmentLightSample | undefined => {
-    if (this.environmentWeightTotal <= 0 || this.environmentCdf.length === 0) {
-      return undefined;
-    }
-
-    const sampleIndex = this.sampleEnvironmentTexelIndex();
-    const texelX = sampleIndex % environment.width;
-    const texelY = Math.floor(sampleIndex / environment.width);
-    const texelLuminance = this.getEnvironmentTexelLuminance(
-      environment,
-      texelX,
-      texelY,
-    );
-    if (texelLuminance <= 0) {
-      return undefined;
-    }
-
-    const u = (texelX + this.nextRandom()) / environment.width;
-    const v = (texelY + this.nextRandom()) / environment.height;
-    const direction = environmentUvToDirection(u, v, envYawCos, envYawSin);
-    return {
-      direction,
-      pdf: Math.max(
-        ENVIRONMENT_PDF_EPSILON,
-        (texelLuminance * environment.width * environment.height) /
-          (2 * Math.PI * Math.PI * this.environmentWeightTotal),
-      ),
-      radiance: sampleEnvironment(environment, envYawCos, envYawSin, direction),
-    };
-  };
-
-  private sampleEnvironmentTexelIndex = () => {
-    const target = this.nextRandom() * this.environmentWeightTotal;
-    let low = 0;
-    let high = this.environmentCdf.length - 1;
-    while (low < high) {
-      const mid = (low + high) >> 1;
-      if (target <= this.environmentCdf[mid]) {
-        high = mid;
-      } else {
-        low = mid + 1;
-      }
-    }
-
-    return low;
-  };
-
-  private getEnvironmentTexelLuminance = (
-    environment: Texture,
-    x: number,
-    y: number,
-  ) => {
-    const base = (x + y * environment.width) * 3;
-    return (
-      environment.data[base] * 0.2126 +
-      environment.data[base + 1] * 0.7152 +
-      environment.data[base + 2] * 0.0722
-    );
-  };
-
   private present = (target: Framebuffer) => {
     const targetData = target.data;
 
-    for (let y = 0; y < target.height; y++) {
-      const sourceY = Math.min(
-        this.internalHeight - 1,
-        Math.floor((y / target.height) * this.internalHeight),
-      );
-      for (let x = 0; x < target.width; x++) {
-        const sourceX = Math.min(
-          this.internalWidth - 1,
-          Math.floor((x / target.width) * this.internalWidth),
-        );
-        const sourcePixelIndex = sourceX + sourceY * this.internalWidth;
-        const sourceIndex = sourcePixelIndex * 3;
-        const targetIndex = (x + y * target.width) * 4;
-        const sampleScale =
-          this.pixelSampleCounts[sourcePixelIndex] > 0
-            ? 1 / this.pixelSampleCounts[sourcePixelIndex]
-            : 0;
-        targetData[targetIndex] =
-          linearChannelToSrgb(this.accumulation[sourceIndex] * sampleScale) *
-          255;
-        targetData[targetIndex + 1] =
-          linearChannelToSrgb(
-            this.accumulation[sourceIndex + 1] * sampleScale,
-          ) * 255;
-        targetData[targetIndex + 2] =
-          linearChannelToSrgb(
-            this.accumulation[sourceIndex + 2] * sampleScale,
-          ) * 255;
-        targetData[targetIndex + 3] = 255;
-      }
+    for (let pixelIndex = 0; pixelIndex < this.pixelSampleCounts.length; pixelIndex++) {
+      const sourceIndex = pixelIndex * 3;
+      const targetIndex = pixelIndex * 4;
+      const sampleScale =
+        this.pixelSampleCounts[pixelIndex] > 0
+          ? 1 / this.pixelSampleCounts[pixelIndex]
+          : 0;
+      targetData[targetIndex] =
+        linearChannelToSrgb(this.accumulation[sourceIndex] * sampleScale) *
+        255;
+      targetData[targetIndex + 1] =
+        linearChannelToSrgb(
+          this.accumulation[sourceIndex + 1] * sampleScale,
+        ) * 255;
+      targetData[targetIndex + 2] =
+        linearChannelToSrgb(
+          this.accumulation[sourceIndex + 2] * sampleScale,
+        ) * 255;
+      targetData[targetIndex + 3] = 255;
     }
   };
 

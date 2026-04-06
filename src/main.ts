@@ -37,7 +37,7 @@ import { loadHdrTexture } from "./utils/hdrLoader";
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
 const SHADOW_MAP_SIZE = 512;
-const ROTATION_SPEED = 0;
+const ROTATION_SPEED = 0.2;
 const ROTATE_SENSITIVITY = 250;
 const PAN_SENSITIVITY = 250;
 const ZOOM_SENSITIVITY = 100;
@@ -317,21 +317,38 @@ const renderMesh = (
 };
 
 const update = (dt: number) => {
+  if (getShadingButton()?.dataset.shadingValue === "pathTrace") {
+    return;
+  }
+
   modelRotation.y -= dt * ROTATION_SPEED;
 };
 
 const draw = () => {
   const renderSettings = getRenderSettings();
+  const previewRenderSettings =
+    renderSettings.material === "pathTrace"
+      ? resolveShadingSelection(
+          "ibl",
+          texture.data.length > 0 && model.uvs.length > 0,
+        )
+      : renderSettings;
+  const usePathTracePreview =
+    renderSettings.material === "pathTrace" && pathTraceInteractive;
+  const activeRenderSettings = usePathTracePreview
+    ? previewRenderSettings
+    : renderSettings;
+  if (renderSettings.material === "pathTrace") {
+    pathTraceInteractive = false;
+  }
 
   // 1) Build model-space transforms.
   const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
   const invModelMat = modelMat.invert();
   const normalMat = invModelMat.transpose();
 
-  if (renderSettings.material === "pathTrace") {
-    const preview = pathTraceInteractive;
-    pathTraceInteractive = false;
-    const pathTraceInfo = pathTracer.render(
+  if (renderSettings.material === "pathTrace" && !usePathTracePreview) {
+    const pathTraceSampleCount = pathTracer.render(
       frameBuffer,
       {
         environment: hdrEnvironment,
@@ -353,15 +370,14 @@ const draw = () => {
         orthographic: orthographicCb.checked,
         position: camPos,
       },
-      preview,
       PATH_TRACE_FRAME_BUDGET_MS,
     );
-    pathTraceStatsText = `${pathTraceInfo.sampleCount.toFixed(1)} samples (${pathTraceInfo.preview ? "preview" : "refine"})`;
+    pathTraceStatsText = `${pathTraceSampleCount.toFixed(1)} samples`;
     ctx.putImageData(imageData, 0, 0);
     return;
   }
 
-  pathTraceStatsText = "";
+  pathTraceStatsText = usePathTracePreview ? "Preview" : "";
 
   // 2) Clear all render targets for a new frame.
   frameBuffer.clear();
@@ -383,7 +399,10 @@ const draw = () => {
   const mvp = projMat.multiply(viewMat).multiply(modelMat);
 
   // 5) Select active material shader and update uniforms.
-  const shader = shaders[renderSettings.material];
+  if (activeRenderSettings.material === "pathTrace") {
+    return;
+  }
+  const shader = shaders[activeRenderSettings.material];
 
   shader.uniforms = {
     model,
@@ -407,12 +426,12 @@ const draw = () => {
   };
 
   // 6) Optional shadow pass first, then visible color pass.
-  if (renderSettings.useShadows) {
+  if (activeRenderSettings.useShadows) {
     depthShader.uniforms = { model, clipMat: lightSpaceMat };
     renderMesh(depthShader, shadowMap, "filled", shadowBuffer);
   }
 
-  renderMesh(shader, zBuffer, renderSettings.renderMode);
+  renderMesh(shader, zBuffer, activeRenderSettings.renderMode);
   ctx.putImageData(imageData, 0, 0);
 };
 
