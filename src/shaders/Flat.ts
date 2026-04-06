@@ -10,7 +10,7 @@ export interface Uniforms {
 }
 
 const ambient = 0.1;
-const lightScale = 0.5;
+const baseColour = new Vector3(0.5, 0.5, 0.5);
 
 export class FlatShader extends BaseShader {
   // Uniforms are set once per draw call.
@@ -28,8 +28,8 @@ export class FlatShader extends BaseShader {
         .transformDirection(model.faceNormals[this.vertexId])
         .normalize();
       const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
-      const lightStrength = diffuse * lightScale + ambient;
-      this.lighting = this.uniforms.lightCol.scale(lightStrength);
+      const lighting = this.uniforms.lightCol.scale(diffuse + ambient);
+      this.lighting = baseColour.multiply(lighting);
     }
 
     // Return clip-space position.

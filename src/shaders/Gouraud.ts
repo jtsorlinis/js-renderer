@@ -16,43 +16,35 @@ const shininess = 32;
 const ambient = 0.1;
 const baseColour = new Vector3(0.5, 0.5, 0.5);
 
-export class SmoothShader extends BaseShader {
-  // Uniforms are set per draw call.
+export class GouraudShader extends BaseShader {
+  // Uniforms are set once per draw call.
   uniforms!: Uniforms;
 
-  // Per-vertex values that will be interpolated in fragment().
-  vNormal = this.varying<Vector3>();
-  vWorldPos = this.varying<Vector3>();
+  vertexColour = this.varying<Vector3>();
 
   vertex = (): Vector4 => {
-    // Read source mesh data.
     const model = this.uniforms.model;
     const i = this.vertexId;
+
     const worldPos = this.uniforms.modelMat.transformPoint(model.vertices[i]);
     const normal = this.uniforms.normalMat
       .transformDirection(model.normals[i])
       .normalize();
 
-    // Emit varyings.
-    this.v2f(this.vNormal, normal);
-    this.v2f(this.vWorldPos, worldPos);
-
-    // Return clip-space position.
-    return this.uniforms.mvp.transformPoint4(model.vertices[i]);
-  };
-
-  fragment = () => {
-    // Interpolated normal/position at this pixel.
-    const normal = this.interpolateVec3(this.vNormal).normalize();
-    const worldPos = this.interpolateVec3(this.vWorldPos);
-
-    // Blinn-Phong lighting on a flat white material.
     const viewDir = this.uniforms.camPos.subtract(worldPos).normalize();
     const halfWayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
     let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
     spec *= specStr;
     const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
     const lighting = this.uniforms.lightCol.scale(diffuse + spec + ambient);
-    return baseColour.multiply(lighting);
+    const vertColour = baseColour.multiply(lighting);
+    this.v2f(this.vertexColour, vertColour);
+
+    // Return clip-space position.
+    return this.uniforms.mvp.transformPoint4(model.vertices[i]);
+  };
+
+  fragment = () => {
+    return this.interpolateVec3(this.vertexColour);
   };
 }
