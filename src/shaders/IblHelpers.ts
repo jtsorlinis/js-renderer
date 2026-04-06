@@ -1,11 +1,19 @@
-import { Vector3 } from "../maths";
-import { EPSILON, INV_PI, saturate } from "./pbrHelpers";
+import { Texture } from "../drawing";
+import { EPSILON, INV_PI } from "./pbrHelpers";
 
-export interface ProceduralEnvironment {
-  ground: Vector3;
-  sky: Vector3;
-  horizon: Vector3;
-  blend: number;
+export interface IblData {
+  diffuseIrradianceLut: Float32Array;
+  diffuseIrradianceLutSize: number;
+  specularPrefilterLut: Float32Array;
+  specularPrefilterUpLutSize: number;
+  specularPrefilterRoughnessLutSize: number;
+  specularBrdfLut: Float32Array;
+  specularBrdfLutSize: number;
+}
+
+interface EnvironmentProfile {
+  values: Float32Array;
+  size: number;
 }
 
 const diffuseIrradianceLutSize = 64;
@@ -17,53 +25,81 @@ const specularPrefilterSampleCount = 64;
 const specularBrdfLutSize = 32;
 const specularBrdfSampleCount = 96;
 
-export const evaluateEnvironmentChannel = (
-  up: number,
-  groundValue: number,
-  skyValue: number,
-  horizonValue: number,
-  blend: number,
-) => {
-  const hemi = saturate(up * 0.5 + 0.5);
-  const horizonFactor = 1 - Math.abs(up);
+const clampSignedUnit = (value: number) => {
+  return Math.max(-1, Math.min(1, value));
+};
 
-  let value = groundValue + (skyValue - groundValue) * hemi;
-  value += (horizonValue - value) * horizonFactor * blend;
-  return value;
+const buildEnvironmentProfile = (texture: Texture): EnvironmentProfile => {
+  const values = new Float32Array(texture.height * 3);
+
+  for (let y = 0; y < texture.height; y++) {
+    const rowBase = y * texture.width * 3;
+    let rowR = 0;
+    let rowG = 0;
+    let rowB = 0;
+
+    for (let x = 0; x < texture.width; x++) {
+      const base = rowBase + x * 3;
+      rowR += texture.data[base];
+      rowG += texture.data[base + 1];
+      rowB += texture.data[base + 2];
+    }
+
+    const scale = 1 / texture.width;
+    const outputBase = y * 3;
+    values[outputBase] = rowR * scale;
+    values[outputBase + 1] = rowG * scale;
+    values[outputBase + 2] = rowB * scale;
+  }
+
+  return { values, size: texture.height };
+};
+
+const sampleProfile = (profile: EnvironmentProfile, up: number) => {
+  const coord = (Math.acos(clampSignedUnit(up)) / Math.PI) * (profile.size - 1);
+  const index = Math.floor(coord);
+  const next = Math.min(index + 1, profile.size - 1);
+  const blend = coord - index;
+  const base = index * 3;
+  const nextBase = next * 3;
+
+  return {
+    r:
+      profile.values[base] +
+      (profile.values[nextBase] - profile.values[base]) * blend,
+    g:
+      profile.values[base + 1] +
+      (profile.values[nextBase + 1] - profile.values[base + 1]) * blend,
+    b:
+      profile.values[base + 2] +
+      (profile.values[nextBase + 2] - profile.values[base + 2]) * blend,
+  };
 };
 
 const radicalInverseVdc = (bits: number) => {
   let value = bits >>> 0;
   value = ((value << 16) | (value >>> 16)) >>> 0;
-  value =
-    (((value & 0x55555555) << 1) | ((value & 0xaaaaaaaa) >>> 1)) >>> 0;
-  value =
-    (((value & 0x33333333) << 2) | ((value & 0xcccccccc) >>> 2)) >>> 0;
-  value =
-    (((value & 0x0f0f0f0f) << 4) | ((value & 0xf0f0f0f0) >>> 4)) >>> 0;
-  value =
-    (((value & 0x00ff00ff) << 8) | ((value & 0xff00ff00) >>> 8)) >>> 0;
+  value = (((value & 0x55555555) << 1) | ((value & 0xaaaaaaaa) >>> 1)) >>> 0;
+  value = (((value & 0x33333333) << 2) | ((value & 0xcccccccc) >>> 2)) >>> 0;
+  value = (((value & 0x0f0f0f0f) << 4) | ((value & 0xf0f0f0f0) >>> 4)) >>> 0;
+  value = (((value & 0x00ff00ff) << 8) | ((value & 0xff00ff00) >>> 8)) >>> 0;
   return value * 2.3283064365386963e-10;
 };
 
 const geometrySchlickGGXIbl = (nDotX: number, roughness: number) => {
-  const k = (roughness * roughness) * 0.5;
+  const k = roughness * roughness * 0.5;
   return nDotX / Math.max(nDotX * (1 - k) + k, EPSILON);
 };
 
-const geometrySmithIbl = (
-  nDotV: number,
-  nDotL: number,
-  roughness: number,
-) => {
+const geometrySmithIbl = (nDotV: number, nDotL: number, roughness: number) => {
   return (
     geometrySchlickGGXIbl(nDotV, roughness) *
     geometrySchlickGGXIbl(nDotL, roughness)
   );
 };
 
-export const buildDiffuseIrradianceLut = (
-  environment: ProceduralEnvironment,
+const buildDiffuseIrradianceLut = (
+  profile: EnvironmentProfile,
   lutSize: number,
   thetaSamples: number,
   phiSamples: number,
@@ -90,30 +126,10 @@ export const buildDiffuseIrradianceLut = (
       for (let phiIndex = 0; phiIndex < phiSamples; phiIndex++) {
         const phi = (phiIndex + 0.5) * phiStep;
         const sampleUp = upBias + upScale * Math.cos(phi);
-        irradianceR +=
-          evaluateEnvironmentChannel(
-            sampleUp,
-            environment.ground.x,
-            environment.sky.x,
-            environment.horizon.x,
-            environment.blend,
-          ) * sampleWeight;
-        irradianceG +=
-          evaluateEnvironmentChannel(
-            sampleUp,
-            environment.ground.y,
-            environment.sky.y,
-            environment.horizon.y,
-            environment.blend,
-          ) * sampleWeight;
-        irradianceB +=
-          evaluateEnvironmentChannel(
-            sampleUp,
-            environment.ground.z,
-            environment.sky.z,
-            environment.horizon.z,
-            environment.blend,
-          ) * sampleWeight;
+        const sample = sampleProfile(profile, sampleUp);
+        irradianceR += sample.r * sampleWeight;
+        irradianceG += sample.g * sampleWeight;
+        irradianceB += sample.b * sampleWeight;
       }
     }
 
@@ -126,8 +142,8 @@ export const buildDiffuseIrradianceLut = (
   return lut;
 };
 
-export const buildSpecularPrefilterLut = (
-  environment: ProceduralEnvironment,
+const buildSpecularPrefilterLut = (
+  profile: EnvironmentProfile,
   upLutSize: number,
   roughnessLutSize: number,
   sampleCount: number,
@@ -192,30 +208,10 @@ export const buildSpecularPrefilterLut = (
           continue;
         }
 
-        prefilteredR +=
-          evaluateEnvironmentChannel(
-            lz,
-            environment.ground.x,
-            environment.sky.x,
-            environment.horizon.x,
-            environment.blend,
-          ) * nDotL;
-        prefilteredG +=
-          evaluateEnvironmentChannel(
-            lz,
-            environment.ground.y,
-            environment.sky.y,
-            environment.horizon.y,
-            environment.blend,
-          ) * nDotL;
-        prefilteredB +=
-          evaluateEnvironmentChannel(
-            lz,
-            environment.ground.z,
-            environment.sky.z,
-            environment.horizon.z,
-            environment.blend,
-          ) * nDotL;
+        const sample = sampleProfile(profile, lz);
+        prefilteredR += sample.r * nDotL;
+        prefilteredG += sample.g * nDotL;
+        prefilteredB += sample.b * nDotL;
         totalWeight += nDotL;
       }
 
@@ -230,10 +226,7 @@ export const buildSpecularPrefilterLut = (
   return lut;
 };
 
-export const buildSpecularBrdfLut = (
-  lutSize: number,
-  sampleCount: number,
-) => {
+const buildSpecularBrdfLut = (lutSize: number, sampleCount: number) => {
   const lut = new Float32Array(lutSize * lutSize * 2);
 
   for (let roughnessIndex = 0; roughnessIndex < lutSize; roughnessIndex++) {
@@ -284,16 +277,18 @@ export const buildSpecularBrdfLut = (
   return lut;
 };
 
-export const buildProceduralIbl = (environment: ProceduralEnvironment) => {
+export const buildEnvironmentIbl = (environmentTexture: Texture): IblData => {
+  const profile = buildEnvironmentProfile(environmentTexture);
+
   return {
     diffuseIrradianceLut: buildDiffuseIrradianceLut(
-      environment,
+      profile,
       diffuseIrradianceLutSize,
       diffuseIrradianceThetaSamples,
       diffuseIrradiancePhiSamples,
     ),
     specularPrefilterLut: buildSpecularPrefilterLut(
-      environment,
+      profile,
       specularPrefilterUpLutSize,
       specularPrefilterRoughnessLutSize,
       specularPrefilterSampleCount,
