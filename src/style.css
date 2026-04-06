@@ -119,6 +119,11 @@ body {
   flex: 1;
   flex-direction: column;
   gap: 6px;
+  counter-reset: shading-step 10;
+}
+
+.shading-list li {
+  counter-increment: shading-step -1;
 }
 
 .shading-option {
@@ -131,10 +136,25 @@ body {
   text-align: left;
   font-size: 13px;
   cursor: pointer;
+  display: flex;
+  gap: 8px;
+  align-items: center;
   transition:
     border-color 0.15s,
     background 0.15s,
     transform 0.15s;
+}
+
+.shading-list .shading-option::before {
+  content: counter(shading-step);
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 12px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.shading-list li:has(.is-active) .shading-option::before {
+  color: var(--accent);
 }
 
 .shading-option:hover {
