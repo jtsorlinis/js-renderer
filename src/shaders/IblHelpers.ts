@@ -2,25 +2,26 @@ import { Texture } from "../drawing";
 import { EPSILON, INV_PI } from "./pbrHelpers";
 
 export interface IblData {
-  diffuseIrradianceLut: Float32Array;
-  diffuseIrradianceLutSize: number;
-  specularPrefilterLut: Float32Array;
-  specularPrefilterUpLutSize: number;
+  diffuseIrradianceMap: Float32Array;
+  diffuseIrradianceMapWidth: number;
+  diffuseIrradianceMapHeight: number;
+  specularPrefilterMap: Float32Array;
+  specularPrefilterMapWidth: number;
+  specularPrefilterMapHeight: number;
   specularPrefilterRoughnessLutSize: number;
   specularBrdfLut: Float32Array;
   specularBrdfLutSize: number;
 }
 
-interface EnvironmentProfile {
-  values: Float32Array;
-  size: number;
-}
-
-const diffuseIrradianceLutSize = 64;
-const diffuseIrradianceThetaSamples = 24;
-const diffuseIrradiancePhiSamples = 48;
-const specularPrefilterUpLutSize = 64;
-const specularPrefilterRoughnessLutSize = 32;
+const TAU = Math.PI * 2;
+const INV_TAU = 1 / TAU;
+const diffuseIrradianceMapWidth = 32;
+const diffuseIrradianceMapHeight = 16;
+const diffuseIrradianceThetaSamples = 16;
+const diffuseIrradiancePhiSamples = 32;
+const specularPrefilterMapWidth = 64;
+const specularPrefilterMapHeight = 32;
+const specularPrefilterRoughnessLutSize = 16;
 const specularPrefilterSampleCount = 64;
 const specularBrdfLutSize = 32;
 const specularBrdfSampleCount = 96;
@@ -29,51 +30,90 @@ const clampSignedUnit = (value: number) => {
   return Math.max(-1, Math.min(1, value));
 };
 
-const buildEnvironmentProfile = (texture: Texture): EnvironmentProfile => {
-  const values = new Float32Array(texture.height * 3);
-
-  for (let y = 0; y < texture.height; y++) {
-    const rowBase = y * texture.width * 3;
-    let rowR = 0;
-    let rowG = 0;
-    let rowB = 0;
-
-    for (let x = 0; x < texture.width; x++) {
-      const base = rowBase + x * 3;
-      rowR += texture.data[base];
-      rowG += texture.data[base + 1];
-      rowB += texture.data[base + 2];
-    }
-
-    const scale = 1 / texture.width;
-    const outputBase = y * 3;
-    values[outputBase] = rowR * scale;
-    values[outputBase + 1] = rowG * scale;
-    values[outputBase + 2] = rowB * scale;
-  }
-
-  return { values, size: texture.height };
+const wrapUnit = (value: number) => {
+  return value - Math.floor(value);
 };
 
-const sampleProfile = (profile: EnvironmentProfile, up: number) => {
-  const coord = (Math.acos(clampSignedUnit(up)) / Math.PI) * (profile.size - 1);
-  const index = Math.floor(coord);
-  const next = Math.min(index + 1, profile.size - 1);
-  const blend = coord - index;
-  const base = index * 3;
-  const nextBase = next * 3;
+const directionToLatLongUv = (x: number, y: number, z: number) => {
+  return {
+    u: wrapUnit(Math.atan2(x, z) * INV_TAU + 0.5),
+    v: Math.acos(clampSignedUnit(y)) * INV_PI,
+  };
+};
+
+const latLongUvToDirection = (u: number, v: number) => {
+  const phi = (u - 0.5) * TAU;
+  const theta = v * Math.PI;
+  const sinTheta = Math.sin(theta);
 
   return {
-    r:
-      profile.values[base] +
-      (profile.values[nextBase] - profile.values[base]) * blend,
-    g:
-      profile.values[base + 1] +
-      (profile.values[nextBase + 1] - profile.values[base + 1]) * blend,
-    b:
-      profile.values[base + 2] +
-      (profile.values[nextBase + 2] - profile.values[base + 2]) * blend,
+    x: Math.sin(phi) * sinTheta,
+    y: Math.cos(theta),
+    z: Math.cos(phi) * sinTheta,
   };
+};
+
+const buildBasis = (nx: number, ny: number, nz: number) => {
+  let tx = 1;
+  let ty = 0;
+  let tz = 0;
+
+  if (Math.abs(ny) < 0.999) {
+    const tangentScale = 1 / Math.sqrt(nx * nx + nz * nz);
+    tx = nz * tangentScale;
+    ty = 0;
+    tz = -nx * tangentScale;
+  }
+
+  return {
+    tx,
+    ty,
+    tz,
+    bx: ny * tz - nz * ty,
+    by: nz * tx - nx * tz,
+    bz: nx * ty - ny * tx,
+  };
+};
+
+const sampleLatLongData = (
+  data: Float32Array,
+  width: number,
+  height: number,
+  u: number,
+  v: number,
+) => {
+  const xCoord = wrapUnit(u) * width - 0.5;
+  const yCoord = Math.max(0, Math.min(height - 1, v * height - 0.5));
+  const x0 = Math.floor(xCoord);
+  const y0 = Math.floor(yCoord);
+  const xBlend = xCoord - x0;
+  const yBlend = yCoord - y0;
+  const xIndex0 = ((x0 % width) + width) % width;
+  const xIndex1 = (xIndex0 + 1) % width;
+  const yIndex0 = Math.max(0, Math.min(height - 1, y0));
+  const yIndex1 = Math.min(yIndex0 + 1, height - 1);
+  const rowStride = width * 3;
+  const base00 = yIndex0 * rowStride + xIndex0 * 3;
+  const base10 = yIndex0 * rowStride + xIndex1 * 3;
+  const base01 = yIndex1 * rowStride + xIndex0 * 3;
+  const base11 = yIndex1 * rowStride + xIndex1 * 3;
+  const r0 = data[base00] + (data[base10] - data[base00]) * xBlend;
+  const r1 = data[base01] + (data[base11] - data[base01]) * xBlend;
+  const g0 = data[base00 + 1] + (data[base10 + 1] - data[base00 + 1]) * xBlend;
+  const g1 = data[base01 + 1] + (data[base11 + 1] - data[base01 + 1]) * xBlend;
+  const b0 = data[base00 + 2] + (data[base10 + 2] - data[base00 + 2]) * xBlend;
+  const b1 = data[base01 + 2] + (data[base11 + 2] - data[base01 + 2]) * xBlend;
+
+  return {
+    r: r0 + (r1 - r0) * yBlend,
+    g: g0 + (g1 - g0) * yBlend,
+    b: b0 + (b1 - b0) * yBlend,
+  };
+};
+
+const sampleEnvironment = (texture: Texture, x: number, y: number, z: number) => {
+  const uv = directionToLatLongUv(x, y, z);
+  return sampleLatLongData(texture.data, texture.width, texture.height, uv.u, uv.v);
 };
 
 const radicalInverseVdc = (bits: number) => {
@@ -99,56 +139,73 @@ const geometrySmithIbl = (nDotV: number, nDotL: number, roughness: number) => {
 };
 
 const buildDiffuseIrradianceLut = (
-  profile: EnvironmentProfile,
-  lutSize: number,
+  texture: Texture,
+  width: number,
+  height: number,
   thetaSamples: number,
   phiSamples: number,
 ) => {
-  const lut = new Float32Array(lutSize * 3);
+  const map = new Float32Array(width * height * 3);
   const thetaStep = (Math.PI * 0.5) / thetaSamples;
   const phiStep = (Math.PI * 2) / phiSamples;
 
-  for (let i = 0; i < lutSize; i++) {
-    const normalUp = (i / (lutSize - 1)) * 2 - 1;
-    const normalSide = Math.sqrt(Math.max(0, 1 - normalUp * normalUp));
+  for (let y = 0; y < height; y++) {
+    const v = (y + 0.5) / height;
+    for (let x = 0; x < width; x++) {
+      const u = (x + 0.5) / width;
+      const normal = latLongUvToDirection(u, v);
+      const basis = buildBasis(normal.x, normal.y, normal.z);
 
-    let irradianceR = 0;
-    let irradianceG = 0;
-    let irradianceB = 0;
-    for (let thetaIndex = 0; thetaIndex < thetaSamples; thetaIndex++) {
-      const theta = (thetaIndex + 0.5) * thetaStep;
-      const sinTheta = Math.sin(theta);
-      const cosTheta = Math.cos(theta);
-      const upBias = normalUp * cosTheta;
-      const upScale = normalSide * sinTheta;
-      const sampleWeight = cosTheta * sinTheta * thetaStep * phiStep * INV_PI;
+      let irradianceR = 0;
+      let irradianceG = 0;
+      let irradianceB = 0;
+      for (let thetaIndex = 0; thetaIndex < thetaSamples; thetaIndex++) {
+        const theta = (thetaIndex + 0.5) * thetaStep;
+        const sinTheta = Math.sin(theta);
+        const cosTheta = Math.cos(theta);
+        const sampleWeight = cosTheta * sinTheta * thetaStep * phiStep * INV_PI;
 
-      for (let phiIndex = 0; phiIndex < phiSamples; phiIndex++) {
-        const phi = (phiIndex + 0.5) * phiStep;
-        const sampleUp = upBias + upScale * Math.cos(phi);
-        const sample = sampleProfile(profile, sampleUp);
-        irradianceR += sample.r * sampleWeight;
-        irradianceG += sample.g * sampleWeight;
-        irradianceB += sample.b * sampleWeight;
+        for (let phiIndex = 0; phiIndex < phiSamples; phiIndex++) {
+          const phi = (phiIndex + 0.5) * phiStep;
+          const sinThetaCosPhi = sinTheta * Math.cos(phi);
+          const sinThetaSinPhi = sinTheta * Math.sin(phi);
+          const sampleX =
+            basis.tx * sinThetaCosPhi +
+            basis.bx * sinThetaSinPhi +
+            normal.x * cosTheta;
+          const sampleY =
+            basis.ty * sinThetaCosPhi +
+            basis.by * sinThetaSinPhi +
+            normal.y * cosTheta;
+          const sampleZ =
+            basis.tz * sinThetaCosPhi +
+            basis.bz * sinThetaSinPhi +
+            normal.z * cosTheta;
+          const sample = sampleEnvironment(texture, sampleX, sampleY, sampleZ);
+          irradianceR += sample.r * sampleWeight;
+          irradianceG += sample.g * sampleWeight;
+          irradianceB += sample.b * sampleWeight;
+        }
       }
-    }
 
-    const base = i * 3;
-    lut[base] = irradianceR;
-    lut[base + 1] = irradianceG;
-    lut[base + 2] = irradianceB;
+      const base = (y * width + x) * 3;
+      map[base] = irradianceR;
+      map[base + 1] = irradianceG;
+      map[base + 2] = irradianceB;
+    }
   }
 
-  return lut;
+  return map;
 };
 
 const buildSpecularPrefilterLut = (
-  profile: EnvironmentProfile,
-  upLutSize: number,
+  texture: Texture,
+  width: number,
+  height: number,
   roughnessLutSize: number,
   sampleCount: number,
 ) => {
-  const lut = new Float32Array(upLutSize * roughnessLutSize * 3);
+  const map = new Float32Array(width * height * roughnessLutSize * 3);
 
   for (
     let roughnessIndex = 0;
@@ -159,71 +216,66 @@ const buildSpecularPrefilterLut = (
     const alpha = roughness * roughness;
     const alphaSq = alpha * alpha;
 
-    for (let upIndex = 0; upIndex < upLutSize; upIndex++) {
-      const reflectionUp = (upIndex / (upLutSize - 1)) * 2 - 1;
-      const reflectionSide = Math.sqrt(
-        Math.max(0, 1 - reflectionUp * reflectionUp),
-      );
-      const rx = reflectionSide;
-      const ry = 0;
-      const rz = reflectionUp;
+    for (let y = 0; y < height; y++) {
+      const v = (y + 0.5) / height;
+      for (let x = 0; x < width; x++) {
+        const u = (x + 0.5) / width;
+        const reflection = latLongUvToDirection(u, v);
+        const basis = buildBasis(reflection.x, reflection.y, reflection.z);
 
-      let tx = 0;
-      let ty = 1;
-      let tz = 0;
-      if (Math.abs(rz) < 0.999) {
-        const tangentScale = 1 / Math.sqrt(rx * rx + ry * ry);
-        tx = -ry * tangentScale;
-        ty = rx * tangentScale;
-      }
+        let prefilteredR = 0;
+        let prefilteredG = 0;
+        let prefilteredB = 0;
+        let totalWeight = 0;
 
-      const bx = ry * tz - rz * ty;
-      const by = rz * tx - rx * tz;
-      const bz = rx * ty - ry * tx;
+        for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
+          const xiX = sampleIndex / sampleCount;
+          const xiY = radicalInverseVdc(sampleIndex);
+          const phi = Math.PI * 2 * xiX;
+          const cosTheta = Math.sqrt(
+            (1 - xiY) / Math.max(1 + (alphaSq - 1) * xiY, EPSILON),
+          );
+          const sinTheta = Math.sqrt(Math.max(0, 1 - cosTheta * cosTheta));
+          const hLocalX = Math.cos(phi) * sinTheta;
+          const hLocalY = Math.sin(phi) * sinTheta;
+          const hx =
+            basis.tx * hLocalX + basis.bx * hLocalY + reflection.x * cosTheta;
+          const hy =
+            basis.ty * hLocalX + basis.by * hLocalY + reflection.y * cosTheta;
+          const hz =
+            basis.tz * hLocalX + basis.bz * hLocalY + reflection.z * cosTheta;
+          const vDotH = Math.max(
+            reflection.x * hx + reflection.y * hy + reflection.z * hz,
+            0,
+          );
+          const lx = 2 * vDotH * hx - reflection.x;
+          const ly = 2 * vDotH * hy - reflection.y;
+          const lz = 2 * vDotH * hz - reflection.z;
+          const nDotL = Math.max(
+            reflection.x * lx + reflection.y * ly + reflection.z * lz,
+            0,
+          );
+          if (nDotL <= 0) {
+            continue;
+          }
 
-      let prefilteredR = 0;
-      let prefilteredG = 0;
-      let prefilteredB = 0;
-      let totalWeight = 0;
-
-      for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
-        const xiX = sampleIndex / sampleCount;
-        const xiY = radicalInverseVdc(sampleIndex);
-        const phi = Math.PI * 2 * xiX;
-        const cosTheta = Math.sqrt(
-          (1 - xiY) / Math.max(1 + (alphaSq - 1) * xiY, EPSILON),
-        );
-        const sinTheta = Math.sqrt(Math.max(0, 1 - cosTheta * cosTheta));
-        const hLocalX = Math.cos(phi) * sinTheta;
-        const hLocalY = Math.sin(phi) * sinTheta;
-        const hx = tx * hLocalX + bx * hLocalY + rx * cosTheta;
-        const hy = ty * hLocalX + by * hLocalY + ry * cosTheta;
-        const hz = tz * hLocalX + bz * hLocalY + rz * cosTheta;
-        const vDotH = Math.max(rx * hx + ry * hy + rz * hz, 0);
-        const lx = 2 * vDotH * hx - rx;
-        const ly = 2 * vDotH * hy - ry;
-        const lz = 2 * vDotH * hz - rz;
-        const nDotL = Math.max(rx * lx + ry * ly + rz * lz, 0);
-        if (nDotL <= 0) {
-          continue;
+          const sample = sampleEnvironment(texture, lx, ly, lz);
+          prefilteredR += sample.r * nDotL;
+          prefilteredG += sample.g * nDotL;
+          prefilteredB += sample.b * nDotL;
+          totalWeight += nDotL;
         }
 
-        const sample = sampleProfile(profile, lz);
-        prefilteredR += sample.r * nDotL;
-        prefilteredG += sample.g * nDotL;
-        prefilteredB += sample.b * nDotL;
-        totalWeight += nDotL;
+        const base = ((roughnessIndex * height + y) * width + x) * 3;
+        const weightScale = totalWeight > 0 ? 1 / totalWeight : 0;
+        map[base] = prefilteredR * weightScale;
+        map[base + 1] = prefilteredG * weightScale;
+        map[base + 2] = prefilteredB * weightScale;
       }
-
-      const base = (roughnessIndex * upLutSize + upIndex) * 3;
-      const weightScale = totalWeight > 0 ? 1 / totalWeight : 0;
-      lut[base] = prefilteredR * weightScale;
-      lut[base + 1] = prefilteredG * weightScale;
-      lut[base + 2] = prefilteredB * weightScale;
     }
   }
 
-  return lut;
+  return map;
 };
 
 const buildSpecularBrdfLut = (lutSize: number, sampleCount: number) => {
@@ -278,18 +330,18 @@ const buildSpecularBrdfLut = (lutSize: number, sampleCount: number) => {
 };
 
 export const buildEnvironmentIbl = (environmentTexture: Texture): IblData => {
-  const profile = buildEnvironmentProfile(environmentTexture);
-
   return {
-    diffuseIrradianceLut: buildDiffuseIrradianceLut(
-      profile,
-      diffuseIrradianceLutSize,
+    diffuseIrradianceMap: buildDiffuseIrradianceLut(
+      environmentTexture,
+      diffuseIrradianceMapWidth,
+      diffuseIrradianceMapHeight,
       diffuseIrradianceThetaSamples,
       diffuseIrradiancePhiSamples,
     ),
-    specularPrefilterLut: buildSpecularPrefilterLut(
-      profile,
-      specularPrefilterUpLutSize,
+    specularPrefilterMap: buildSpecularPrefilterLut(
+      environmentTexture,
+      specularPrefilterMapWidth,
+      specularPrefilterMapHeight,
       specularPrefilterRoughnessLutSize,
       specularPrefilterSampleCount,
     ),
@@ -297,8 +349,10 @@ export const buildEnvironmentIbl = (environmentTexture: Texture): IblData => {
       specularBrdfLutSize,
       specularBrdfSampleCount,
     ),
-    diffuseIrradianceLutSize,
-    specularPrefilterUpLutSize,
+    diffuseIrradianceMapWidth,
+    diffuseIrradianceMapHeight,
+    specularPrefilterMapWidth,
+    specularPrefilterMapHeight,
     specularPrefilterRoughnessLutSize,
     specularBrdfLutSize,
   };
