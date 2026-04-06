@@ -44,9 +44,6 @@ const trisText = document.getElementById("tris") as HTMLSpanElement;
 const textureSizeText = document.getElementById(
   "textureSize",
 ) as HTMLSpanElement;
-const normalTextureSizeText = document.getElementById(
-  "normalTextureSize",
-) as HTMLSpanElement;
 const orthographicCb = document.getElementById("orthoCb") as HTMLInputElement;
 const highResCb = document.getElementById("highResCb") as HTMLInputElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
@@ -180,8 +177,7 @@ const triVerts: Vector4[] = [];
 
 const updateModelStats = () => {
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
-  textureSizeText.innerText = `${texture.width} x ${texture.height}`;
-  normalTextureSizeText.innerText = `${normalTexture.width} x ${normalTexture.height}`;
+  textureSizeText.innerText = `${Math.max(texture.width, texture.height)}`;
 };
 
 const resetModelTransform = () => {
