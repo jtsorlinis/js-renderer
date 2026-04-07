@@ -152,7 +152,7 @@ const envYawCos = Math.cos(envYaw);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
 
 const camPos = new Vector3(0, 0, -2.5);
-let cameraOrthoSize = 1.5;
+let cameraOrthoSize = 1.44;
 
 const diceModel = await ensureModelOption("dice");
 prefetchRemainingModels("dice");
@@ -197,6 +197,7 @@ const updateModelStats = () => {
 const resetModelTransform = () => {
   modelRotation.set(0, Math.PI / 2, 0);
   camPos.set(0, 0, -2.5);
+  cameraOrthoSize = 1.44;
 };
 
 let activeModelRequest = 0;
@@ -395,12 +396,9 @@ canvas.onmousemove = (e) => {
 
 canvas.onwheel = (e) => {
   e.preventDefault();
-  if (orthographicCb.checked) {
-    cameraOrthoSize += e.deltaY / ZOOM_SENSITIVITY;
-    cameraOrthoSize = Math.max(0.01, cameraOrthoSize);
-  } else {
-    camPos.z -= e.deltaY / ZOOM_SENSITIVITY;
-  }
+  cameraOrthoSize += (e.deltaY * 0.58) / ZOOM_SENSITIVITY;
+  cameraOrthoSize = Math.max(0.01, cameraOrthoSize);
+  camPos.z -= e.deltaY / ZOOM_SENSITIVITY;
 };
 
 canvas.oncontextmenu = (e) => e.preventDefault();
