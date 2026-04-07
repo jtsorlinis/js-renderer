@@ -143,7 +143,7 @@ const hdrEnvironment = await loadHdrTexture(
 );
 
 // Scene and camera
-const lightDir = new Vector3(0, -1, 1).normalize();
+const lightDir = new Vector3(1, -1, 1).normalize();
 const negLightDir = lightDir.scale(-1);
 const lightCol = new Vector3(1, 1, 1);
 const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
