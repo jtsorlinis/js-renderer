@@ -7,8 +7,6 @@ import {
   saturate,
 } from "../shaders/pbrHelpers";
 
-const SUN_INTENSITY = 0;
-
 export interface PathTraceLightingHit {
   baseColor: Vector3;
   f0: Vector3;
@@ -22,6 +20,7 @@ export const evaluateDirectSunLighting = (
   viewDir: Vector3,
   lightDir: Vector3,
   lightColor: Vector3,
+  lightIntensity: number,
 ) => {
   const nDotL = saturate(hit.shadingNormal.dot(lightDir));
   const nDotV = saturate(hit.shadingNormal.dot(viewDir));
@@ -46,7 +45,7 @@ export const evaluateDirectSunLighting = (
   const specularFactor =
     (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
   const diffuseFactor = (1 - hit.metallic) * INV_PI;
-  const lightScale = nDotL * SUN_INTENSITY;
+  const lightScale = nDotL * lightIntensity;
 
   return new Vector3(
     ((1 - fresnelX) * diffuseFactor * hit.baseColor.x +
@@ -69,6 +68,7 @@ export const evaluateDirectEnvironmentLighting = (
   lightDirection: Vector3,
   radiance: Vector3,
   pdf: number,
+  environmentIntensity: number,
 ) => {
   if (hit.metallic >= 1 || pdf <= 0) {
     return Vector3.Zero;
@@ -79,7 +79,8 @@ export const evaluateDirectEnvironmentLighting = (
     return Vector3.Zero;
   }
 
-  const diffuseScale = ((1 - hit.metallic) * INV_PI * nDotL) / pdf;
+  const diffuseScale =
+    ((1 - hit.metallic) * INV_PI * nDotL * environmentIntensity) / pdf;
   return new Vector3(
     hit.baseColor.x * radiance.x * diffuseScale,
     hit.baseColor.y * radiance.y * diffuseScale,

@@ -23,11 +23,13 @@ import {
 import { type PbrMaterial } from "../utils/modelLoader";
 import { type LoadedModel } from "../utils/objLoader";
 
-const MAX_BOUNCES = 4;
-const RUSSIAN_ROULETTE_BOUNCE = 3;
 const RAY_EPSILON = 0.001;
-const RENDER_ENVIRONMENT = false;
-const RESET_EPSILON = 0.0001;
+
+const lightIntensity = 1.88;
+const environmentIntensity = 0.6;
+const maxBounces = 4;
+const rouletteBounces = 3;
+const renderEnvironment = false;
 
 interface HitRecord {
   baseColor: Vector3;
@@ -98,7 +100,10 @@ export class PathTracer {
     const deadline = performance.now() + timeBudgetMs;
     let processedPixels = 0;
 
-    while (totalPixels > 0 && (processedPixels === 0 || performance.now() < deadline)) {
+    while (
+      totalPixels > 0 &&
+      (processedPixels === 0 || performance.now() < deadline)
+    ) {
       const pixelIndex = this.workIndex;
       const x = pixelIndex % this.internalWidth;
       const y = Math.floor(pixelIndex / this.internalWidth);
@@ -160,10 +165,7 @@ export class PathTracer {
     this.lastModelMatrix.set(modelMatrix);
   };
 
-  private ensureResolution = (
-    targetWidth: number,
-    targetHeight: number,
-  ) => {
+  private ensureResolution = (targetWidth: number, targetHeight: number) => {
     const width = Math.max(1, targetWidth);
     const height = Math.max(1, targetHeight);
     if (width === this.internalWidth && height === this.internalHeight) {
@@ -218,7 +220,7 @@ export class PathTracer {
   ) => {
     let origin = initialOrigin;
     let direction = initialDirection;
-    let allowEnvironmentOnMiss = RENDER_ENVIRONMENT;
+    let allowEnvironmentOnMiss = renderEnvironment;
     let throughputR = 1;
     let throughputG = 1;
     let throughputB = 1;
@@ -226,16 +228,16 @@ export class PathTracer {
     let radianceG = 0;
     let radianceB = 0;
 
-    for (let bounce = 0; bounce < MAX_BOUNCES; bounce++) {
+    for (let bounce = 0; bounce < maxBounces; bounce++) {
       const hit = this.traceClosest(origin, direction, scene);
       if (!hit) {
-        if (bounce > 0 ? allowEnvironmentOnMiss : RENDER_ENVIRONMENT) {
+        if (bounce > 0 ? allowEnvironmentOnMiss : renderEnvironment) {
           const environment = sampleEnvironment(
             scene.environment,
             scene.envYawCos,
             scene.envYawSin,
             direction,
-          );
+          ).scale(environmentIntensity);
           radianceR += throughputR * environment.x;
           radianceG += throughputG * environment.y;
           radianceB += throughputB * environment.z;
@@ -253,7 +255,7 @@ export class PathTracer {
       radianceB += throughputB * directLight.z;
       radianceB += throughputB * directEnvironment.z;
 
-      if (bounce === MAX_BOUNCES - 1) {
+      if (bounce === maxBounces - 1) {
         break;
       }
 
@@ -285,7 +287,7 @@ export class PathTracer {
         allowEnvironmentOnMiss = false;
       }
 
-      if (bounce + 1 >= RUSSIAN_ROULETTE_BOUNCE) {
+      if (bounce + 1 >= rouletteBounces) {
         const survivalProbability = Math.max(
           0.1,
           Math.min(0.95, Math.max(throughputR, throughputG, throughputB)),
@@ -317,6 +319,7 @@ export class PathTracer {
       viewDir,
       lightDir,
       scene.lightColor,
+      lightIntensity,
     );
     if (contribution.lengthSq() <= 0) {
       return Vector3.Zero;
@@ -351,6 +354,7 @@ export class PathTracer {
       environmentSample.direction,
       environmentSample.radiance,
       environmentSample.pdf,
+      environmentIntensity,
     );
     if (contribution.lengthSq() <= 0) {
       return Vector3.Zero;
@@ -392,7 +396,8 @@ export class PathTracer {
     );
     const position = scene.modelMat.transformPoint(positionModel);
     const hasUvs = scene.model.uvs.length === scene.model.vertices.length;
-    const hasTangents = scene.model.tangents.length === scene.model.vertices.length;
+    const hasTangents =
+      scene.model.tangents.length === scene.model.vertices.length;
 
     const normal0 = scene.model.normals[vertexOffset];
     const normal1 = scene.model.normals[vertexOffset + 1];
@@ -445,15 +450,15 @@ export class PathTracer {
         ? geometricNormal.scale(-1)
         : geometricNormal;
 
-    const sampledBaseColor =
-      hasUvs ? sampleTexture(scene.texture, uv) : Vector3.One;
+    const sampledBaseColor = hasUvs
+      ? sampleTexture(scene.texture, uv)
+      : Vector3.One;
     const baseColor = sampledBaseColor.multiplyInPlace(
       scene.pbrMaterial.baseColorFactor,
     );
-    const metallicRoughness =
-      hasUvs
-        ? sampleTexture(scene.pbrMaterial.metallicRoughnessTexture, uv)
-        : Vector3.One;
+    const metallicRoughness = hasUvs
+      ? sampleTexture(scene.pbrMaterial.metallicRoughnessTexture, uv)
+      : Vector3.One;
     const roughness = Math.max(
       0.045,
       saturate(metallicRoughness.y * scene.pbrMaterial.roughnessFactor),
@@ -535,7 +540,11 @@ export class PathTracer {
   private present = (target: Framebuffer) => {
     const targetData = target.data;
 
-    for (let pixelIndex = 0; pixelIndex < this.pixelSampleCounts.length; pixelIndex++) {
+    for (
+      let pixelIndex = 0;
+      pixelIndex < this.pixelSampleCounts.length;
+      pixelIndex++
+    ) {
       const sourceIndex = pixelIndex * 3;
       const targetIndex = pixelIndex * 4;
       const sampleScale =
@@ -543,16 +552,13 @@ export class PathTracer {
           ? 1 / this.pixelSampleCounts[pixelIndex]
           : 0;
       targetData[targetIndex] =
-        linearChannelToSrgb(this.accumulation[sourceIndex] * sampleScale) *
-        255;
+        linearChannelToSrgb(this.accumulation[sourceIndex] * sampleScale) * 255;
       targetData[targetIndex + 1] =
-        linearChannelToSrgb(
-          this.accumulation[sourceIndex + 1] * sampleScale,
-        ) * 255;
+        linearChannelToSrgb(this.accumulation[sourceIndex + 1] * sampleScale) *
+        255;
       targetData[targetIndex + 2] =
-        linearChannelToSrgb(
-          this.accumulation[sourceIndex + 2] * sampleScale,
-        ) * 255;
+        linearChannelToSrgb(this.accumulation[sourceIndex + 2] * sampleScale) *
+        255;
       targetData[targetIndex + 3] = 255;
     }
   };
@@ -574,6 +580,6 @@ export class PathTracer {
       return true;
     }
 
-    return Math.abs(a - b) > RESET_EPSILON;
+    return Math.abs(a - b) > 0.0001;
   };
 }
