@@ -7,7 +7,7 @@ import {
   saturate,
 } from "../shaders/pbrHelpers";
 
-const SUN_INTENSITY = 3.14;
+const SUN_INTENSITY = 0;
 
 export interface PathTraceLightingHit {
   baseColor: Vector3;
