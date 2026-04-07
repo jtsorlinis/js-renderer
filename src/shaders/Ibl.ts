@@ -36,7 +36,10 @@ export interface Uniforms {
 }
 
 const shadowBias = 0.01;
-const lightIntensity = 3.14;
+// We lower the intensity of the direct light to keep the IBL mode consistent
+// with the other modes, since the environment now also contributes to lighting.
+const lightIntensity = 1.88;
+const environmentIntensity = 0.6;
 const exposure = 1;
 
 // This shader keeps a few math-heavy sections expanded inline on purpose for
@@ -307,23 +310,26 @@ export class IblShader extends BaseShader {
     const envBrdfB = brdfB0 + (brdfB1 - brdfB0) * brdfRoughnessBlend;
 
     const ambientR =
-      (1 - ksAmbientX) *
+      ((1 - ksAmbientX) *
         baseColor.x *
         this.diffuseEnv.x *
         ambientDiffuseFactor +
-      (f0x * envBrdfA + envBrdfB) * this.specularEnv.x;
+        (f0x * envBrdfA + envBrdfB) * this.specularEnv.x) *
+      environmentIntensity;
     const ambientG =
-      (1 - ksAmbientY) *
+      ((1 - ksAmbientY) *
         baseColor.y *
         this.diffuseEnv.y *
         ambientDiffuseFactor +
-      (f0y * envBrdfA + envBrdfB) * this.specularEnv.y;
+        (f0y * envBrdfA + envBrdfB) * this.specularEnv.y) *
+      environmentIntensity;
     const ambientB =
-      (1 - ksAmbientZ) *
+      ((1 - ksAmbientZ) *
         baseColor.z *
         this.diffuseEnv.z *
         ambientDiffuseFactor +
-      (f0z * envBrdfA + envBrdfB) * this.specularEnv.z;
+        (f0z * envBrdfA + envBrdfB) * this.specularEnv.z) *
+      environmentIntensity;
 
     return new Vector3(
       (ambientR + directR) * exposure,
