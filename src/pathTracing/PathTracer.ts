@@ -10,15 +10,12 @@ import {
   sampleEnvironment,
   sampleTexture,
 } from "./pathTracingHelpers";
+import { DIELECTRIC_F0, EPSILON, saturate } from "../shaders/pbrHelpers";
 import {
-  DIELECTRIC_F0,
-  EPSILON,
-  fresnelSchlick,
-  saturate,
-} from "../shaders/pbrHelpers";
-import {
+  evaluateBsdf,
   evaluateDirectEnvironmentLighting,
   evaluateDirectSunLighting,
+  getSpecularSamplingProbability,
 } from "./pathTracingLighting";
 import { type PbrMaterial } from "../utils/modelLoader";
 import { type LoadedModel } from "../utils/objLoader";
@@ -220,34 +217,53 @@ export class PathTracer {
   ) => {
     let origin = initialOrigin;
     let direction = initialDirection;
-    let allowEnvironmentOnMiss = renderEnvironment;
     let throughputR = 1;
     let throughputG = 1;
     let throughputB = 1;
     let radianceR = 0;
     let radianceG = 0;
     let radianceB = 0;
+    let lastBsdfPdf = 0;
+    let hasSampledBsdf = false;
 
     for (let bounce = 0; bounce < maxBounces; bounce++) {
       const hit = this.traceClosest(origin, direction, scene);
       if (!hit) {
-        if (bounce > 0 ? allowEnvironmentOnMiss : renderEnvironment) {
+        if (bounce > 0 || renderEnvironment) {
           const environment = sampleEnvironment(
             scene.environment,
             scene.envYawCos,
             scene.envYawSin,
             direction,
           ).scale(environmentIntensity);
-          radianceR += throughputR * environment.x;
-          radianceG += throughputG * environment.y;
-          radianceB += throughputB * environment.z;
+          const environmentPdf = hasSampledBsdf
+            ? this.environmentSampler.directionPdf(
+                scene.environment,
+                scene.envYawCos,
+                scene.envYawSin,
+                direction,
+              )
+            : 0;
+          const environmentWeight =
+            hasSampledBsdf && environmentPdf > 0
+              ? this.powerHeuristic(lastBsdfPdf, environmentPdf)
+              : 1;
+          radianceR += throughputR * environment.x * environmentWeight;
+          radianceG += throughputG * environment.y * environmentWeight;
+          radianceB += throughputB * environment.z * environmentWeight;
         }
         break;
       }
 
       const viewDir = direction.scale(-1).normalize();
+      const specularChance = getSpecularSamplingProbability(hit, viewDir);
       const directLight = this.evaluateDirectSun(hit, viewDir, scene);
-      const directEnvironment = this.evaluateDirectEnvironment(hit, scene);
+      const directEnvironment = this.evaluateDirectEnvironment(
+        hit,
+        viewDir,
+        specularChance,
+        scene,
+      );
       radianceR += throughputR * directLight.x;
       radianceR += throughputR * directEnvironment.x;
       radianceG += throughputG * directLight.y;
@@ -259,14 +275,6 @@ export class PathTracer {
         break;
       }
 
-      const cosTheta = saturate(hit.shadingNormal.dot(viewDir));
-      const fresnel = fresnelSchlick(cosTheta, hit.f0);
-      const fresnelAverage = (fresnel.x + fresnel.y + fresnel.z) / 3;
-      const specularChance = Math.max(
-        0.2,
-        Math.min(0.85, fresnelAverage + hit.metallic * (1 - fresnelAverage)),
-      );
-
       let nextDirection: Vector3;
       if (this.nextRandom() < specularChance) {
         nextDirection = this.sampleSpecularDirection(
@@ -274,18 +282,20 @@ export class PathTracer {
           direction,
           hit.roughness,
         );
-        throughputR *= fresnel.x / specularChance;
-        throughputG *= fresnel.y / specularChance;
-        throughputB *= fresnel.z / specularChance;
-        allowEnvironmentOnMiss = true;
       } else {
         nextDirection = this.sampleDiffuseDirection(hit.shadingNormal);
-        const diffuseScale = (1 - hit.metallic) / (1 - specularChance);
-        throughputR *= hit.baseColor.x * diffuseScale;
-        throughputG *= hit.baseColor.y * diffuseScale;
-        throughputB *= hit.baseColor.z * diffuseScale;
-        allowEnvironmentOnMiss = false;
       }
+
+      const bsdf = evaluateBsdf(hit, viewDir, nextDirection, specularChance);
+      if (bsdf.nDotL <= 0 || bsdf.pdf <= 0) {
+        break;
+      }
+      const throughputScale = bsdf.nDotL / bsdf.pdf;
+      throughputR *= bsdf.value.x * throughputScale;
+      throughputG *= bsdf.value.y * throughputScale;
+      throughputB *= bsdf.value.z * throughputScale;
+      lastBsdfPdf = bsdf.pdf;
+      hasSampledBsdf = true;
 
       if (bounce + 1 >= rouletteBounces) {
         const survivalProbability = Math.max(
@@ -337,6 +347,8 @@ export class PathTracer {
 
   private evaluateDirectEnvironment = (
     hit: HitRecord,
+    viewDir: Vector3,
+    specularChance: number,
     scene: PathTraceScene,
   ) => {
     const environmentSample = this.environmentSampler.sampleLight(
@@ -351,10 +363,12 @@ export class PathTracer {
 
     const contribution = evaluateDirectEnvironmentLighting(
       hit,
+      viewDir,
       environmentSample.direction,
       environmentSample.radiance,
       environmentSample.pdf,
       environmentIntensity,
+      specularChance,
     );
     if (contribution.lengthSq() <= 0) {
       return Vector3.Zero;
@@ -581,5 +595,11 @@ export class PathTracer {
     }
 
     return Math.abs(a - b) > 0.0001;
+  };
+
+  private powerHeuristic = (a: number, b: number) => {
+    const a2 = a * a;
+    const b2 = b * b;
+    return a2 / Math.max(a2 + b2, EPSILON);
   };
 }

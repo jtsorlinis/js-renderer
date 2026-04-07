@@ -1,6 +1,7 @@
 import { Texture } from "../drawing";
 import { Vector3 } from "../maths";
 import {
+  environmentDirectionToUv,
   environmentUvToDirection,
   sampleEnvironment,
 } from "./pathTracingHelpers";
@@ -24,7 +25,9 @@ export class PathTraceEnvironmentSampler {
     }
 
     this.sampledEnvironment = environment;
-    this.environmentCdf = new Float32Array(environment.width * environment.height);
+    this.environmentCdf = new Float32Array(
+      environment.width * environment.height,
+    );
     this.environmentWeightTotal = 0;
 
     for (let y = 0; y < environment.height; y++) {
@@ -32,7 +35,8 @@ export class PathTraceEnvironmentSampler {
       for (let x = 0; x < environment.width; x++) {
         const weight = this.getTexelLuminance(environment, x, y) * sinTheta;
         this.environmentWeightTotal += weight;
-        this.environmentCdf[x + y * environment.width] = this.environmentWeightTotal;
+        this.environmentCdf[x + y * environment.width] =
+          this.environmentWeightTotal;
       }
     }
 
@@ -69,6 +73,37 @@ export class PathTraceEnvironmentSampler {
       ),
       radiance: sampleEnvironment(environment, envYawCos, envYawSin, direction),
     };
+  };
+
+  directionPdf = (
+    environment: Texture,
+    envYawCos: number,
+    envYawSin: number,
+    direction: Vector3,
+  ) => {
+    if (this.environmentWeightTotal <= 0 || this.environmentCdf.length === 0) {
+      return 0;
+    }
+
+    const { u, v } = environmentDirectionToUv(direction, envYawCos, envYawSin);
+    const texelX = Math.min(
+      environment.width - 1,
+      Math.floor(u * environment.width),
+    );
+    const texelY = Math.min(
+      environment.height - 1,
+      Math.floor(v * environment.height),
+    );
+    const texelLuminance = this.getTexelLuminance(environment, texelX, texelY);
+    if (texelLuminance <= 0) {
+      return 0;
+    }
+
+    return Math.max(
+      ENVIRONMENT_PDF_EPSILON,
+      (texelLuminance * environment.width * environment.height) /
+        (2 * Math.PI * Math.PI * this.environmentWeightTotal),
+    );
   };
 
   private sampleTexelIndex = (nextRandom: () => number) => {
