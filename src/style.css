@@ -153,6 +153,10 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.shading-list .shading-option[data-shading-label]::before {
+  content: attr(data-shading-label);
+}
+
 .shading-list li:has(.is-active) .shading-option::before {
   color: var(--accent);
 }
