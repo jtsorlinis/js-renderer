@@ -63,10 +63,6 @@ const glbInput = document.getElementById("glbInput") as HTMLInputElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 let pathTraceInteractive = true;
 
-const markPathTraceInteractive = () => {
-  pathTraceInteractive = true;
-};
-
 const getShadingButton = () => {
   return shadingList.querySelector<HTMLButtonElement>(
     `[data-shading-index="${shadingSlider.value}"]`,
@@ -98,12 +94,12 @@ shadingList.addEventListener("click", (event) => {
   const button = target.closest(".shading-option") as HTMLButtonElement;
   shadingSlider.value = button?.dataset.shadingIndex || shadingSlider.value;
   syncShadingButtons();
-  markPathTraceInteractive();
+  pathTraceInteractive = true;
 });
 
 shadingSlider.addEventListener("input", () => {
   syncShadingButtons();
-  markPathTraceInteractive();
+  pathTraceInteractive = true;
 });
 
 let aspectRatio = CANVAS_WIDTH / CANVAS_HEIGHT;
@@ -163,7 +159,7 @@ const envYawCos = Math.cos(envYaw);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
 
 const camPos = new Vector3(0, 0, -2.5);
-let cameraOrthoSize = 1.5;
+let cameraOrthoSize = 1.44;
 
 const diceModel = await ensureModelOption("dice");
 prefetchRemainingModels("dice");
@@ -210,7 +206,8 @@ const updateModelStats = () => {
 const resetModelTransform = () => {
   modelRotation.set(0, Math.PI / 2, 0);
   camPos.set(0, 0, -2.5);
-  markPathTraceInteractive();
+  cameraOrthoSize = 1.44;
+  pathTraceInteractive = true;
 };
 
 let activeModelRequest = 0;
@@ -222,7 +219,7 @@ const applyModelOption = (selectedModel: ModelOption) => {
   pbrMaterial = selectedModel.pbrMaterial;
   shadowOrthoSize = getModelRadius(model);
   updateModelStats();
-  markPathTraceInteractive();
+  pathTraceInteractive = true;
 };
 
 const setModel = async (modelKey: ModelKey, resetTransform = true) => {
@@ -254,7 +251,7 @@ const loadSelectedGlb = async (file: File, resetTransform = true) => {
 };
 
 highResCb.addEventListener("change", () => {
-  markPathTraceInteractive();
+  pathTraceInteractive = true;
   setRenderResolution(highResCb.checked ? 2 : 1);
   if (!setHighResTextureLimits(highResCb.checked)) return;
   if (customGlbFile) {
@@ -264,7 +261,9 @@ highResCb.addEventListener("change", () => {
   setModel(modelDd.value as ModelKey, false);
 });
 
-orthographicCb.addEventListener("change", markPathTraceInteractive);
+orthographicCb.addEventListener("change", () => {
+  pathTraceInteractive = true;
+});
 
 const getRenderSettings = (): RenderSettings => {
   const shadingValue = getShadingButton()?.dataset.shadingValue || "wireframe";
@@ -461,23 +460,20 @@ canvas.onmousemove = (e) => {
   if (e.buttons === 1) {
     modelRotation.y -= e.movementX / ROTATE_SENSITIVITY;
     modelRotation.x -= e.movementY / ROTATE_SENSITIVITY;
-    markPathTraceInteractive();
+    pathTraceInteractive = true;
   } else if (e.buttons === 2 || e.buttons === 4) {
     camPos.x -= e.movementX / PAN_SENSITIVITY;
     camPos.y += e.movementY / PAN_SENSITIVITY;
-    markPathTraceInteractive();
+    pathTraceInteractive = true;
   }
 };
 
 canvas.onwheel = (e) => {
   e.preventDefault();
-  markPathTraceInteractive();
-  if (orthographicCb.checked) {
-    cameraOrthoSize += e.deltaY / ZOOM_SENSITIVITY;
-    cameraOrthoSize = Math.max(0.01, cameraOrthoSize);
-  } else {
-    camPos.z -= e.deltaY / ZOOM_SENSITIVITY;
-  }
+  cameraOrthoSize += (e.deltaY * 0.58) / ZOOM_SENSITIVITY;
+  cameraOrthoSize = Math.max(0.01, cameraOrthoSize);
+  camPos.z -= e.deltaY / ZOOM_SENSITIVITY;
+  pathTraceInteractive = true;
 };
 
 canvas.oncontextmenu = (e) => e.preventDefault();
