@@ -28,7 +28,6 @@ export interface Uniforms {
 
 const shadowBias = 0.01;
 const lightIntensity = 3.14;
-const exposure = 1;
 
 const ambientIntensity = 0.1;
 
@@ -166,9 +165,9 @@ export class PbrShader extends BaseShader {
     const ambientB = (baseColor.z * (1 - metallic) + f0z) * ambientIntensity;
 
     return new Vector3(
-      (ambientR + directR) * exposure,
-      (ambientG + directG) * exposure,
-      (ambientB + directB) * exposure,
+      ambientR + directR,
+      ambientG + directG,
+      ambientB + directB,
     );
   };
 }
