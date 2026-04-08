@@ -196,7 +196,7 @@ export class IblShader extends BaseShader {
     let directR = 0;
     let directG = 0;
     let directB = 0;
-    if (nDotL > 0 && halfDir.lengthSq() > EPSILON) {
+    if (nDotL > 0 && nDotV > 0 && halfDir.lengthSq() > EPSILON) {
       const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
       const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
       const shadow = lightSpacePos.z - shadowBias > depth ? 0 : 1;
