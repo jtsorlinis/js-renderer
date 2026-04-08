@@ -9,15 +9,6 @@ export const saturate = (value: number) => {
   return Math.max(0, Math.min(1, value));
 };
 
-export const mixVec3 = (a: Vector3, b: Vector3, t: number) => {
-  const invT = 1 - t;
-  return new Vector3(
-    a.x * invT + b.x * t,
-    a.y * invT + b.y * t,
-    a.z * invT + b.z * t,
-  );
-};
-
 export const toneMapLinear = (colour: Vector3, exposure: number) => {
   return new Vector3(
     colour.x * exposure,
