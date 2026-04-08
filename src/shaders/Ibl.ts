@@ -27,6 +27,8 @@ export interface Uniforms {
   envYawSin: number;
   envYawCos: number;
   camPos: Vector3;
+  orthographic: boolean;
+  viewDirWorld: Vector3;
   texture: Texture;
   normalTexture: Texture;
   pbrMaterial: PbrMaterial;
@@ -69,7 +71,9 @@ export class IblShader extends BaseShader {
     const worldTangent = this.uniforms.modelMat
       .transformDirection4(tangent)
       .normalize3();
-    const viewDirWorld = this.uniforms.camPos.subtract(worldPos).normalize();
+    const viewDirWorld = this.uniforms.orthographic
+      ? this.uniforms.viewDirWorld
+      : this.uniforms.camPos.subtract(worldPos).normalize();
 
     const lightSpacePos = this.uniforms.lightSpaceMat.transformPoint(modelPos);
     lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
