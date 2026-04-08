@@ -159,9 +159,9 @@ export class IblShader extends BaseShader {
     const nDotL = saturate(
       normalX * lightDir.x + normalY * lightDir.y + normalZ * lightDir.z,
     );
-
     const rawNDotv =
       normalX * viewDir.x + normalY * viewDir.y + normalZ * viewDir.z;
+    const nDotV = saturate(rawNDotv);
     // Smoothly blend the IBL normal back to the macro surface normal when the
     // tangent-space detail turns away from the viewer.
     const iblNormalBlend = saturate(-rawNDotv * 8);
@@ -191,65 +191,46 @@ export class IblShader extends BaseShader {
     }
 
     const iblNDotV = saturate(rawIblNdotV);
-
     const halfDir = lightDir.add(viewDir);
 
     let directR = 0;
     let directG = 0;
     let directB = 0;
-    if (nDotL > 0) {
+    if (nDotL > 0 && nDotV > 0 && halfDir.lengthSq() > EPSILON) {
       const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
       const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
       const shadow = lightSpacePos.z - shadowBias > depth ? 0 : 1;
+      halfDir.normalize();
+      const nDotH = saturate(
+        normalX * halfDir.x + normalY * halfDir.y + normalZ * halfDir.z,
+      );
+      const vDotH = saturate(viewDir.dot(halfDir));
+      const fresnelBase = 1 - vDotH;
+      const fresnelBaseSq = fresnelBase * fresnelBase;
+      const fresnelFactor = fresnelBaseSq * fresnelBaseSq * fresnelBase;
+      const fresnelX = f0x + (1 - f0x) * fresnelFactor;
+      const fresnelY = f0y + (1 - f0y) * fresnelFactor;
+      const fresnelZ = f0z + (1 - f0z) * fresnelFactor;
+      const distribution = distributionGGX(nDotH, roughness);
+      const geometry = geometrySmith(nDotV, nDotL, roughness);
+      const specularFactor =
+        (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
       const diffuseFactor = (1 - metallic) * INV_PI;
       const lightScale = nDotL * shadow * lightIntensity;
-      let diffuseWeightX = 1;
-      let diffuseWeightY = 1;
-      let diffuseWeightZ = 1;
-      let specularX = 0;
-      let specularY = 0;
-      let specularZ = 0;
-
-      if (halfDir.lengthSq() > EPSILON) {
-        halfDir.normalize();
-        const nDotH = saturate(
-          normalX * halfDir.x + normalY * halfDir.y + normalZ * halfDir.z,
-        );
-        const vDotH = saturate(viewDir.dot(halfDir));
-
-        if (nDotH > 0 && vDotH > 0) {
-          const fresnelBase = 1 - vDotH;
-          const fresnelBaseSq = fresnelBase * fresnelBase;
-          const fresnelFactor = fresnelBaseSq * fresnelBaseSq * fresnelBase;
-          const fresnelX = f0x + (1 - f0x) * fresnelFactor;
-          const fresnelY = f0y + (1 - f0y) * fresnelFactor;
-          const fresnelZ = f0z + (1 - f0z) * fresnelFactor;
-          diffuseWeightX = 1 - fresnelX;
-          diffuseWeightY = 1 - fresnelY;
-          diffuseWeightZ = 1 - fresnelZ;
-
-          const directSpecularNoV = Math.min(1, Math.abs(rawNDotv) + EPSILON);
-          const distribution = distributionGGX(nDotH, roughness);
-          const geometry = geometrySmith(directSpecularNoV, nDotL, roughness);
-          const specularFactor =
-            (distribution * geometry) /
-            Math.max(4 * directSpecularNoV * nDotL, EPSILON);
-          specularX = fresnelX * specularFactor;
-          specularY = fresnelY * specularFactor;
-          specularZ = fresnelZ * specularFactor;
-        }
-      }
 
       directR =
-        (diffuseWeightX * diffuseFactor * baseColor.x + specularX) *
+        ((1 - fresnelX) * diffuseFactor * baseColor.x +
+          fresnelX * specularFactor) *
         this.uniforms.lightCol.x *
         lightScale;
       directG =
-        (diffuseWeightY * diffuseFactor * baseColor.y + specularY) *
+        ((1 - fresnelY) * diffuseFactor * baseColor.y +
+          fresnelY * specularFactor) *
         this.uniforms.lightCol.y *
         lightScale;
       directB =
-        (diffuseWeightZ * diffuseFactor * baseColor.z + specularZ) *
+        ((1 - fresnelZ) * diffuseFactor * baseColor.z +
+          fresnelZ * specularFactor) *
         this.uniforms.lightCol.z *
         lightScale;
     }
