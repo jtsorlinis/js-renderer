@@ -27,6 +27,8 @@ export interface Uniforms {
   envYawSin: number;
   envYawCos: number;
   camPos: Vector3;
+  orthographic: boolean;
+  viewDirWorld: Vector3;
   texture: Texture;
   normalTexture: Texture;
   pbrMaterial: PbrMaterial;
@@ -69,7 +71,9 @@ export class IblShader extends BaseShader {
     const worldTangent = this.uniforms.modelMat
       .transformDirection4(tangent)
       .normalize3();
-    const viewDirWorld = this.uniforms.camPos.subtract(worldPos).normalize();
+    const viewDirWorld = this.uniforms.orthographic
+      ? this.uniforms.viewDirWorld
+      : this.uniforms.camPos.subtract(worldPos).normalize();
 
     const lightSpacePos = this.uniforms.lightSpaceMat.transformPoint(modelPos);
     lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
@@ -159,38 +163,9 @@ export class IblShader extends BaseShader {
     const nDotL = saturate(
       normalX * lightDir.x + normalY * lightDir.y + normalZ * lightDir.z,
     );
-    const rawNDotv =
+    const rawNDotV =
       normalX * viewDir.x + normalY * viewDir.y + normalZ * viewDir.z;
-    const nDotV = saturate(rawNDotv);
-    // Smoothly blend the IBL normal back to the macro surface normal when the
-    // tangent-space detail turns away from the viewer.
-    const iblNormalBlend = saturate(-rawNDotv * 8);
-    let iblNormalX = normalX + (surfaceNormal.x - normalX) * iblNormalBlend;
-    let iblNormalY = normalY + (surfaceNormal.y - normalY) * iblNormalBlend;
-    let iblNormalZ = normalZ + (surfaceNormal.z - normalZ) * iblNormalBlend;
-    const iblNormalLengthSq =
-      iblNormalX * iblNormalX +
-      iblNormalY * iblNormalY +
-      iblNormalZ * iblNormalZ;
-    const iblNormalScale =
-      iblNormalLengthSq > EPSILON ? 1 / Math.sqrt(iblNormalLengthSq) : 0;
-    iblNormalX *= iblNormalScale;
-    iblNormalY *= iblNormalScale;
-    iblNormalZ *= iblNormalScale;
-    let rawIblNdotV =
-      iblNormalX * viewDir.x + iblNormalY * viewDir.y + iblNormalZ * viewDir.z;
-
-    if (rawIblNdotV <= 0) {
-      iblNormalX = surfaceNormal.x;
-      iblNormalY = surfaceNormal.y;
-      iblNormalZ = surfaceNormal.z;
-      rawIblNdotV =
-        surfaceNormal.x * viewDir.x +
-        surfaceNormal.y * viewDir.y +
-        surfaceNormal.z * viewDir.z;
-    }
-
-    const iblNDotV = saturate(rawIblNdotV);
+    const nDotV = saturate(rawNDotV);
     const halfDir = lightDir.add(viewDir);
 
     let directR = 0;
@@ -237,7 +212,7 @@ export class IblShader extends BaseShader {
 
     // Ambient uses directional irradiance plus split-sum style specular from
     // the precomputed environment maps.
-    const ambientFresnelBase = 1 - iblNDotV;
+    const ambientFresnelBase = 1 - nDotV;
     const ambientFresnelBaseSq = ambientFresnelBase * ambientFresnelBase;
     const ambientFresnelFactor =
       ambientFresnelBaseSq * ambientFresnelBaseSq * ambientFresnelBase;
@@ -265,17 +240,10 @@ export class IblShader extends BaseShader {
       this.diffuseEnv,
     );
 
-    const reflectionScale = 2 * rawIblNdotV;
-    const reflectionX = iblNormalX * reflectionScale - viewDir.x;
-    const reflectionY = iblNormalY * reflectionScale - viewDir.y;
-    const reflectionZ = iblNormalZ * reflectionScale - viewDir.z;
-    const horizonBase = saturate(
-      1 +
-        reflectionX * surfaceNormal.x +
-        reflectionY * surfaceNormal.y +
-        reflectionZ * surfaceNormal.z,
-    );
-    const horizonOcclusion = horizonBase * horizonBase;
+    const reflectionScale = 2 * rawNDotV;
+    const reflectionX = normalX * reflectionScale - viewDir.x;
+    const reflectionY = normalY * reflectionScale - viewDir.y;
+    const reflectionZ = normalZ * reflectionScale - viewDir.z;
     const rotatedReflectionX =
       reflectionX * this.uniforms.envYawCos -
       reflectionZ * this.uniforms.envYawSin;
@@ -302,7 +270,7 @@ export class IblShader extends BaseShader {
       ibl.specularPrefilterLayerStride,
     );
 
-    const brdfViewCoord = iblNDotV * ibl.specularBrdfLutMaxIndex;
+    const brdfViewCoord = nDotV * ibl.specularBrdfLutMaxIndex;
     const brdfViewIndex = Math.floor(brdfViewCoord);
     const brdfViewNext = Math.min(
       brdfViewIndex + 1,
@@ -350,21 +318,21 @@ export class IblShader extends BaseShader {
         baseColor.x *
         this.diffuseEnv.x *
         ambientDiffuseFactor +
-        (f0x * envBrdfA + envBrdfB) * this.specularEnv.x * horizonOcclusion) *
+        (f0x * envBrdfA + envBrdfB) * this.specularEnv.x) *
       environmentIntensity;
     const ambientG =
       ((1 - ksAmbientY) *
         baseColor.y *
         this.diffuseEnv.y *
         ambientDiffuseFactor +
-        (f0y * envBrdfA + envBrdfB) * this.specularEnv.y * horizonOcclusion) *
+        (f0y * envBrdfA + envBrdfB) * this.specularEnv.y) *
       environmentIntensity;
     const ambientB =
       ((1 - ksAmbientZ) *
         baseColor.z *
         this.diffuseEnv.z *
         ambientDiffuseFactor +
-        (f0z * envBrdfA + envBrdfB) * this.specularEnv.z * horizonOcclusion) *
+        (f0z * envBrdfA + envBrdfB) * this.specularEnv.z) *
       environmentIntensity;
 
     return new Vector3(

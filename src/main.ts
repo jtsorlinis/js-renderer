@@ -151,15 +151,18 @@ const hdrEnvironment = await loadHdrTexture(
 
 // Scene and camera
 const lightDir = new Vector3(1, -1, 1).normalize();
-const negLightDir = lightDir.scale(-1);
 const lightCol = new Vector3(1, 1, 1);
+const camPos = new Vector3(0, 0, -2.5);
+let cameraOrthoSize = 1.44;
+
+// Derived scene data
+const negLightDir = lightDir.scale(-1);
+const cameraLookDir = Vector3.Forward;
+const orthoViewDir = cameraLookDir.scale(-1);
 const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
 const envYawSin = Math.sin(envYaw);
 const envYawCos = Math.cos(envYaw);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
-
-const camPos = new Vector3(0, 0, -2.5);
-let cameraOrthoSize = 1.44;
 
 const diceModel = await ensureModelOption("dice");
 prefetchRemainingModels("dice");
@@ -389,10 +392,12 @@ const draw = () => {
   const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
   const mLightDir = invModelMat.transformDirection(lightDir).normalize();
   const mCamPos = invModelMat.transformPoint(camPos);
+  const mViewDir = invModelMat.transformDirection(orthoViewDir).normalize();
 
   // 4) Build camera transform and final clip transform.
-  const viewMat = Matrix4.LookTo(camPos, Vector3.Forward, Vector3.Up);
-  const projMat = orthographicCb.checked
+  const isOrthographic = orthographicCb.checked;
+  const viewMat = Matrix4.LookTo(camPos, cameraLookDir, Vector3.Up);
+  const projMat = isOrthographic
     ? Matrix4.Ortho(cameraOrthoSize, aspectRatio)
     : Matrix4.Perspective(60, aspectRatio);
   const mvp = projMat.multiply(viewMat).multiply(modelMat);
@@ -416,6 +421,9 @@ const draw = () => {
     lightCol,
     camPos,
     mCamPos,
+    orthographic: isOrthographic,
+    viewDirWorld: orthoViewDir,
+    mViewDir,
     texture,
     normalTexture,
     pbrMaterial,
