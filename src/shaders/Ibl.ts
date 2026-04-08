@@ -43,7 +43,6 @@ const shadowBias = 0.01;
 // with the other modes, since the environment now also contributes to lighting.
 const lightIntensity = 1.88;
 const environmentIntensity = 0.6;
-const exposure = 1;
 
 // This shader keeps a few math-heavy sections expanded inline on purpose for
 // performance in the software renderer hot path.
@@ -348,9 +347,9 @@ export class IblShader extends BaseShader {
       environmentIntensity;
 
     return new Vector3(
-      (ambientR + directR) * exposure,
-      (ambientG + directG) * exposure,
-      (ambientB + directB) * exposure,
+      ambientR + directR,
+      ambientG + directG,
+      ambientB + directB,
     );
   };
 }

@@ -9,14 +9,6 @@ export const saturate = (value: number) => {
   return Math.max(0, Math.min(1, value));
 };
 
-export const toneMapLinear = (colour: Vector3, exposure: number) => {
-  return new Vector3(
-    colour.x * exposure,
-    colour.y * exposure,
-    colour.z * exposure,
-  );
-};
-
 export const fresnelSchlick = (cosTheta: number, f0: Vector3) => {
   const factor = Math.pow(1 - saturate(cosTheta), 5);
   return new Vector3(
