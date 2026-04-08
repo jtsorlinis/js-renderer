@@ -5,6 +5,7 @@ import { type PbrMaterial } from "../utils/modelLoader";
 import {
   DIELECTRIC_F0,
   EPSILON,
+  INV_21,
   INV_PI,
   distributionGGX,
   geometrySmith,
@@ -212,16 +213,6 @@ export class IblShader extends BaseShader {
 
     // Ambient uses directional irradiance plus split-sum style specular from
     // the precomputed environment maps.
-    const ambientFresnelBase = 1 - nDotV;
-    const ambientFresnelBaseSq = ambientFresnelBase * ambientFresnelBase;
-    const ambientFresnelFactor =
-      ambientFresnelBaseSq * ambientFresnelBaseSq * ambientFresnelBase;
-    const f90x = Math.max(1 - roughness, f0x);
-    const f90y = Math.max(1 - roughness, f0y);
-    const f90z = Math.max(1 - roughness, f0z);
-    const ksAmbientX = f0x + (f90x - f0x) * ambientFresnelFactor;
-    const ksAmbientY = f0y + (f90y - f0y) * ambientFresnelFactor;
-    const ksAmbientZ = f0z + (f90z - f0z) * ambientFresnelFactor;
     const ambientDiffuseFactor = 1 - metallic;
     const diffuseDirX =
       normalX * this.uniforms.envYawCos - normalZ * this.uniforms.envYawSin;
@@ -313,26 +304,47 @@ export class IblShader extends BaseShader {
     const envBrdfA = brdfA0 + (brdfA1 - brdfA0) * brdfRoughnessBlend;
     const envBrdfB = brdfB0 + (brdfB1 - brdfB0) * brdfRoughnessBlend;
 
+    const ambientFresnelBase = 1 - nDotV;
+    const ambientFresnelBaseSq = ambientFresnelBase * ambientFresnelBase;
+    const ambientFresnelFactor =
+      ambientFresnelBaseSq * ambientFresnelBaseSq * ambientFresnelBase;
+    const frX = Math.max(1 - roughness, f0x) - f0x;
+    const frY = Math.max(1 - roughness, f0y) - f0y;
+    const frZ = Math.max(1 - roughness, f0z) - f0z;
+    const ksX = f0x + frX * ambientFresnelFactor;
+    const ksY = f0y + frY * ambientFresnelFactor;
+    const ksZ = f0z + frZ * ambientFresnelFactor;
+    const fssEssX = ksX * envBrdfA + envBrdfB;
+    const fssEssY = ksY * envBrdfA + envBrdfB;
+    const fssEssZ = ksZ * envBrdfA + envBrdfB;
+    const ems = Math.max(0, 1 - (envBrdfA + envBrdfB));
+    const favgX = f0x + (1 - f0x) * INV_21;
+    const favgY = f0y + (1 - f0y) * INV_21;
+    const favgZ = f0z + (1 - f0z) * INV_21;
+    const fmsEmsX =
+      ((fssEssX * favgX) / Math.max(1 - ems * favgX, EPSILON)) * ems;
+    const fmsEmsY =
+      ((fssEssY * favgY) / Math.max(1 - ems * favgY, EPSILON)) * ems;
+    const fmsEmsZ =
+      ((fssEssZ * favgZ) / Math.max(1 - ems * favgZ, EPSILON)) * ems;
+    const specularWeightX = fssEssX + fmsEmsX;
+    const specularWeightY = fssEssY + fmsEmsY;
+    const specularWeightZ = fssEssZ + fmsEmsZ;
+    const diffuseWeightX = Math.max(0, 1 - specularWeightX);
+    const diffuseWeightY = Math.max(0, 1 - specularWeightY);
+    const diffuseWeightZ = Math.max(0, 1 - specularWeightZ);
+
     const ambientR =
-      ((1 - ksAmbientX) *
-        baseColor.x *
-        this.diffuseEnv.x *
-        ambientDiffuseFactor +
-        (f0x * envBrdfA + envBrdfB) * this.specularEnv.x) *
+      (diffuseWeightX * baseColor.x * this.diffuseEnv.x * ambientDiffuseFactor +
+        specularWeightX * this.specularEnv.x) *
       environmentIntensity;
     const ambientG =
-      ((1 - ksAmbientY) *
-        baseColor.y *
-        this.diffuseEnv.y *
-        ambientDiffuseFactor +
-        (f0y * envBrdfA + envBrdfB) * this.specularEnv.y) *
+      (diffuseWeightY * baseColor.y * this.diffuseEnv.y * ambientDiffuseFactor +
+        specularWeightY * this.specularEnv.y) *
       environmentIntensity;
     const ambientB =
-      ((1 - ksAmbientZ) *
-        baseColor.z *
-        this.diffuseEnv.z *
-        ambientDiffuseFactor +
-        (f0z * envBrdfA + envBrdfB) * this.specularEnv.z) *
+      (diffuseWeightZ * baseColor.z * this.diffuseEnv.z * ambientDiffuseFactor +
+        specularWeightZ * this.specularEnv.z) *
       environmentIntensity;
 
     return new Vector3(
