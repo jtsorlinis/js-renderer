@@ -10,6 +10,8 @@ export interface Uniforms {
   lightDir: Vector3;
   lightCol: Vector3;
   camPos: Vector3;
+  orthographic: boolean;
+  viewDirWorld: Vector3;
   texture: Texture;
 }
 
@@ -54,7 +56,9 @@ export class TexturedShader extends BaseShader {
     const col = this.sample(this.uniforms.texture, uv);
 
     // Basic Blinn-Phong lighting in world space.
-    const viewDir = this.uniforms.camPos.subtract(worldPos).normalize();
+    const viewDir = this.uniforms.orthographic
+      ? this.uniforms.viewDirWorld
+      : this.uniforms.camPos.subtract(worldPos).normalize();
     const halfWayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
     let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
     spec *= specStr;
