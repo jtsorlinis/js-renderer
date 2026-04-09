@@ -12,7 +12,7 @@ export interface TextureDescriptor {
   colorSpace: TextureColorSpace;
 }
 
-const srgbChannelToLinear = (value: number) => {
+const srgbToLinear = (value: number) => {
   if (value <= 0.04045) {
     return value / 12.92;
   }
@@ -20,12 +20,11 @@ const srgbChannelToLinear = (value: number) => {
   return Math.pow((value + 0.055) / 1.055, 2.4);
 };
 
-export const linearChannelToSrgb = (value: number) => {
-  const clamped = Math.min(1, Math.max(0, value));
+export const linearToSrgb = (value: number) => {
+  const clamped = Math.max(0, value);
   if (clamped <= 0.0031308) {
     return clamped * 12.92;
   }
-
   return 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
 };
 
@@ -103,9 +102,9 @@ export class Texture {
         let g = imageData.data[i + 1] / 255;
         let b = imageData.data[i + 2] / 255;
         if (descriptor.colorSpace === "srgb") {
-          r = srgbChannelToLinear(r);
-          g = srgbChannelToLinear(g);
-          b = srgbChannelToLinear(b);
+          r = srgbToLinear(r);
+          g = srgbToLinear(g);
+          b = srgbToLinear(b);
         }
 
         data[dataIndex++] = r;

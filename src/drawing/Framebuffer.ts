@@ -1,5 +1,5 @@
 import { Vector3, Vector4 } from "../maths";
-import { linearChannelToSrgb } from "./Texture";
+import { linearToSrgb } from "./Texture";
 
 export class Framebuffer {
   width: number;
@@ -16,9 +16,9 @@ export class Framebuffer {
 
   setPixel = (x: number, y: number, colour: Vector3) => {
     const index = (x + y * this.width) * 4;
-    this.data[index + 0] = linearChannelToSrgb(colour.x) * 255;
-    this.data[index + 1] = linearChannelToSrgb(colour.y) * 255;
-    this.data[index + 2] = linearChannelToSrgb(colour.z) * 255;
+    this.data[index + 0] = linearToSrgb(colour.x) * 255;
+    this.data[index + 1] = linearToSrgb(colour.y) * 255;
+    this.data[index + 2] = linearToSrgb(colour.z) * 255;
   };
 
   clear = () => {
