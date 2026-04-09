@@ -20,7 +20,8 @@ export interface Uniforms {
 const specStr = 0.5;
 const shininess = 32;
 const ambient = 0.1;
-const shadowBias = 0.01;
+const minBias = 0.001;
+const maxBias = 0.005;
 
 export class NormalMappedShader extends BaseShader {
   // Uniforms are set per draw call from `main.ts`.
@@ -61,15 +62,17 @@ export class NormalMappedShader extends BaseShader {
     // Read interpolated values at this pixel.
     const uv = this.interpolateVec2(this.vUV);
     const modelPos = this.interpolateVec3(this.vModelPos);
-    const vNormal = this.interpolateVec3(this.vNormal).normalize();
-    const vTangent = this.interpolateVec4(this.vTangent);
-    const handedness = vTangent.w < 0 ? -1 : 1;
+    const mNormal = this.interpolateVec3(this.vNormal).normalize();
+    const mTangent = this.interpolateVec4(this.vTangent);
+    const handedness = mTangent.w < 0 ? -1 : 1;
 
     let shadow = 1;
     if (this.uniforms.receiveShadows) {
       const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
       const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-      shadow = lightSpacePos.z - shadowBias > depth ? 0 : 1;
+      const nDotL = Math.max(-mNormal.dot(this.uniforms.mLightDir), 0.0);
+      const bias = minBias + (maxBias - minBias) * (1 - nDotL);
+      shadow = lightSpacePos.z - bias > depth ? 0 : 1;
     }
 
     // Sample material inputs.
@@ -77,22 +80,22 @@ export class NormalMappedShader extends BaseShader {
     const normalTS = this.sample(this.uniforms.normalTexture, uv);
 
     // Rebuild TBN in scalar form for performance.
-    const tDotN = vTangent.dot3(vNormal);
-    const Tx = vTangent.x - vNormal.x * tDotN;
-    const Ty = vTangent.y - vNormal.y * tDotN;
-    const Tz = vTangent.z - vNormal.z * tDotN;
+    const tDotN = mTangent.dot3(mNormal);
+    const Tx = mTangent.x - mNormal.x * tDotN;
+    const Ty = mTangent.y - mNormal.y * tDotN;
+    const Tz = mTangent.z - mNormal.z * tDotN;
     const TLengthSq = Tx * Tx + Ty * Ty + Tz * Tz;
     const TScale = TLengthSq > 0.000001 ? 1 / Math.sqrt(TLengthSq) : 0;
     const T = new Vector3(Tx * TScale, Ty * TScale, Tz * TScale);
 
-    const Bx = (vNormal.y * T.z - vNormal.z * T.y) * handedness;
-    const By = (vNormal.z * T.x - vNormal.x * T.z) * handedness;
-    const Bz = (vNormal.x * T.y - vNormal.y * T.x) * handedness;
+    const Bx = (mNormal.y * T.z - mNormal.z * T.y) * handedness;
+    const By = (mNormal.z * T.x - mNormal.x * T.z) * handedness;
+    const Bz = (mNormal.x * T.y - mNormal.y * T.x) * handedness;
     const B = new Vector3(Bx, By, Bz);
 
-    const Nx = T.x * normalTS.x + B.x * normalTS.y + vNormal.x * normalTS.z;
-    const Ny = T.y * normalTS.x + B.y * normalTS.y + vNormal.y * normalTS.z;
-    const Nz = T.z * normalTS.x + B.z * normalTS.y + vNormal.z * normalTS.z;
+    const Nx = T.x * normalTS.x + B.x * normalTS.y + mNormal.x * normalTS.z;
+    const Ny = T.y * normalTS.x + B.y * normalTS.y + mNormal.y * normalTS.z;
+    const Nz = T.z * normalTS.x + B.z * normalTS.y + mNormal.z * normalTS.z;
     const NLengthSq = Nx * Nx + Ny * Ny + Nz * Nz;
     const NScale = NLengthSq > 1e-8 ? 1 / Math.sqrt(NLengthSq) : 0;
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
