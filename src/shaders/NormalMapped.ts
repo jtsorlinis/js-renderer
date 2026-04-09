@@ -1,6 +1,6 @@
 import { BaseShader, Verts } from "./BaseShader";
 import { Vector3, Matrix4, Vector4, Vector2 } from "../maths";
-import { Texture } from "../drawing";
+import { DepthTexture, Texture } from "../drawing";
 
 export interface Uniforms {
   model: Verts;
@@ -12,11 +12,15 @@ export interface Uniforms {
   texture: Texture;
   mLightDir: Vector3;
   normalTexture: Texture;
+  lightSpaceMat: Matrix4;
+  shadowMap: DepthTexture;
+  receiveShadows: boolean;
 }
 
 const specStr = 0.5;
 const shininess = 32;
 const ambient = 0.1;
+const shadowBias = 0.01;
 
 export class NormalMappedShader extends BaseShader {
   // Uniforms are set per draw call from `main.ts`.
@@ -27,12 +31,21 @@ export class NormalMappedShader extends BaseShader {
   vModelPos = this.varying<Vector3>();
   vNormal = this.varying<Vector3>();
   vTangent = this.varying<Vector4>();
+  vLightSpacePos = this.varying<Vector3>();
 
   vertex = (): Vector4 => {
     // Read the source vertex attributes from the active mesh.
     const model = this.uniforms.model;
     const i = this.vertexId;
     const modelPos = model.vertices[i];
+
+    if (this.uniforms.receiveShadows) {
+      const lightSpacePos =
+        this.uniforms.lightSpaceMat.transformPoint(modelPos);
+      lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
+      lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
+      this.v2f(this.vLightSpacePos, lightSpacePos);
+    }
 
     // Emit varyings for interpolation across the triangle.
     this.v2f(this.vUV, model.uvs[i]);
@@ -51,6 +64,13 @@ export class NormalMappedShader extends BaseShader {
     const vNormal = this.interpolateVec3(this.vNormal).normalize();
     const vTangent = this.interpolateVec4(this.vTangent);
     const handedness = vTangent.w < 0 ? -1 : 1;
+
+    let shadow = 1;
+    if (this.uniforms.receiveShadows) {
+      const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
+      const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
+      shadow = lightSpacePos.z - shadowBias > depth ? 0 : 1;
+    }
 
     // Sample material inputs.
     const colour = this.sample(this.uniforms.texture, uv);
@@ -86,7 +106,9 @@ export class NormalMappedShader extends BaseShader {
     let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
     spec *= specStr;
     const diffuse = Math.max(-normal.dot(lightDir), 0);
-    const lighting = this.uniforms.lightCol.scale(diffuse + spec + ambient);
+    const lighting = this.uniforms.lightCol.scale(
+      (diffuse + spec) * shadow + ambient,
+    );
 
     // Final lit color.
     return colour.multiplyInPlace(lighting);

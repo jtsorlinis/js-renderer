@@ -23,7 +23,6 @@ import { UnlitShader } from "./shaders/Unlit";
 import { BaseShader } from "./shaders/BaseShader";
 import { DepthShader } from "./shaders/DepthShader";
 import { NormalMappedShader } from "./shaders/NormalMapped";
-import { NormalMappedShadowsShader } from "./shaders/NormalMappedShadows";
 import { PbrShader } from "./shaders/Pbr";
 import { IblShader } from "./shaders/Ibl";
 import {
@@ -174,7 +173,6 @@ let customGlbFile: File | null = null;
 const shaders = {
   ibl: new IblShader(),
   pbr: new PbrShader(),
-  normalMappedShadows: new NormalMappedShadowsShader(),
   normalMapped: new NormalMappedShader(),
   textured: new TexturedShader(),
   smooth: new SmoothShader(),
@@ -360,6 +358,7 @@ const draw = () => {
     iblData,
     lightSpaceMat,
     shadowMap,
+    receiveShadows: renderSettings.useShadows,
   };
 
   // 6) Optional shadow pass first, then visible color pass.
