@@ -281,17 +281,13 @@ const renderMesh = (
     }
 
     if (renderMode !== "filled") {
-      if (renderMode === "culledWireframe") {
-        const p0 = targetBuffer.viewportTransform(triVerts[0]);
-        const p1 = targetBuffer.viewportTransform(triVerts[1]);
-        const p2 = targetBuffer.viewportTransform(triVerts[2]);
-        if (edgeFunction(p2, p1, p0) <= 0) continue;
-      }
+      const isDepthWireframe = renderMode === "depthWireframe";
+      const area = edgeFunction(triVerts[0], triVerts[1], triVerts[2]);
+      if (isDepthWireframe && area <= 0) continue;
 
-      // Debug/teaching mode: draw triangle edges only.
-      line(triVerts[0], triVerts[1], targetBuffer);
-      line(triVerts[1], triVerts[2], targetBuffer);
-      line(triVerts[2], triVerts[0], targetBuffer);
+      line(triVerts[0], triVerts[1], targetBuffer, depthBuffer);
+      line(triVerts[1], triVerts[2], targetBuffer, depthBuffer);
+      line(triVerts[2], triVerts[0], targetBuffer, depthBuffer);
       continue;
     }
 
@@ -365,6 +361,12 @@ const draw = () => {
   if (renderSettings.useShadows) {
     depthShader.uniforms = { model, clipMat: lightSpaceMat };
     renderMesh(depthShader, shadowMap, "filled", shadowBuffer);
+  }
+
+  // Depth only pass for wireframe culling
+  if (renderSettings.renderMode === "depthWireframe") {
+    depthShader.uniforms = { model, clipMat: mvp };
+    renderMesh(depthShader, zBuffer, "filled");
   }
 
   renderMesh(shader, zBuffer, renderSettings.renderMode);
