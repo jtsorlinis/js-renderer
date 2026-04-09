@@ -406,7 +406,6 @@ canvas.onmousemove = (e) => {
 canvas.onwheel = (e) => {
   e.preventDefault();
   cameraOrthoSize += (e.deltaY * 0.58) / ZOOM_SENSITIVITY;
-  cameraOrthoSize = Math.max(0.01, cameraOrthoSize);
   camPos.z -= e.deltaY / ZOOM_SENSITIVITY;
 };
 
