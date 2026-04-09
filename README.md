@@ -1,5 +1,8 @@
 # TypeScript CPU Software Renderer
 
+![dragon](https://github.com/user-attachments/assets/ad8a7763-dd85-4db3-a9e3-392182bf8490)
+
+
 **Experience it here: [jtsorlinis.github.io/js-renderer](https://jtsorlinis.github.io/js-renderer/)**
 
 This project introduces a pure TypeScript rendering engine designed for 3D rendering directly in the browser, all without reliance on WebGL or similar hardware-accelerated APIs.
