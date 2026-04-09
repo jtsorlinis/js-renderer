@@ -1,7 +1,6 @@
 export type MaterialMode =
   | "ibl"
   | "pbr"
-  | "normalMappedShadows"
   | "normalMapped"
   | "textured"
   | "smooth"
@@ -50,7 +49,7 @@ export const resolveShadingSelection = (
       };
     case "normalMapped-shadows":
       return {
-        material: "normalMappedShadows",
+        material: "normalMapped",
         renderMode: "filled",
         useShadows: true,
         normalizedValue: value,
