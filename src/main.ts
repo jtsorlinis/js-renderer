@@ -28,7 +28,7 @@ import { IblShader } from "./shaders/Ibl";
 import {
   buildEnvironmentIbl,
   estimateEnvironmentYaw,
-} from "./shaders/IblHelpers";
+} from "./shaders/iblHelpers";
 import { resolveShadingSelection, type RenderMode } from "./renderSettings";
 import { loadHdrTexture } from "./utils/hdrLoader";
 

@@ -16,7 +16,7 @@ import {
   type IblData,
   wrapUnit,
   INV_TAU,
-} from "./IblHelpers";
+} from "./iblHelpers";
 
 export interface Uniforms {
   model: Verts;
