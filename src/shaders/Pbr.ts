@@ -119,17 +119,17 @@ export class PbrShader extends BaseShader {
     const f0y = DIELECTRIC_F0.y + (baseColor.y - DIELECTRIC_F0.y) * metallic;
     const f0z = DIELECTRIC_F0.z + (baseColor.z - DIELECTRIC_F0.z) * metallic;
 
-    const lightDir = this.uniforms.modelLightDir.scale(-1);
+    const lightDir = this.uniforms.modelLightDir;
     const viewDir = this.uniforms.orthographic
       ? this.uniforms.modelViewDir
       : this.uniforms.modelCamPos.subtract(modelPos).normalize();
     const nDotL = saturate(
-      normal.x * lightDir.x + normal.y * lightDir.y + normal.z * lightDir.z,
+      normal.x * -lightDir.x + normal.y * -lightDir.y + normal.z * -lightDir.z,
     );
     const nDotV = saturate(
       normal.x * viewDir.x + normal.y * viewDir.y + normal.z * viewDir.z,
     );
-    const halfDir = lightDir.add(viewDir);
+    const halfDir = viewDir.subtract(lightDir);
 
     let directR = 0;
     let directG = 0;
