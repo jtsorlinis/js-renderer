@@ -76,7 +76,7 @@ export class NormalMappedShader extends BaseShader {
     }
 
     // Sample material inputs.
-    const colour = this.sample(this.uniforms.texture, uv);
+    const color = this.sample(this.uniforms.texture, uv);
     const normalTS = this.sample(this.uniforms.normalTexture, uv);
 
     // Rebuild TBN in scalar form for performance.
@@ -114,6 +114,6 @@ export class NormalMappedShader extends BaseShader {
     );
 
     // Final lit color.
-    return colour.multiplyInPlace(lighting);
+    return color.multiplyInPlace(lighting);
   };
 }

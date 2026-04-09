@@ -16,13 +16,13 @@ export interface Uniforms {
 const specStr = 0.5;
 const shininess = 32;
 const ambient = 0.1;
-const baseColour = new Vector3(0.5, 0.5, 0.5);
+const baseColor = new Vector3(0.5, 0.5, 0.5);
 
 export class GouraudShader extends BaseShader {
   // Uniforms are set once per draw call.
   uniforms!: Uniforms;
 
-  vertexColour = this.varying<Vector3>();
+  vertexColor = this.varying<Vector3>();
 
   vertex = (): Vector4 => {
     const model = this.uniforms.model;
@@ -41,14 +41,14 @@ export class GouraudShader extends BaseShader {
     spec *= specStr;
     const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
     const lighting = this.uniforms.lightCol.scale(diffuse + spec + ambient);
-    const vertColour = baseColour.multiply(lighting);
-    this.v2f(this.vertexColour, vertColour);
+    const vertColor = baseColor.multiply(lighting);
+    this.v2f(this.vertexColor, vertColor);
 
     // Return clip-space position.
     return this.uniforms.mvp.transformPoint4(model.vertices[i]);
   };
 
   fragment = () => {
-    return this.interpolateVec3(this.vertexColour);
+    return this.interpolateVec3(this.vertexColor);
   };
 }

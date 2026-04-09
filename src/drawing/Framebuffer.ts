@@ -14,11 +14,11 @@ export class Framebuffer {
     this.data = imageData.data;
   }
 
-  setPixel = (x: number, y: number, colour: Vector3) => {
+  setPixel = (x: number, y: number, color: Vector3) => {
     const index = (x + y * this.width) * 4;
-    this.data[index + 0] = linearToSrgb(colour.x) * 255;
-    this.data[index + 1] = linearToSrgb(colour.y) * 255;
-    this.data[index + 2] = linearToSrgb(colour.z) * 255;
+    this.data[index + 0] = linearToSrgb(color.x) * 255;
+    this.data[index + 1] = linearToSrgb(color.y) * 255;
+    this.data[index + 2] = linearToSrgb(color.z) * 255;
     this.data[index + 3] = 255;
   };
 
