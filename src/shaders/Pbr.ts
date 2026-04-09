@@ -85,8 +85,8 @@ export class PbrShader extends BaseShader {
     const Tx = mTangent.x - mNormal.x * tDotN;
     const Ty = mTangent.y - mNormal.y * tDotN;
     const Tz = mTangent.z - mNormal.z * tDotN;
-    const TLenSq = Tx * Tx + Ty * Ty + Tz * Tz;
-    const TScale = TLenSq > EPSILON ? 1 / Math.sqrt(TLenSq) : 0;
+    const TLengthSq = Tx * Tx + Ty * Ty + Tz * Tz;
+    const TScale = TLengthSq > EPSILON ? 1 / Math.sqrt(TLengthSq) : 0;
     const T = new Vector3(Tx * TScale, Ty * TScale, Tz * TScale);
 
     const Bx = (mNormal.y * T.z - mNormal.z * T.y) * handedness;
@@ -97,8 +97,8 @@ export class PbrShader extends BaseShader {
     const Nx = T.x * normalTS.x + Bx * normalTS.y + mNormal.x * normalTS.z;
     const Ny = T.y * normalTS.x + By * normalTS.y + mNormal.y * normalTS.z;
     const Nz = T.z * normalTS.x + Bz * normalTS.y + mNormal.z * normalTS.z;
-    const NLenSq = Nx * Nx + Ny * Ny + Nz * Nz;
-    const NScale = NLenSq > EPSILON ? 1 / Math.sqrt(NLenSq) : 0;
+    const NLengthSq = Nx * Nx + Ny * Ny + Nz * Nz;
+    const NScale = NLengthSq > EPSILON ? 1 / Math.sqrt(NLengthSq) : 0;
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
 
     const baseColor = this.sample(this.uniforms.texture, uv).multiplyInPlace(
