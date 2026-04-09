@@ -1,10 +1,17 @@
-import { Framebuffer } from ".";
+import { Framebuffer } from "./Framebuffer";
+import { DepthTexture } from "./Texture";
 import { Vector3, Vector4 } from "../maths";
 
 const WHITE = new Vector3(1, 1, 1);
+const depthEpsilon = 0.001;
 
 // Bresenham's line algorithm
-export const line = (start: Vector4, end: Vector4, buffer: Framebuffer) => {
+export const line = (
+  start: Vector4,
+  end: Vector4,
+  buffer: Framebuffer,
+  zBuffer?: DepthTexture,
+) => {
   // Clip near and far planes
   if (start.z < 0 || end.z < 0) return;
   if (start.z > 1 || end.z > 1) return;
@@ -27,11 +34,18 @@ export const line = (start: Vector4, end: Vector4, buffer: Framebuffer) => {
   const dy = Math.abs(e.y - s.y);
   const sx = s.x < e.x ? 1 : -1;
   const sy = s.y < e.y ? 1 : -1;
+  const steps = Math.max(dx, dy) || 1;
+  const dz = (end.z - start.z) / steps;
+  let z = start.z;
   let err = dx - dy;
+  let step = 0;
 
   while (true) {
     if (s.x >= 0 && s.x < buffer.width && s.y >= 0 && s.y < buffer.height) {
-      buffer.setPixel(s.x, s.y, WHITE);
+      const index = s.x + s.y * buffer.width;
+      if (!zBuffer || z <= zBuffer.data[index] + depthEpsilon) {
+        buffer.setPixel(s.x, s.y, WHITE);
+      }
     }
 
     if (s.x === e.x && s.y === e.y) break;
@@ -44,5 +58,8 @@ export const line = (start: Vector4, end: Vector4, buffer: Framebuffer) => {
       err += dx;
       s.y += sy;
     }
+
+    step++;
+    z = start.z + dz * step;
   }
 };

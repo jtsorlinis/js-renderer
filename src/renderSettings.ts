@@ -7,7 +7,7 @@ export type MaterialMode =
   | "flat"
   | "unlit";
 
-export type RenderMode = "filled" | "culledWireframe" | "wireframe";
+export type RenderMode = "filled" | "depthWireframe" | "wireframe";
 
 export type RenderSelection = {
   material: MaterialMode;
@@ -89,10 +89,10 @@ export const resolveShadingSelection = (
         useShadows: false,
         normalizedValue: value,
       };
-    case "culledWireframe":
+    case "depthWireframe":
       return {
         material: "unlit",
-        renderMode: "culledWireframe",
+        renderMode: "depthWireframe",
         useShadows: false,
         normalizedValue: value,
       };
