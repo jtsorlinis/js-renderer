@@ -21,7 +21,7 @@ import { TexturedShader } from "./shaders/Textured";
 import { FlatShader } from "./shaders/Flat";
 import { UnlitShader } from "./shaders/Unlit";
 import { BaseShader } from "./shaders/BaseShader";
-import { DepthShader } from "./shaders/DepthShader";
+import { DepthShader } from "./shaders/Depth";
 import { NormalMappedShader } from "./shaders/NormalMapped";
 import { PbrShader } from "./shaders/Pbr";
 import { IblShader } from "./shaders/Ibl";
