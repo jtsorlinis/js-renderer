@@ -1,6 +1,6 @@
 import { Texture, type TextureDescriptor } from "../drawing";
-import { Matrix4, Vector3 } from "../maths";
-import { type LoadedModel, loadObj } from "./objLoader";
+import { Matrix4, Vector2, Vector3 } from "../maths";
+import { buildLoadedModel, type LoadedModel } from "./mesh";
 
 type Gltf = {
   accessors?: GltfAccessor[];
@@ -257,6 +257,14 @@ const normaliseDirection = (direction: Vector3) => {
     : new Vector3(0, 0, 1);
 };
 
+const toRendererSpacePosition = (position: Vector3) => {
+  return new Vector3(position.x, position.y, -position.z);
+};
+
+const toRendererSpaceDirection = (direction: Vector3) => {
+  return new Vector3(direction.x, direction.y, -direction.z);
+};
+
 const readComponent = (
   dataView: DataView,
   byteOffset: number,
@@ -432,8 +440,9 @@ const convertGlbGeometry = (
     );
   }
 
-  const objLines: string[] = [];
-  let nextObjIndex = 1;
+  const vertices: Vector3[] = [];
+  const meshNormals: Vector3[] = [];
+  const meshUvs: Vector2[] = [];
   let baseColorTextureIndex: number | undefined;
   let normalTextureIndex: number | undefined;
   let baseColorFactor: Vector3 | undefined;
@@ -473,11 +482,11 @@ const convertGlbGeometry = (
     const uvAccessorIndex = primitive.attributes.TEXCOORD_0;
 
     const positions = readAccessor(gltf, binaryChunk, positionAccessorIndex);
-    const normals =
+    const sourceNormals =
       primitive.attributes.NORMAL !== undefined
         ? readAccessor(gltf, binaryChunk, primitive.attributes.NORMAL)
         : undefined;
-    const uvs =
+    const sourceUvs =
       uvAccessorIndex !== undefined
         ? readAccessor(gltf, binaryChunk, uvAccessorIndex)
         : undefined;
@@ -513,8 +522,13 @@ const convertGlbGeometry = (
       triangleIndex < indices.length;
       triangleIndex += 3
     ) {
-      for (let corner = 0; corner < 3; corner++) {
-        const vertexIndex = indices[triangleIndex + corner];
+      const triangleVertexIndices = [
+        indices[triangleIndex],
+        indices[triangleIndex + 2],
+        indices[triangleIndex + 1],
+      ];
+
+      for (const vertexIndex of triangleVertexIndices) {
         const positionOffset = vertexIndex * 3;
         const localPosition = new Vector3(
           positions[positionOffset],
@@ -522,62 +536,48 @@ const convertGlbGeometry = (
           positions[positionOffset + 2],
         );
         const worldPosition = worldMatrix.transformPoint(localPosition);
-        objLines.push(
-          `v ${worldPosition.x} ${worldPosition.y} ${worldPosition.z}`,
-        );
+        vertices.push(toRendererSpacePosition(worldPosition));
 
-        if (uvs) {
+        if (sourceUvs) {
           const uvOffset = vertexIndex * 2;
-          // glTF UV space uses an upper-left origin, but the renderer samples
-          // textures with the OBJ-style lower-left V convention.
-          objLines.push(`vt ${uvs[uvOffset]} ${1 - uvs[uvOffset + 1]}`);
+          // glTF UV space uses an upper-left origin, while the renderer
+          // expects a lower-left V convention.
+          meshUvs.push(
+            new Vector2(sourceUvs[uvOffset], 1 - sourceUvs[uvOffset + 1]),
+          );
         }
 
-        if (normals) {
+        if (sourceNormals) {
           const normalOffset = vertexIndex * 3;
           const worldNormal = normaliseDirection(
             normalMatrix.transformDirection(
               new Vector3(
-                normals[normalOffset],
-                normals[normalOffset + 1],
-                normals[normalOffset + 2],
+                sourceNormals[normalOffset],
+                sourceNormals[normalOffset + 1],
+                sourceNormals[normalOffset + 2],
               ),
             ),
           );
-          objLines.push(
-            `vn ${worldNormal.x} ${worldNormal.y} ${worldNormal.z}`,
-          );
+          meshNormals.push(toRendererSpaceDirection(worldNormal));
         }
       }
-
-      if (uvs && normals) {
-        objLines.push(
-          `f ${nextObjIndex}/${nextObjIndex}/${nextObjIndex} ${nextObjIndex + 1}/${nextObjIndex + 1}/${nextObjIndex + 1} ${nextObjIndex + 2}/${nextObjIndex + 2}/${nextObjIndex + 2}`,
-        );
-      } else if (uvs) {
-        objLines.push(
-          `f ${nextObjIndex}/${nextObjIndex} ${nextObjIndex + 1}/${nextObjIndex + 1} ${nextObjIndex + 2}/${nextObjIndex + 2}`,
-        );
-      } else if (normals) {
-        objLines.push(
-          `f ${nextObjIndex}//${nextObjIndex} ${nextObjIndex + 1}//${nextObjIndex + 1} ${nextObjIndex + 2}//${nextObjIndex + 2}`,
-        );
-      } else {
-        objLines.push(
-          `f ${nextObjIndex} ${nextObjIndex + 1} ${nextObjIndex + 2}`,
-        );
-      }
-
-      nextObjIndex += 3;
     }
   }
 
-  if (objLines.length === 0) {
+  if (vertices.length === 0) {
     throw new Error("No triangle primitives were found in the GLB asset");
   }
 
   return {
-    mesh: loadObj(objLines.join("\n"), normalize, scale),
+    mesh: buildLoadedModel(
+      {
+        vertices,
+        normals: meshNormals.length ? meshNormals : undefined,
+        uvs: meshUvs.length ? meshUvs : undefined,
+      },
+      normalize,
+      scale,
+    ),
     baseColorTextureIndex,
     normalTextureIndex,
     pbrMaterial: {

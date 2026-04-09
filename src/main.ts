@@ -7,7 +7,7 @@ import {
   line,
   triangle,
 } from "./drawing";
-import { getModelRadius } from "./utils/objLoader";
+import { getModelRadius } from "./utils/mesh";
 import {
   ensureModelOption,
   loadCustomGlb,
