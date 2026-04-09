@@ -180,9 +180,9 @@ const shaders = {
   unlit: new UnlitShader(),
 };
 
-type ShaderKey = keyof typeof shaders;
+type Material = keyof typeof shaders;
 type RenderSettings = {
-  shaderKey: ShaderKey;
+  material: Material;
   renderMode: RenderMode;
   useShadows: boolean;
 };
@@ -260,7 +260,7 @@ const getRenderSettings = (): RenderSettings => {
     setShadingValue(selection.normalizedValue);
   }
   return {
-    shaderKey: selection.material,
+    material: selection.material,
     renderMode: selection.renderMode,
     useShadows: selection.useShadows,
   };
@@ -330,7 +330,7 @@ const draw = () => {
   const mvp = projMat.multiply(viewMat).multiply(modelMat);
 
   // 5) Select active material shader and update uniforms.
-  const shader = shaders[renderSettings.shaderKey];
+  const shader = shaders[renderSettings.material];
 
   shader.uniforms = {
     model,
