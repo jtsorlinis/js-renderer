@@ -1,5 +1,5 @@
 import { Vector3, Vector4 } from "../maths";
-import { linearChannelToSrgb } from "./Texture";
+import { linearToSrgb } from "./Texture";
 
 export class Framebuffer {
   width: number;
@@ -14,18 +14,16 @@ export class Framebuffer {
     this.data = imageData.data;
   }
 
-  setPixel = (x: number, y: number, colour: Vector3) => {
+  setPixel = (x: number, y: number, color: Vector3) => {
     const index = (x + y * this.width) * 4;
-    this.data[index + 0] = linearChannelToSrgb(colour.x) * 255;
-    this.data[index + 1] = linearChannelToSrgb(colour.y) * 255;
-    this.data[index + 2] = linearChannelToSrgb(colour.z) * 255;
+    this.data[index + 0] = linearToSrgb(color.x) * 255;
+    this.data[index + 1] = linearToSrgb(color.y) * 255;
+    this.data[index + 2] = linearToSrgb(color.z) * 255;
+    this.data[index + 3] = 255;
   };
 
   clear = () => {
     this.data.fill(0);
-    for (let i = 3; i < this.totalPixels * 4; i += 4) {
-      this.data[i] = 255;
-    }
   };
 
   viewportTransform = (v: Vector4) => {

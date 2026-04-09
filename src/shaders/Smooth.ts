@@ -10,13 +10,13 @@ export interface Uniforms {
   lightCol: Vector3;
   camPos: Vector3;
   orthographic: boolean;
-  viewDirWorld: Vector3;
+  worldViewDir: Vector3;
 }
 
-const specStr = 0.5;
+const specularStrength = 0.5;
 const shininess = 32;
 const ambient = 0.1;
-const baseColour = new Vector3(0.5, 0.5, 0.5);
+const baseColor = new Vector3(0.5, 0.5, 0.5);
 
 export class SmoothShader extends BaseShader {
   // Uniforms are set per draw call.
@@ -50,13 +50,13 @@ export class SmoothShader extends BaseShader {
 
     // Blinn-Phong lighting on a flat white material.
     const viewDir = this.uniforms.orthographic
-      ? this.uniforms.viewDirWorld
+      ? this.uniforms.worldViewDir
       : this.uniforms.camPos.subtract(worldPos).normalize();
-    const halfWayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
-    let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
-    spec *= specStr;
+    const halfwayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
+    let spec = Math.pow(Math.max(normal.dot(halfwayDir), 0), shininess);
+    spec *= specularStrength;
     const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
     const lighting = this.uniforms.lightCol.scale(diffuse + spec + ambient);
-    return baseColour.multiply(lighting);
+    return baseColor.multiply(lighting);
   };
 }

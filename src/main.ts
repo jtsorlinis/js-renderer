@@ -7,7 +7,7 @@ import {
   line,
   triangle,
 } from "./drawing";
-import { getModelRadius } from "./utils/objLoader";
+import { getModelRadius } from "./utils/mesh";
 import {
   ensureModelOption,
   loadCustomGlb,
@@ -21,15 +21,14 @@ import { TexturedShader } from "./shaders/Textured";
 import { FlatShader } from "./shaders/Flat";
 import { UnlitShader } from "./shaders/Unlit";
 import { BaseShader } from "./shaders/BaseShader";
-import { DepthShader } from "./shaders/DepthShader";
+import { DepthShader } from "./shaders/Depth";
 import { NormalMappedShader } from "./shaders/NormalMapped";
-import { NormalMappedShadowsShader } from "./shaders/NormalMappedShadows";
 import { PbrShader } from "./shaders/Pbr";
 import { IblShader } from "./shaders/Ibl";
 import {
   buildEnvironmentIbl,
   estimateEnvironmentYaw,
-} from "./shaders/IblHelpers";
+} from "./shaders/iblHelpers";
 import { PathTracer } from "./pathTracing/PathTracer";
 import { resolveShadingSelection, type RenderMode } from "./renderSettings";
 import { loadHdrTexture } from "./utils/hdrLoader";
@@ -181,7 +180,6 @@ let customGlbFile: File | null = null;
 const shaders = {
   ibl: new IblShader(),
   pbr: new PbrShader(),
-  normalMappedShadows: new NormalMappedShadowsShader(),
   normalMapped: new NormalMappedShader(),
   textured: new TexturedShader(),
   smooth: new SmoothShader(),
@@ -299,17 +297,13 @@ const renderMesh = (
     }
 
     if (renderMode !== "filled") {
-      if (renderMode === "culledWireframe") {
-        const p0 = targetBuffer.viewportTransform(triVerts[0]);
-        const p1 = targetBuffer.viewportTransform(triVerts[1]);
-        const p2 = targetBuffer.viewportTransform(triVerts[2]);
-        if (edgeFunction(p2, p1, p0) <= 0) continue;
-      }
+      const isDepthWireframe = renderMode === "depthWireframe";
+      const area = edgeFunction(triVerts[0], triVerts[1], triVerts[2]);
+      if (isDepthWireframe && area <= 0) continue;
 
-      // Debug/teaching mode: draw triangle edges only.
-      line(triVerts[0], triVerts[1], targetBuffer);
-      line(triVerts[1], triVerts[2], targetBuffer);
-      line(triVerts[2], triVerts[0], targetBuffer);
+      line(triVerts[0], triVerts[1], targetBuffer, depthBuffer);
+      line(triVerts[1], triVerts[2], targetBuffer, depthBuffer);
+      line(triVerts[2], triVerts[0], targetBuffer, depthBuffer);
       continue;
     }
 
@@ -390,9 +384,9 @@ const draw = () => {
   const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), Vector3.Zero);
   const lightProjMat = Matrix4.Ortho(shadowOrthoSize, 1, 1, 10);
   const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
-  const mLightDir = invModelMat.transformDirection(lightDir).normalize();
-  const mCamPos = invModelMat.transformPoint(camPos);
-  const mViewDir = invModelMat.transformDirection(orthoViewDir).normalize();
+  const modelLightDir = invModelMat.transformDirection(lightDir).normalize();
+  const modelCamPos = invModelMat.transformPoint(camPos);
+  const modelViewDir = invModelMat.transformDirection(orthoViewDir).normalize();
 
   // 4) Build camera transform and final clip transform.
   const isOrthographic = orthographicCb.checked;
@@ -417,25 +411,32 @@ const draw = () => {
     negLightDir,
     envYawSin,
     envYawCos,
-    mLightDir,
+    modelLightDir,
     lightCol,
     camPos,
-    mCamPos,
+    modelCamPos,
     orthographic: isOrthographic,
-    viewDirWorld: orthoViewDir,
-    mViewDir,
+    worldViewDir: orthoViewDir,
+    modelViewDir,
     texture,
     normalTexture,
     pbrMaterial,
     iblData,
     lightSpaceMat,
     shadowMap,
+    receiveShadows: renderSettings.useShadows,
   };
 
   // 6) Optional shadow pass first, then visible color pass.
   if (activeRenderSettings.useShadows) {
     depthShader.uniforms = { model, clipMat: lightSpaceMat };
     renderMesh(depthShader, shadowMap, "filled", shadowBuffer);
+  }
+
+  // Depth only pass for wireframe culling
+  if (activeRenderSettings.renderMode === "depthWireframe") {
+    depthShader.uniforms = { model, clipMat: mvp };
+    renderMesh(depthShader, zBuffer, "filled");
   }
 
   renderMesh(shader, zBuffer, activeRenderSettings.renderMode);
@@ -479,7 +480,6 @@ canvas.onmousemove = (e) => {
 canvas.onwheel = (e) => {
   e.preventDefault();
   cameraOrthoSize += (e.deltaY * 0.58) / ZOOM_SENSITIVITY;
-  cameraOrthoSize = Math.max(0.01, cameraOrthoSize);
   camPos.z -= e.deltaY / ZOOM_SENSITIVITY;
   pathTraceInteractive = true;
 };

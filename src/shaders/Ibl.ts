@@ -16,7 +16,7 @@ import {
   type IblData,
   wrapUnit,
   INV_TAU,
-} from "./IblHelpers";
+} from "./iblHelpers";
 
 export interface Uniforms {
   model: Verts;
@@ -29,21 +29,22 @@ export interface Uniforms {
   envYawCos: number;
   camPos: Vector3;
   orthographic: boolean;
-  viewDirWorld: Vector3;
+  worldViewDir: Vector3;
   texture: Texture;
   normalTexture: Texture;
   pbrMaterial: PbrMaterial;
   iblData: IblData;
   lightSpaceMat: Matrix4;
   shadowMap: DepthTexture;
+  receiveShadows: boolean;
 }
 
-const shadowBias = 0.01;
+const minBias = 0.001;
+const maxBias = 0.005;
 // We lower the intensity of the direct light to keep the IBL mode consistent
 // with the other modes, since the environment now also contributes to lighting.
 const lightIntensity = 1.88;
 const environmentIntensity = 0.6;
-const exposure = 1;
 
 // This shader keeps a few math-heavy sections expanded inline on purpose for
 // performance in the software renderer hot path.
@@ -51,7 +52,7 @@ export class IblShader extends BaseShader {
   uniforms!: Uniforms;
 
   vUV = this.varying<Vector2>();
-  vViewDirWorld = this.varying<Vector3>();
+  vWorldViewDir = this.varying<Vector3>();
   vWorldNormal = this.varying<Vector3>();
   vWorldTangent = this.varying<Vector4>();
   vLightSpacePos = this.varying<Vector3>();
@@ -72,19 +73,22 @@ export class IblShader extends BaseShader {
     const worldTangent = this.uniforms.modelMat
       .transformDirection4(tangent)
       .normalize3();
-    const viewDirWorld = this.uniforms.orthographic
-      ? this.uniforms.viewDirWorld
+    const worldViewDir = this.uniforms.orthographic
+      ? this.uniforms.worldViewDir
       : this.uniforms.camPos.subtract(worldPos).normalize();
 
-    const lightSpacePos = this.uniforms.lightSpaceMat.transformPoint(modelPos);
-    lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
-    lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
-
     this.v2f(this.vUV, model.uvs[i]);
-    this.v2f(this.vViewDirWorld, viewDirWorld);
+    this.v2f(this.vWorldViewDir, worldViewDir);
     this.v2f(this.vWorldNormal, worldNormal);
     this.v2f(this.vWorldTangent, worldTangent);
-    this.v2f(this.vLightSpacePos, lightSpacePos);
+
+    if (this.uniforms.receiveShadows) {
+      const lightSpacePos =
+        this.uniforms.lightSpaceMat.transformPoint(modelPos);
+      lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
+      lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
+      this.v2f(this.vLightSpacePos, lightSpacePos);
+    }
 
     return this.uniforms.mvp.transformPoint4(modelPos);
   };
@@ -92,18 +96,16 @@ export class IblShader extends BaseShader {
   fragment = () => {
     const ibl = this.uniforms.iblData;
     const uv = this.interpolateVec2(this.vUV);
-    const viewDir = this.interpolateVec3(this.vViewDirWorld).normalize();
-    const tangent = this.interpolateVec4(this.vWorldTangent);
-    const handedness = tangent.w < 0 ? -1 : 1;
-    const surfaceNormal = this.interpolateVec3(this.vWorldNormal).normalize();
+    const viewDir = this.interpolateVec3(this.vWorldViewDir).normalize();
+    const wTangent = this.interpolateVec4(this.vWorldTangent);
+    const handedness = wTangent.w < 0 ? -1 : 1;
+    const wNormal = this.interpolateVec3(this.vWorldNormal).normalize();
 
     const tangentProjection =
-      surfaceNormal.x * tangent.x +
-      surfaceNormal.y * tangent.y +
-      surfaceNormal.z * tangent.z;
-    let tangentOrthoX = tangent.x - surfaceNormal.x * tangentProjection;
-    let tangentOrthoY = tangent.y - surfaceNormal.y * tangentProjection;
-    let tangentOrthoZ = tangent.z - surfaceNormal.z * tangentProjection;
+      wNormal.x * wTangent.x + wNormal.y * wTangent.y + wNormal.z * wTangent.z;
+    let tangentOrthoX = wTangent.x - wNormal.x * tangentProjection;
+    let tangentOrthoY = wTangent.y - wNormal.y * tangentProjection;
+    let tangentOrthoZ = wTangent.z - wNormal.z * tangentProjection;
     const tangentOrthoLengthSq =
       tangentOrthoX * tangentOrthoX +
       tangentOrthoY * tangentOrthoY +
@@ -114,27 +116,24 @@ export class IblShader extends BaseShader {
     tangentOrthoY *= tangentOrthoScale;
     tangentOrthoZ *= tangentOrthoScale;
     const bitangentX =
-      (surfaceNormal.y * tangentOrthoZ - surfaceNormal.z * tangentOrthoY) *
-      handedness;
+      (wNormal.y * tangentOrthoZ - wNormal.z * tangentOrthoY) * handedness;
     const bitangentY =
-      (surfaceNormal.z * tangentOrthoX - surfaceNormal.x * tangentOrthoZ) *
-      handedness;
+      (wNormal.z * tangentOrthoX - wNormal.x * tangentOrthoZ) * handedness;
     const bitangentZ =
-      (surfaceNormal.x * tangentOrthoY - surfaceNormal.y * tangentOrthoX) *
-      handedness;
+      (wNormal.x * tangentOrthoY - wNormal.y * tangentOrthoX) * handedness;
     const normalTexel = this.sample(this.uniforms.normalTexture, uv);
     let normalX =
       tangentOrthoX * normalTexel.x +
       bitangentX * normalTexel.y +
-      surfaceNormal.x * normalTexel.z;
+      wNormal.x * normalTexel.z;
     let normalY =
       tangentOrthoY * normalTexel.x +
       bitangentY * normalTexel.y +
-      surfaceNormal.y * normalTexel.z;
+      wNormal.y * normalTexel.z;
     let normalZ =
       tangentOrthoZ * normalTexel.x +
       bitangentZ * normalTexel.y +
-      surfaceNormal.z * normalTexel.z;
+      wNormal.z * normalTexel.z;
     const normalLengthSq =
       normalX * normalX + normalY * normalY + normalZ * normalZ;
     const normalScale =
@@ -173,9 +172,14 @@ export class IblShader extends BaseShader {
     let directG = 0;
     let directB = 0;
     if (nDotL > 0 && nDotV > 0 && halfDir.lengthSq() > EPSILON) {
-      const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
-      const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-      const shadow = lightSpacePos.z - shadowBias > depth ? 0 : 1;
+      let shadow = 1;
+      if (this.uniforms.receiveShadows) {
+        const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
+        const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
+        const faceNDotL = saturate(wNormal.dot(this.uniforms.negLightDir));
+        const bias = minBias + (maxBias - minBias) * (1 - faceNDotL);
+        shadow = lightSpacePos.z - bias > depth ? 0 : 1;
+      }
       halfDir.normalize();
       const nDotH = saturate(
         normalX * halfDir.x + normalY * halfDir.y + normalZ * halfDir.z,
@@ -348,9 +352,9 @@ export class IblShader extends BaseShader {
       environmentIntensity;
 
     return new Vector3(
-      (ambientR + directR) * exposure,
-      (ambientG + directG) * exposure,
-      (ambientB + directB) * exposure,
+      ambientR + directR,
+      ambientG + directG,
+      ambientB + directB,
     );
   };
 }

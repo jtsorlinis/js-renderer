@@ -1,5 +1,5 @@
 import { Framebuffer, Texture } from "../drawing";
-import { linearChannelToSrgb } from "../drawing/Texture";
+import { linearToSrgb } from "../drawing/Texture";
 import { Matrix4, Vector2, Vector3 } from "../maths";
 import { PathTraceBvh } from "./pathTracingBvh";
 import { PathTraceEnvironmentSampler } from "./pathTracingEnvironment";
@@ -566,13 +566,11 @@ export class PathTracer {
           ? 1 / this.pixelSampleCounts[pixelIndex]
           : 0;
       targetData[targetIndex] =
-        linearChannelToSrgb(this.accumulation[sourceIndex] * sampleScale) * 255;
+        linearToSrgb(this.accumulation[sourceIndex] * sampleScale) * 255;
       targetData[targetIndex + 1] =
-        linearChannelToSrgb(this.accumulation[sourceIndex + 1] * sampleScale) *
-        255;
+        linearToSrgb(this.accumulation[sourceIndex + 1] * sampleScale) * 255;
       targetData[targetIndex + 2] =
-        linearChannelToSrgb(this.accumulation[sourceIndex + 2] * sampleScale) *
-        255;
+        linearToSrgb(this.accumulation[sourceIndex + 2] * sampleScale) * 255;
       targetData[targetIndex + 3] = 255;
     }
   };

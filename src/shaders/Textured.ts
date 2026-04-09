@@ -11,11 +11,11 @@ export interface Uniforms {
   lightCol: Vector3;
   camPos: Vector3;
   orthographic: boolean;
-  viewDirWorld: Vector3;
+  worldViewDir: Vector3;
   texture: Texture;
 }
 
-const specStr = 0.5;
+const specularStrength = 0.5;
 const shininess = 32;
 const ambient = 0.1;
 
@@ -53,18 +53,18 @@ export class TexturedShader extends BaseShader {
     const uv = this.interpolateVec2(this.vUV);
 
     // Sample albedo texture.
-    const col = this.sample(this.uniforms.texture, uv);
+    const baseColor = this.sample(this.uniforms.texture, uv);
 
     // Basic Blinn-Phong lighting in world space.
     const viewDir = this.uniforms.orthographic
-      ? this.uniforms.viewDirWorld
+      ? this.uniforms.worldViewDir
       : this.uniforms.camPos.subtract(worldPos).normalize();
-    const halfWayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
-    let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
-    spec *= specStr;
+    const halfwayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
+    let spec = Math.pow(Math.max(normal.dot(halfwayDir), 0), shininess);
+    spec *= specularStrength;
     const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
     const lighting = this.uniforms.lightCol.scale(diffuse + spec + ambient);
 
-    return col.multiplyInPlace(lighting);
+    return baseColor.multiplyInPlace(lighting);
   };
 }

@@ -15,20 +15,21 @@ export interface Uniforms {
   model: Verts;
   mvp: Matrix4;
   lightCol: Vector3;
-  mLightDir: Vector3;
-  mCamPos: Vector3;
+  modelLightDir: Vector3;
+  modelCamPos: Vector3;
   orthographic: boolean;
-  mViewDir: Vector3;
+  modelViewDir: Vector3;
   texture: Texture;
   normalTexture: Texture;
   pbrMaterial: PbrMaterial;
   lightSpaceMat: Matrix4;
   shadowMap: DepthTexture;
+  receiveShadows: boolean;
 }
 
-const shadowBias = 0.01;
+const minBias = 0.001;
+const maxBias = 0.005;
 const lightIntensity = 3.14;
-const exposure = 1;
 
 const ambientIntensity = 0.1;
 
@@ -49,48 +50,55 @@ export class PbrShader extends BaseShader {
     const tangent = model.tangents[i];
     const modelPos = model.vertices[i];
 
-    const lightSpacePos = this.uniforms.lightSpaceMat.transformPoint(modelPos);
-    lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
-    lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
-
     this.v2f(this.vUV, model.uvs[i]);
-    this.v2f(this.vLightSpacePos, lightSpacePos);
     this.v2f(this.vModelPos, modelPos);
     this.v2f(this.vNormal, normal);
     this.v2f(this.vTangent, tangent);
+
+    if (this.uniforms.receiveShadows) {
+      const lightSpacePos =
+        this.uniforms.lightSpaceMat.transformPoint(modelPos);
+      lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
+      lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
+      this.v2f(this.vLightSpacePos, lightSpacePos);
+    }
 
     return this.uniforms.mvp.transformPoint4(modelPos);
   };
 
   fragment = () => {
     const uv = this.interpolateVec2(this.vUV);
-    const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
     const modelPos = this.interpolateVec3(this.vModelPos);
-    const vNormal = this.interpolateVec3(this.vNormal).normalize();
-    const tangent = this.interpolateVec4(this.vTangent);
-    const handedness = tangent.w < 0 ? -1 : 1;
+    const mNormal = this.interpolateVec3(this.vNormal).normalize();
+    const mTangent = this.interpolateVec4(this.vTangent);
+    const handedness = mTangent.w < 0 ? -1 : 1;
+    let shadow = 1;
+    if (this.uniforms.receiveShadows) {
+      const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
+      const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
+      const faceNDotL = saturate(-mNormal.dot(this.uniforms.modelLightDir));
+      const bias = minBias + (maxBias - minBias) * (1 - faceNDotL);
+      shadow = lightSpacePos.z - bias > depth ? 0 : 1;
+    }
 
-    const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-    const shadow = lightSpacePos.z - shadowBias > depth ? 0 : 1;
-
-    const tDotN = tangent.dot3(vNormal);
-    const Tx = tangent.x - vNormal.x * tDotN;
-    const Ty = tangent.y - vNormal.y * tDotN;
-    const Tz = tangent.z - vNormal.z * tDotN;
-    const TLenSq = Tx * Tx + Ty * Ty + Tz * Tz;
-    const TScale = TLenSq > EPSILON ? 1 / Math.sqrt(TLenSq) : 0;
+    const tDotN = mTangent.dot3(mNormal);
+    const Tx = mTangent.x - mNormal.x * tDotN;
+    const Ty = mTangent.y - mNormal.y * tDotN;
+    const Tz = mTangent.z - mNormal.z * tDotN;
+    const TLengthSq = Tx * Tx + Ty * Ty + Tz * Tz;
+    const TScale = TLengthSq > EPSILON ? 1 / Math.sqrt(TLengthSq) : 0;
     const T = new Vector3(Tx * TScale, Ty * TScale, Tz * TScale);
 
-    const Bx = (vNormal.y * T.z - vNormal.z * T.y) * handedness;
-    const By = (vNormal.z * T.x - vNormal.x * T.z) * handedness;
-    const Bz = (vNormal.x * T.y - vNormal.y * T.x) * handedness;
+    const Bx = (mNormal.y * T.z - mNormal.z * T.y) * handedness;
+    const By = (mNormal.z * T.x - mNormal.x * T.z) * handedness;
+    const Bz = (mNormal.x * T.y - mNormal.y * T.x) * handedness;
 
     const normalTS = this.sample(this.uniforms.normalTexture, uv);
-    const Nx = T.x * normalTS.x + Bx * normalTS.y + vNormal.x * normalTS.z;
-    const Ny = T.y * normalTS.x + By * normalTS.y + vNormal.y * normalTS.z;
-    const Nz = T.z * normalTS.x + Bz * normalTS.y + vNormal.z * normalTS.z;
-    const NLenSq = Nx * Nx + Ny * Ny + Nz * Nz;
-    const NScale = NLenSq > EPSILON ? 1 / Math.sqrt(NLenSq) : 0;
+    const Nx = T.x * normalTS.x + Bx * normalTS.y + mNormal.x * normalTS.z;
+    const Ny = T.y * normalTS.x + By * normalTS.y + mNormal.y * normalTS.z;
+    const Nz = T.z * normalTS.x + Bz * normalTS.y + mNormal.z * normalTS.z;
+    const NLengthSq = Nx * Nx + Ny * Ny + Nz * Nz;
+    const NScale = NLengthSq > EPSILON ? 1 / Math.sqrt(NLengthSq) : 0;
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
 
     const baseColor = this.sample(this.uniforms.texture, uv).multiplyInPlace(
@@ -111,17 +119,17 @@ export class PbrShader extends BaseShader {
     const f0y = DIELECTRIC_F0.y + (baseColor.y - DIELECTRIC_F0.y) * metallic;
     const f0z = DIELECTRIC_F0.z + (baseColor.z - DIELECTRIC_F0.z) * metallic;
 
-    const lightDir = this.uniforms.mLightDir.scale(-1);
+    const lightDir = this.uniforms.modelLightDir;
     const viewDir = this.uniforms.orthographic
-      ? this.uniforms.mViewDir
-      : this.uniforms.mCamPos.subtract(modelPos).normalize();
+      ? this.uniforms.modelViewDir
+      : this.uniforms.modelCamPos.subtract(modelPos).normalize();
     const nDotL = saturate(
-      normal.x * lightDir.x + normal.y * lightDir.y + normal.z * lightDir.z,
+      normal.x * -lightDir.x + normal.y * -lightDir.y + normal.z * -lightDir.z,
     );
     const nDotV = saturate(
       normal.x * viewDir.x + normal.y * viewDir.y + normal.z * viewDir.z,
     );
-    const halfDir = lightDir.add(viewDir);
+    const halfDir = viewDir.subtract(lightDir);
 
     let directR = 0;
     let directG = 0;
@@ -166,9 +174,9 @@ export class PbrShader extends BaseShader {
     const ambientB = (baseColor.z * (1 - metallic) + f0z) * ambientIntensity;
 
     return new Vector3(
-      (ambientR + directR) * exposure,
-      (ambientG + directG) * exposure,
-      (ambientB + directB) * exposure,
+      ambientR + directR,
+      ambientG + directG,
+      ambientB + directB,
     );
   };
 }
