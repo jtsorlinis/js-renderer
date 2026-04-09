@@ -15,10 +15,10 @@ export interface Uniforms {
   model: Verts;
   mvp: Matrix4;
   lightCol: Vector3;
-  mLightDir: Vector3;
-  mCamPos: Vector3;
+  modelLightDir: Vector3;
+  modelCamPos: Vector3;
   orthographic: boolean;
-  mViewDir: Vector3;
+  modelViewDir: Vector3;
   texture: Texture;
   normalTexture: Texture;
   pbrMaterial: PbrMaterial;
@@ -76,7 +76,7 @@ export class PbrShader extends BaseShader {
     if (this.uniforms.receiveShadows) {
       const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
       const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-      const faceNDotL = saturate(-mNormal.dot(this.uniforms.mLightDir));
+      const faceNDotL = saturate(-mNormal.dot(this.uniforms.modelLightDir));
       const bias = minBias + (maxBias - minBias) * (1 - faceNDotL);
       shadow = lightSpacePos.z - bias > depth ? 0 : 1;
     }
@@ -119,10 +119,10 @@ export class PbrShader extends BaseShader {
     const f0y = DIELECTRIC_F0.y + (baseColor.y - DIELECTRIC_F0.y) * metallic;
     const f0z = DIELECTRIC_F0.z + (baseColor.z - DIELECTRIC_F0.z) * metallic;
 
-    const lightDir = this.uniforms.mLightDir.scale(-1);
+    const lightDir = this.uniforms.modelLightDir.scale(-1);
     const viewDir = this.uniforms.orthographic
-      ? this.uniforms.mViewDir
-      : this.uniforms.mCamPos.subtract(modelPos).normalize();
+      ? this.uniforms.modelViewDir
+      : this.uniforms.modelCamPos.subtract(modelPos).normalize();
     const nDotL = saturate(
       normal.x * lightDir.x + normal.y * lightDir.y + normal.z * lightDir.z,
     );

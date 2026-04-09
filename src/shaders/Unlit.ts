@@ -4,10 +4,6 @@ import { Vector3, Matrix4, Vector4 } from "../maths";
 export interface Uniforms {
   model: Verts;
   mvp: Matrix4;
-  normalMat: Matrix4;
-  lightDir: Vector3;
-  lightCol: Vector3;
-  camPos: Vector3;
 }
 
 const minColor = 0.125;

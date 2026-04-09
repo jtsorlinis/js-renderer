@@ -29,7 +29,7 @@ export interface Uniforms {
   envYawCos: number;
   camPos: Vector3;
   orthographic: boolean;
-  viewDirWorld: Vector3;
+  worldViewDir: Vector3;
   texture: Texture;
   normalTexture: Texture;
   pbrMaterial: PbrMaterial;
@@ -52,7 +52,7 @@ export class IblShader extends BaseShader {
   uniforms!: Uniforms;
 
   vUV = this.varying<Vector2>();
-  vViewDirWorld = this.varying<Vector3>();
+  vWorldViewDir = this.varying<Vector3>();
   vWorldNormal = this.varying<Vector3>();
   vWorldTangent = this.varying<Vector4>();
   vLightSpacePos = this.varying<Vector3>();
@@ -73,12 +73,12 @@ export class IblShader extends BaseShader {
     const worldTangent = this.uniforms.modelMat
       .transformDirection4(tangent)
       .normalize3();
-    const viewDirWorld = this.uniforms.orthographic
-      ? this.uniforms.viewDirWorld
+    const worldViewDir = this.uniforms.orthographic
+      ? this.uniforms.worldViewDir
       : this.uniforms.camPos.subtract(worldPos).normalize();
 
     this.v2f(this.vUV, model.uvs[i]);
-    this.v2f(this.vViewDirWorld, viewDirWorld);
+    this.v2f(this.vWorldViewDir, worldViewDir);
     this.v2f(this.vWorldNormal, worldNormal);
     this.v2f(this.vWorldTangent, worldTangent);
 
@@ -96,7 +96,7 @@ export class IblShader extends BaseShader {
   fragment = () => {
     const ibl = this.uniforms.iblData;
     const uv = this.interpolateVec2(this.vUV);
-    const viewDir = this.interpolateVec3(this.vViewDirWorld).normalize();
+    const viewDir = this.interpolateVec3(this.vWorldViewDir).normalize();
     const wTangent = this.interpolateVec4(this.vWorldTangent);
     const handedness = wTangent.w < 0 ? -1 : 1;
     const wNormal = this.interpolateVec3(this.vWorldNormal).normalize();
