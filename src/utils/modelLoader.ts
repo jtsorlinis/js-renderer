@@ -1,41 +1,41 @@
 import { setHighResTextureLimit, Texture } from "../drawing";
 import { Vector3 } from "../maths";
 import { loadGlbAsset } from "./glbLoader";
-import { type LoadedModel, loadObjAsset } from "./objLoader";
+import { type LoadedModel } from "./mesh";
 
 const assetPath = (fileName: string) =>
   `${import.meta.env.BASE_URL}models/${fileName}`;
 
 const modelAssets: Record<string, ModelAssetSource> = {
   dice: {
-    meshUrl: assetPath("d20.glb"),
+    glbUrl: assetPath("d20.glb"),
     scale: 0.8,
   },
   rock: {
-    meshUrl: assetPath("rock.glb"),
+    glbUrl: assetPath("rock.glb"),
     scale: 0.9,
   },
   hydrant: {
-    meshUrl: assetPath("hydrant.glb"),
+    glbUrl: assetPath("hydrant.glb"),
   },
   treasure: {
-    meshUrl: assetPath("treasure.glb"),
+    glbUrl: assetPath("treasure.glb"),
     scale: 1.1,
   },
   head: {
-    meshUrl: assetPath("head.glb"),
+    glbUrl: assetPath("head.glb"),
   },
   dragon: {
-    meshUrl: assetPath("dragon.glb"),
+    glbUrl: assetPath("dragon.glb"),
     scale: 1.3,
   },
   spartan: {
-    meshUrl: assetPath("spartan.glb"),
+    glbUrl: assetPath("spartan.glb"),
     scale: 1.25,
   },
   // Secret nyxy model
   nyxy: {
-    meshUrl: assetPath("nyxy.glb"),
+    glbUrl: assetPath("nyxy.glb"),
   },
 };
 
@@ -60,25 +60,12 @@ export type ModelOption = {
 };
 
 type ModelAssetSource = {
-  meshUrl: string;
-  textureUrl?: string;
-  normalTextureUrl?: string;
+  glbUrl: string;
   normalize?: boolean;
   scale?: number;
   loaded?: ModelOption;
   pending?: Promise<ModelOption>;
   prefetched?: Promise<void>;
-};
-
-const isGlbAsset = (url: string) => {
-  return url.split("?")[0].toLowerCase().endsWith(".glb");
-};
-
-const requireAssetUrl = (url: string | undefined, assetType: string) => {
-  if (!url) {
-    throw new Error(`Missing ${assetType} URL for model asset`);
-  }
-  return url;
 };
 
 const prefetchAsset = async (url: string) => {
@@ -114,18 +101,7 @@ export const setHighResTextureLimits = (enabled: boolean) => {
 const prefetchModelAssets = (modelKey: ModelKey) => {
   const modelAsset = modelAssets[modelKey];
   modelAsset.prefetched ??= (async () => {
-    if (isGlbAsset(modelAsset.meshUrl)) {
-      await prefetchAsset(modelAsset.meshUrl);
-      return;
-    }
-
-    await Promise.all([
-      prefetchAsset(modelAsset.meshUrl),
-      prefetchAsset(requireAssetUrl(modelAsset.textureUrl, "texture")),
-      prefetchAsset(
-        requireAssetUrl(modelAsset.normalTextureUrl, "normal texture"),
-      ),
-    ]);
+    await prefetchAsset(modelAsset.glbUrl);
   })();
 
   return modelAsset.prefetched;
@@ -138,45 +114,11 @@ export const ensureModelOption = (modelKey: ModelKey) => {
   }
 
   modelAsset.pending ??= (async () => {
-    const loadedModel = isGlbAsset(modelAsset.meshUrl)
-      ? await loadGlbAsset(
-          modelAsset.meshUrl,
-          modelAsset.normalize,
-          modelAsset.scale,
-        )
-      : await (async () => {
-          const [mesh, texture, normalTexture] = await Promise.all([
-            loadObjAsset(
-              modelAsset.meshUrl,
-              modelAsset.normalize,
-              modelAsset.scale,
-            ),
-            Texture.Load(requireAssetUrl(modelAsset.textureUrl, "texture"), {
-              type: "color",
-              colorSpace: "srgb",
-            }),
-            Texture.Load(
-              requireAssetUrl(modelAsset.normalTextureUrl, "normal texture"),
-              { type: "normal", colorSpace: "linear" },
-            ),
-          ]);
-
-          return {
-            mesh,
-            texture,
-            normalTexture,
-            pbrMaterial: {
-              metallicRoughnessTexture: new Texture(
-                new Float32Array([1, 1, 1]),
-                1,
-                1,
-              ),
-              baseColorFactor: Vector3.One,
-              metallicFactor: 0,
-              roughnessFactor: 1,
-            },
-          };
-        })();
+    const loadedModel = await loadGlbAsset(
+      modelAsset.glbUrl,
+      modelAsset.normalize,
+      modelAsset.scale,
+    );
 
     modelAsset.loaded = loadedModel;
     return loadedModel;
