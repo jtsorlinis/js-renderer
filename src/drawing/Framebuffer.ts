@@ -19,13 +19,11 @@ export class Framebuffer {
     this.data[index + 0] = linearToSrgb(colour.x) * 255;
     this.data[index + 1] = linearToSrgb(colour.y) * 255;
     this.data[index + 2] = linearToSrgb(colour.z) * 255;
+    this.data[index + 3] = 255;
   };
 
   clear = () => {
     this.data.fill(0);
-    for (let i = 3; i < this.totalPixels * 4; i += 4) {
-      this.data[i] = 255;
-    }
   };
 
   viewportTransform = (v: Vector4) => {
