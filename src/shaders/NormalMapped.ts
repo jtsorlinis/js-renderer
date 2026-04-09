@@ -6,18 +6,18 @@ export interface Uniforms {
   model: Verts;
   mvp: Matrix4;
   lightCol: Vector3;
-  mCamPos: Vector3;
+  modelCamPos: Vector3;
   orthographic: boolean;
-  mViewDir: Vector3;
+  modelViewDir: Vector3;
   texture: Texture;
-  mLightDir: Vector3;
+  modelLightDir: Vector3;
   normalTexture: Texture;
   lightSpaceMat: Matrix4;
   shadowMap: DepthTexture;
   receiveShadows: boolean;
 }
 
-const specStr = 0.5;
+const specularStrength = 0.5;
 const shininess = 32;
 const ambient = 0.1;
 const minBias = 0.001;
@@ -70,7 +70,7 @@ export class NormalMappedShader extends BaseShader {
     if (this.uniforms.receiveShadows) {
       const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
       const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-      const nDotL = Math.max(-mNormal.dot(this.uniforms.mLightDir), 0.0);
+      const nDotL = Math.max(-mNormal.dot(this.uniforms.modelLightDir), 0.0);
       const bias = minBias + (maxBias - minBias) * (1 - nDotL);
       shadow = lightSpacePos.z - bias > depth ? 0 : 1;
     }
@@ -101,13 +101,13 @@ export class NormalMappedShader extends BaseShader {
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
 
     // Blinn-Phong shading
-    const lightDir = this.uniforms.mLightDir;
+    const lightDir = this.uniforms.modelLightDir;
     const viewDir = this.uniforms.orthographic
-      ? this.uniforms.mViewDir
-      : this.uniforms.mCamPos.subtract(modelPos).normalize();
-    const halfWayDir = viewDir.subtract(lightDir).normalize();
-    let spec = Math.pow(Math.max(normal.dot(halfWayDir), 0), shininess);
-    spec *= specStr;
+      ? this.uniforms.modelViewDir
+      : this.uniforms.modelCamPos.subtract(modelPos).normalize();
+    const halfwayDir = viewDir.subtract(lightDir).normalize();
+    let spec = Math.pow(Math.max(normal.dot(halfwayDir), 0), shininess);
+    spec *= specularStrength;
     const diffuse = Math.max(-normal.dot(lightDir), 0);
     const lighting = this.uniforms.lightCol.scale(
       (diffuse + spec) * shadow + ambient,

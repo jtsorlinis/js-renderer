@@ -321,9 +321,9 @@ const draw = () => {
   const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), Vector3.Zero);
   const lightProjMat = Matrix4.Ortho(shadowOrthoSize, 1, 1, 10);
   const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
-  const mLightDir = invModelMat.transformDirection(lightDir).normalize();
-  const mCamPos = invModelMat.transformPoint(camPos);
-  const mViewDir = invModelMat.transformDirection(orthoViewDir).normalize();
+  const modelLightDir = invModelMat.transformDirection(lightDir).normalize();
+  const modelCamPos = invModelMat.transformPoint(camPos);
+  const modelViewDir = invModelMat.transformDirection(orthoViewDir).normalize();
 
   // 4) Build camera transform and final clip transform.
   const isOrthographic = orthographicCb.checked;
@@ -345,13 +345,13 @@ const draw = () => {
     negLightDir,
     envYawSin,
     envYawCos,
-    mLightDir,
+    modelLightDir,
     lightCol,
     camPos,
-    mCamPos,
+    modelCamPos,
     orthographic: isOrthographic,
-    viewDirWorld: orthoViewDir,
-    mViewDir,
+    worldViewDir: orthoViewDir,
+    modelViewDir,
     texture,
     normalTexture,
     pbrMaterial,
