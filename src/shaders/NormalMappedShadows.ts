@@ -27,10 +27,10 @@ export class NormalMappedShadowsShader extends BaseShader {
 
   // Per-vertex data passed from vertex -> fragment.
   vUV = this.varying<Vector2>();
-  vLightSpacePos = this.varying<Vector3>();
   vModelPos = this.varying<Vector3>();
   vNormal = this.varying<Vector3>();
   vTangent = this.varying<Vector4>();
+  vLightSpacePos = this.varying<Vector3>();
 
   vertex = (): Vector4 => {
     // Read the source vertex attributes from the active mesh.
