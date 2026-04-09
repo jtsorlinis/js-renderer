@@ -187,9 +187,9 @@ const shaders = {
   unlit: new UnlitShader(),
 };
 
-type ShaderKey = keyof typeof shaders;
+type Material = keyof typeof shaders;
 type RenderSettings = {
-  material: ShaderKey | "pathTrace";
+  material: Material | "pathTrace";
   renderMode: RenderMode;
   useShadows: boolean;
 };
