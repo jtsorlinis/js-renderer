@@ -11,6 +11,7 @@ import {
   sampleTexture,
 } from "./pathTracingHelpers";
 import { DIELECTRIC_F0, EPSILON, saturate } from "../shaders/pbrHelpers";
+import { type IblData } from "../shaders/iblHelpers";
 import {
   evaluateBsdf,
   evaluateDirectEnvironmentLighting,
@@ -18,7 +19,7 @@ import {
   getSpecularSamplingProbability,
 } from "./pathTracingLighting";
 import { type PbrMaterial } from "../utils/modelLoader";
-import { type LoadedModel } from "../utils/objLoader";
+import { type LoadedModel } from "../utils/mesh";
 
 const RAY_EPSILON = 0.001;
 
@@ -42,6 +43,7 @@ export interface PathTraceScene {
   environment: Texture;
   envYawCos: number;
   envYawSin: number;
+  iblData: IblData;
   lightColor: Vector3;
   lightDirectionToLight: Vector3;
   model: LoadedModel;
@@ -286,7 +288,13 @@ export class PathTracer {
         nextDirection = this.sampleDiffuseDirection(hit.shadingNormal);
       }
 
-      const bsdf = evaluateBsdf(hit, viewDir, nextDirection, specularChance);
+      const bsdf = evaluateBsdf(
+        hit,
+        viewDir,
+        nextDirection,
+        specularChance,
+        scene.iblData,
+      );
       if (bsdf.nDotL <= 0 || bsdf.pdf <= 0) {
         break;
       }
@@ -330,6 +338,7 @@ export class PathTracer {
       lightDir,
       scene.lightColor,
       lightIntensity,
+      scene.iblData,
     );
     if (contribution.lengthSq() <= 0) {
       return Vector3.Zero;
@@ -369,6 +378,7 @@ export class PathTracer {
       environmentSample.pdf,
       environmentIntensity,
       specularChance,
+      scene.iblData,
     );
     if (contribution.lengthSq() <= 0) {
       return Vector3.Zero;
@@ -533,10 +543,7 @@ export class PathTracer {
       .add(basis.bitangent.scale(Math.sin(phi) * sinTheta))
       .add(normal.scale(cosTheta))
       .normalize();
-    const reflected = incident.reflect(halfVector).normalize();
-    return reflected.dot(normal) > 0
-      ? reflected
-      : incident.reflect(normal).normalize();
+    return incident.reflect(halfVector).normalize();
   };
 
   private traceAny = (

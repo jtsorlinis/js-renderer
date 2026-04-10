@@ -187,9 +187,8 @@ const shaders = {
   unlit: new UnlitShader(),
 };
 
-type Material = keyof typeof shaders;
 type RenderSettings = {
-  material: Material | "pathTrace";
+  material: keyof typeof shaders | "pathTrace";
   renderMode: RenderMode;
   useShadows: boolean;
 };
@@ -350,6 +349,7 @@ const draw = () => {
         environment: hdrEnvironment,
         envYawCos,
         envYawSin,
+        iblData,
         lightColor: lightCol,
         lightDirectionToLight: negLightDir,
         model,

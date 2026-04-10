@@ -1,6 +1,6 @@
 import { Vector3 } from "../maths";
 import { EPSILON } from "../shaders/pbrHelpers";
-import { type LoadedModel } from "../utils/objLoader";
+import { type LoadedModel } from "../utils/mesh";
 
 const LEAF_TRIANGLE_COUNT = 8;
 const RAY_EPSILON = 0.001;
@@ -57,7 +57,11 @@ export class PathTraceBvh {
     this.boundsMaxY = new Float32Array(triangleCount);
     this.boundsMaxZ = new Float32Array(triangleCount);
 
-    for (let triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++) {
+    for (
+      let triangleIndex = 0;
+      triangleIndex < triangleCount;
+      triangleIndex++
+    ) {
       const vertexIndex = triangleIndex * 3;
       const v0 = model.vertices[vertexIndex];
       const v1 = model.vertices[vertexIndex + 1];
@@ -216,7 +220,11 @@ export class PathTraceBvh {
     }
 
     const axisValues =
-      axis === 0 ? this.centroidX : axis === 1 ? this.centroidY : this.centroidZ;
+      axis === 0
+        ? this.centroidX
+        : axis === 1
+          ? this.centroidY
+          : this.centroidZ;
     this.triangleIndices.subarray(start, end).sort((a, b) => {
       return axisValues[a] - axisValues[b];
     });
