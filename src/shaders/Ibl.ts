@@ -85,32 +85,25 @@ export class IblShader extends BaseShader {
     const worldTangent = this.interpolateVec4(this.vWorldTangent);
     const handedness = worldTangent.w < 0 ? -1 : 1;
 
-    const tDotN =
-      worldNormal.x * worldTangent.x +
-      worldNormal.y * worldTangent.y +
-      worldNormal.z * worldTangent.z;
-    let Tx = worldTangent.x - worldNormal.x * tDotN;
-    let Ty = worldTangent.y - worldNormal.y * tDotN;
-    let Tz = worldTangent.z - worldNormal.z * tDotN;
+    const tDotN = worldTangent.dot3(worldNormal);
+    const Tx = worldTangent.x - worldNormal.x * tDotN;
+    const Ty = worldTangent.y - worldNormal.y * tDotN;
+    const Tz = worldTangent.z - worldNormal.z * tDotN;
     const TLengthSq = Tx * Tx + Ty * Ty + Tz * Tz;
     const TScale = TLengthSq > EPSILON ? 1 / Math.sqrt(TLengthSq) : 0;
-    Tx *= TScale;
-    Ty *= TScale;
-    Tz *= TScale;
+    const T = new Vector3(Tx * TScale, Ty * TScale, Tz * TScale);
 
-    const Bx = (worldNormal.y * Tz - worldNormal.z * Ty) * handedness;
-    const By = (worldNormal.z * Tx - worldNormal.x * Tz) * handedness;
-    const Bz = (worldNormal.x * Ty - worldNormal.y * Tx) * handedness;
+    const Bx = (worldNormal.y * T.z - worldNormal.z * T.y) * handedness;
+    const By = (worldNormal.z * T.x - worldNormal.x * T.z) * handedness;
+    const Bz = (worldNormal.x * T.y - worldNormal.y * T.x) * handedness;
 
     const normalTexel = this.sample(this.uniforms.normalTexture, uv);
-    let Nx = Tx * normalTexel.x + Bx * normalTexel.y + worldNormal.x * normalTexel.z;
-    let Ny = Ty * normalTexel.x + By * normalTexel.y + worldNormal.y * normalTexel.z;
-    let Nz = Tz * normalTexel.x + Bz * normalTexel.y + worldNormal.z * normalTexel.z;
+    const Nx = T.x * normalTexel.x + Bx * normalTexel.y + worldNormal.x * normalTexel.z;
+    const Ny = T.y * normalTexel.x + By * normalTexel.y + worldNormal.y * normalTexel.z;
+    const Nz = T.z * normalTexel.x + Bz * normalTexel.y + worldNormal.z * normalTexel.z;
     const NLengthSq = Nx * Nx + Ny * Ny + Nz * Nz;
     const Nscale = NLengthSq > EPSILON ? 1 / Math.sqrt(NLengthSq) : 0;
-    Nx *= Nscale;
-    Ny *= Nscale;
-    Nz *= Nscale;
+    const normal = new Vector3(Nx * Nscale, Ny * Nscale, Nz * Nscale);
 
     const baseColor = this.sample(this.uniforms.texture, uv).multiplyInPlace(
       this.uniforms.pbrMaterial.baseColorFactor,
@@ -126,8 +119,11 @@ export class IblShader extends BaseShader {
     const f0z = DIELECTRIC_F0.z + (baseColor.z - DIELECTRIC_F0.z) * metallic;
 
     const worldLightDir = this.uniforms.negLightDir;
-    const nDotL = saturate(Nx * worldLightDir.x + Ny * worldLightDir.y + Nz * worldLightDir.z);
-    const rawNDotV = Nx * worldViewDir.x + Ny * worldViewDir.y + Nz * worldViewDir.z;
+    const nDotL = saturate(
+      normal.x * worldLightDir.x + normal.y * worldLightDir.y + normal.z * worldLightDir.z,
+    );
+    const rawNDotV =
+      normal.x * worldViewDir.x + normal.y * worldViewDir.y + normal.z * worldViewDir.z;
     const nDotV = saturate(rawNDotV);
     const halfDir = worldLightDir.add(worldViewDir);
 
@@ -145,7 +141,7 @@ export class IblShader extends BaseShader {
       }
 
       halfDir.normalize();
-      const nDotH = saturate(Nx * halfDir.x + Ny * halfDir.y + Nz * halfDir.z);
+      const nDotH = saturate(normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z);
       const vDotH = saturate(worldViewDir.dot(halfDir));
       const fresnelBase = 1 - vDotH;
       const fresnelBaseSq = fresnelBase * fresnelBase;
@@ -177,10 +173,10 @@ export class IblShader extends BaseShader {
     // the precomputed environment maps.
     const envYaw = this.uniforms.envYaw;
     const ambientDiffuseFactor = 1 - metallic;
-    const diffuseDirX = Nx * envYaw.cos - Nz * envYaw.sin;
-    const diffuseDirZ = Nx * envYaw.sin + Nz * envYaw.cos;
+    const diffuseDirX = normal.x * envYaw.cos - normal.z * envYaw.sin;
+    const diffuseDirZ = normal.x * envYaw.sin + normal.z * envYaw.cos;
     const diffuseU = wrapUnit(Math.atan2(diffuseDirX, diffuseDirZ) * INV_TAU + 0.5);
-    const diffuseV = Math.acos(Math.max(-1, Math.min(1, Ny))) * INV_PI;
+    const diffuseV = Math.acos(Math.max(-1, Math.min(1, normal.y))) * INV_PI;
     const diffuseEnv = sampleLatLongMap(
       ibl.diffuseIrradianceMap,
       ibl.diffuseIrradianceMapWidth,
@@ -190,9 +186,9 @@ export class IblShader extends BaseShader {
     );
 
     const reflectionScale = 2 * rawNDotV;
-    const reflectionX = Nx * reflectionScale - worldViewDir.x;
-    const reflectionY = Ny * reflectionScale - worldViewDir.y;
-    const reflectionZ = Nz * reflectionScale - worldViewDir.z;
+    const reflectionX = normal.x * reflectionScale - worldViewDir.x;
+    const reflectionY = normal.y * reflectionScale - worldViewDir.y;
+    const reflectionZ = normal.z * reflectionScale - worldViewDir.z;
     const rotatedReflectionX = reflectionX * envYaw.cos - reflectionZ * envYaw.sin;
     const rotatedReflectionZ = reflectionX * envYaw.sin + reflectionZ * envYaw.cos;
     const reflectionU = wrapUnit(
