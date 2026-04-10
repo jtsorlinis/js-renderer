@@ -23,7 +23,7 @@ export class SmoothShader extends BaseShader {
   uniforms!: Uniforms;
 
   // Per-vertex values that will be interpolated in fragment().
-  vNormal = this.varying<Vector3>();
+  vWorldNormal = this.varying<Vector3>();
   vWorldPos = this.varying<Vector3>();
 
   vertex = (): Vector4 => {
@@ -31,12 +31,12 @@ export class SmoothShader extends BaseShader {
     const model = this.uniforms.model;
     const i = this.vertexId;
     const worldPos = this.uniforms.modelMat.transformPoint(model.vertices[i]);
-    const normal = this.uniforms.normalMat
+    const worldNormal = this.uniforms.normalMat
       .transformDirection(model.normals[i])
       .normalize();
 
     // Emit varyings.
-    this.v2f(this.vNormal, normal);
+    this.v2f(this.vWorldNormal, worldNormal);
     this.v2f(this.vWorldPos, worldPos);
 
     // Return clip-space position.
@@ -45,7 +45,7 @@ export class SmoothShader extends BaseShader {
 
   fragment = () => {
     // Interpolated normal/position at this pixel.
-    const normal = this.interpolateVec3(this.vNormal).normalize();
+    const worldNormal = this.interpolateVec3(this.vWorldNormal).normalize();
     const worldPos = this.interpolateVec3(this.vWorldPos);
 
     // Blinn-Phong lighting on a flat white material.
@@ -53,9 +53,9 @@ export class SmoothShader extends BaseShader {
       ? this.uniforms.worldViewDir
       : this.uniforms.camPos.subtract(worldPos).normalize();
     const halfwayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
-    let spec = Math.pow(Math.max(normal.dot(halfwayDir), 0), shininess);
+    let spec = Math.pow(Math.max(worldNormal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;
-    const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
+    const diffuse = Math.max(-worldNormal.dot(this.uniforms.lightDir), 0);
     const lighting = this.uniforms.lightCol.scale(diffuse + spec + ambient);
     return baseColor.multiply(lighting);
   };

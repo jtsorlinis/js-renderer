@@ -30,8 +30,8 @@ export class NormalMappedShader extends BaseShader {
   // Per-vertex data passed from vertex -> fragment.
   vUV = this.varying<Vector2>();
   vModelPos = this.varying<Vector3>();
-  vNormal = this.varying<Vector3>();
-  vTangent = this.varying<Vector4>();
+  vModelNormal = this.varying<Vector3>();
+  vModelTangent = this.varying<Vector4>();
   vLightSpacePos = this.varying<Vector3>();
 
   vertex = (): Vector4 => {
@@ -42,14 +42,13 @@ export class NormalMappedShader extends BaseShader {
 
     // Emit varyings for interpolation across the triangle.
     this.v2f(this.vUV, model.uvs[i]);
-    this.v2f(this.vNormal, model.normals[i]);
-    this.v2f(this.vTangent, model.tangents[i]);
+    this.v2f(this.vModelNormal, model.normals[i]);
+    this.v2f(this.vModelTangent, model.tangents[i]);
     this.v2f(this.vModelPos, modelPos);
 
     // Shadow mapping if enabled
     if (this.uniforms.receiveShadows) {
-      const lightSpacePos =
-        this.uniforms.lightSpaceMat.transformPoint(modelPos);
+      const lightSpacePos = this.uniforms.lightSpaceMat.transformPoint(modelPos);
       lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
       lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
       this.v2f(this.vLightSpacePos, lightSpacePos);
@@ -63,31 +62,31 @@ export class NormalMappedShader extends BaseShader {
     // Read interpolated values at this pixel.
     const uv = this.interpolateVec2(this.vUV);
     const modelPos = this.interpolateVec3(this.vModelPos);
-    const mNormal = this.interpolateVec3(this.vNormal).normalize();
-    const mTangent = this.interpolateVec4(this.vTangent);
-    const handedness = mTangent.w < 0 ? -1 : 1;
+    const modelNormal = this.interpolateVec3(this.vModelNormal).normalize();
+    const modelTangent = this.interpolateVec4(this.vModelTangent);
+    const handedness = modelTangent.w < 0 ? -1 : 1;
 
     // Sample material inputs.
     const color = this.sample(this.uniforms.texture, uv);
-    const normalTS = this.sample(this.uniforms.normalTexture, uv);
+    const normalTexel = this.sample(this.uniforms.normalTexture, uv);
 
     // Rebuild TBN in scalar form for performance.
-    const tDotN = mTangent.dot3(mNormal);
-    const Tx = mTangent.x - mNormal.x * tDotN;
-    const Ty = mTangent.y - mNormal.y * tDotN;
-    const Tz = mTangent.z - mNormal.z * tDotN;
+    const tDotN = modelTangent.dot3(modelNormal);
+    const Tx = modelTangent.x - modelNormal.x * tDotN;
+    const Ty = modelTangent.y - modelNormal.y * tDotN;
+    const Tz = modelTangent.z - modelNormal.z * tDotN;
     const TLengthSq = Tx * Tx + Ty * Ty + Tz * Tz;
     const TScale = TLengthSq > 0.000001 ? 1 / Math.sqrt(TLengthSq) : 0;
     const T = new Vector3(Tx * TScale, Ty * TScale, Tz * TScale);
 
-    const Bx = (mNormal.y * T.z - mNormal.z * T.y) * handedness;
-    const By = (mNormal.z * T.x - mNormal.x * T.z) * handedness;
-    const Bz = (mNormal.x * T.y - mNormal.y * T.x) * handedness;
+    const Bx = (modelNormal.y * T.z - modelNormal.z * T.y) * handedness;
+    const By = (modelNormal.z * T.x - modelNormal.x * T.z) * handedness;
+    const Bz = (modelNormal.x * T.y - modelNormal.y * T.x) * handedness;
     const B = new Vector3(Bx, By, Bz);
 
-    const Nx = T.x * normalTS.x + B.x * normalTS.y + mNormal.x * normalTS.z;
-    const Ny = T.y * normalTS.x + B.y * normalTS.y + mNormal.y * normalTS.z;
-    const Nz = T.z * normalTS.x + B.z * normalTS.y + mNormal.z * normalTS.z;
+    const Nx = T.x * normalTexel.x + B.x * normalTexel.y + modelNormal.x * normalTexel.z;
+    const Ny = T.y * normalTexel.x + B.y * normalTexel.y + modelNormal.y * normalTexel.z;
+    const Nz = T.z * normalTexel.x + B.z * normalTexel.y + modelNormal.z * normalTexel.z;
     const NLengthSq = Nx * Nx + Ny * Ny + Nz * Nz;
     const NScale = NLengthSq > 1e-8 ? 1 / Math.sqrt(NLengthSq) : 0;
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
@@ -97,7 +96,7 @@ export class NormalMappedShader extends BaseShader {
     if (this.uniforms.receiveShadows) {
       const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
       const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-      const nDotL = Math.max(-mNormal.dot(this.uniforms.modelLightDir), 0.0);
+      const nDotL = Math.max(-modelNormal.dot(this.uniforms.modelLightDir), 0.0);
       const bias = minBias + (maxBias - minBias) * (1 - nDotL);
       shadow = lightSpacePos.z - bias > depth ? 0 : 1;
     }
@@ -111,9 +110,7 @@ export class NormalMappedShader extends BaseShader {
     let spec = Math.pow(Math.max(normal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;
     const diffuse = Math.max(-normal.dot(lightDir), 0);
-    const lighting = this.uniforms.lightCol.scale(
-      (diffuse + spec) * shadow + ambient,
-    );
+    const lighting = this.uniforms.lightCol.scale((diffuse + spec) * shadow + ambient);
 
     // Final lit color.
     return color.multiplyInPlace(lighting);

@@ -9,6 +9,9 @@
     "preview": "vite preview",
     "deploy": "tsc && vite build && gh-pages -d dist"
   },
+  "prettier": {
+    "printWidth": 100
+  },
   "devDependencies": {
     "typescript": "^6.0.2",
     "vite": "^8.0.3",

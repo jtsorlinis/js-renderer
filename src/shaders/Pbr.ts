@@ -40,24 +40,21 @@ export class PbrShader extends BaseShader {
   vUV = this.varying<Vector2>();
   vLightSpacePos = this.varying<Vector3>();
   vModelPos = this.varying<Vector3>();
-  vNormal = this.varying<Vector3>();
-  vTangent = this.varying<Vector4>();
+  vModelNormal = this.varying<Vector3>();
+  vModelTangent = this.varying<Vector4>();
 
   vertex = (): Vector4 => {
     const model = this.uniforms.model;
     const i = this.vertexId;
-    const normal = model.normals[i];
-    const tangent = model.tangents[i];
     const modelPos = model.vertices[i];
 
     this.v2f(this.vUV, model.uvs[i]);
     this.v2f(this.vModelPos, modelPos);
-    this.v2f(this.vNormal, normal);
-    this.v2f(this.vTangent, tangent);
+    this.v2f(this.vModelNormal, model.normals[i]);
+    this.v2f(this.vModelTangent, model.tangents[i]);
 
     if (this.uniforms.receiveShadows) {
-      const lightSpacePos =
-        this.uniforms.lightSpaceMat.transformPoint(modelPos);
+      const lightSpacePos = this.uniforms.lightSpaceMat.transformPoint(modelPos);
       lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
       lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
       this.v2f(this.vLightSpacePos, lightSpacePos);
@@ -69,34 +66,35 @@ export class PbrShader extends BaseShader {
   fragment = () => {
     const uv = this.interpolateVec2(this.vUV);
     const modelPos = this.interpolateVec3(this.vModelPos);
-    const mNormal = this.interpolateVec3(this.vNormal).normalize();
-    const mTangent = this.interpolateVec4(this.vTangent);
-    const handedness = mTangent.w < 0 ? -1 : 1;
+    const modelNormal = this.interpolateVec3(this.vModelNormal).normalize();
+    const modelTangent = this.interpolateVec4(this.vModelTangent);
+    const handedness = modelTangent.w < 0 ? -1 : 1;
+
     let shadow = 1;
     if (this.uniforms.receiveShadows) {
       const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
       const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-      const faceNDotL = saturate(-mNormal.dot(this.uniforms.modelLightDir));
+      const faceNDotL = saturate(-modelNormal.dot(this.uniforms.modelLightDir));
       const bias = minBias + (maxBias - minBias) * (1 - faceNDotL);
       shadow = lightSpacePos.z - bias > depth ? 0 : 1;
     }
 
-    const tDotN = mTangent.dot3(mNormal);
-    const Tx = mTangent.x - mNormal.x * tDotN;
-    const Ty = mTangent.y - mNormal.y * tDotN;
-    const Tz = mTangent.z - mNormal.z * tDotN;
+    const tDotN = modelTangent.dot3(modelNormal);
+    const Tx = modelTangent.x - modelNormal.x * tDotN;
+    const Ty = modelTangent.y - modelNormal.y * tDotN;
+    const Tz = modelTangent.z - modelNormal.z * tDotN;
     const TLengthSq = Tx * Tx + Ty * Ty + Tz * Tz;
     const TScale = TLengthSq > EPSILON ? 1 / Math.sqrt(TLengthSq) : 0;
     const T = new Vector3(Tx * TScale, Ty * TScale, Tz * TScale);
 
-    const Bx = (mNormal.y * T.z - mNormal.z * T.y) * handedness;
-    const By = (mNormal.z * T.x - mNormal.x * T.z) * handedness;
-    const Bz = (mNormal.x * T.y - mNormal.y * T.x) * handedness;
+    const Bx = (modelNormal.y * T.z - modelNormal.z * T.y) * handedness;
+    const By = (modelNormal.z * T.x - modelNormal.x * T.z) * handedness;
+    const Bz = (modelNormal.x * T.y - modelNormal.y * T.x) * handedness;
 
-    const normalTS = this.sample(this.uniforms.normalTexture, uv);
-    const Nx = T.x * normalTS.x + Bx * normalTS.y + mNormal.x * normalTS.z;
-    const Ny = T.y * normalTS.x + By * normalTS.y + mNormal.y * normalTS.z;
-    const Nz = T.z * normalTS.x + Bz * normalTS.y + mNormal.z * normalTS.z;
+    const normalTexel = this.sample(this.uniforms.normalTexture, uv);
+    const Nx = T.x * normalTexel.x + Bx * normalTexel.y + modelNormal.x * normalTexel.z;
+    const Ny = T.y * normalTexel.x + By * normalTexel.y + modelNormal.y * normalTexel.z;
+    const Nz = T.z * normalTexel.x + Bz * normalTexel.y + modelNormal.z * normalTexel.z;
     const NLengthSq = Nx * Nx + Ny * Ny + Nz * Nz;
     const NScale = NLengthSq > EPSILON ? 1 / Math.sqrt(NLengthSq) : 0;
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
@@ -104,66 +102,55 @@ export class PbrShader extends BaseShader {
     const baseColor = this.sample(this.uniforms.texture, uv).multiplyInPlace(
       this.uniforms.pbrMaterial.baseColorFactor,
     );
-    const metallicRoughness = this.sample(
-      this.uniforms.pbrMaterial.metallicRoughnessTexture,
-      uv,
-    );
+    const metallicRoughness = this.sample(this.uniforms.pbrMaterial.metallicRoughnessTexture, uv);
     const roughness = Math.max(
       0.045,
       saturate(metallicRoughness.y * this.uniforms.pbrMaterial.roughnessFactor),
     );
-    const metallic = saturate(
-      metallicRoughness.z * this.uniforms.pbrMaterial.metallicFactor,
-    );
+    const metallic = saturate(metallicRoughness.z * this.uniforms.pbrMaterial.metallicFactor);
     const f0x = DIELECTRIC_F0.x + (baseColor.x - DIELECTRIC_F0.x) * metallic;
     const f0y = DIELECTRIC_F0.y + (baseColor.y - DIELECTRIC_F0.y) * metallic;
     const f0z = DIELECTRIC_F0.z + (baseColor.z - DIELECTRIC_F0.z) * metallic;
 
-    const lightDir = this.uniforms.modelLightDir;
-    const viewDir = this.uniforms.orthographic
+    const modelLightDir = this.uniforms.modelLightDir;
+    const modelViewDir = this.uniforms.orthographic
       ? this.uniforms.modelViewDir
       : this.uniforms.modelCamPos.subtract(modelPos).normalize();
     const nDotL = saturate(
-      normal.x * -lightDir.x + normal.y * -lightDir.y + normal.z * -lightDir.z,
+      normal.x * -modelLightDir.x + normal.y * -modelLightDir.y + normal.z * -modelLightDir.z,
     );
     const nDotV = saturate(
-      normal.x * viewDir.x + normal.y * viewDir.y + normal.z * viewDir.z,
+      normal.x * modelViewDir.x + normal.y * modelViewDir.y + normal.z * modelViewDir.z,
     );
-    const halfDir = viewDir.subtract(lightDir);
+    const halfDir = modelViewDir.subtract(modelLightDir);
 
     let directR = 0;
     let directG = 0;
     let directB = 0;
     if (nDotL > 0 && nDotV > 0 && halfDir.lengthSq() > EPSILON) {
       halfDir.normalize();
-      const nDotH = saturate(
-        normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z,
-      );
-      const vDotH = saturate(viewDir.dot(halfDir));
+      const nDotH = saturate(normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z);
+      const vDotH = saturate(modelViewDir.dot(halfDir));
       const fresnelFactor = Math.pow(1 - saturate(vDotH), 5);
       const fresnelX = f0x + (1 - f0x) * fresnelFactor;
       const fresnelY = f0y + (1 - f0y) * fresnelFactor;
       const fresnelZ = f0z + (1 - f0z) * fresnelFactor;
       const distribution = distributionGGX(nDotH, roughness);
       const geometry = geometrySmith(nDotV, nDotL, roughness);
-      const specularFactor =
-        (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
+      const specularFactor = (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
       const diffuseFactor = (1 - metallic) * INV_PI;
       const lightScale = nDotL * shadow * lightIntensity;
 
       directR =
-        ((1 - fresnelX) * diffuseFactor * baseColor.x +
-          fresnelX * specularFactor) *
+        ((1 - fresnelX) * diffuseFactor * baseColor.x + fresnelX * specularFactor) *
         this.uniforms.lightCol.x *
         lightScale;
       directG =
-        ((1 - fresnelY) * diffuseFactor * baseColor.y +
-          fresnelY * specularFactor) *
+        ((1 - fresnelY) * diffuseFactor * baseColor.y + fresnelY * specularFactor) *
         this.uniforms.lightCol.y *
         lightScale;
       directB =
-        ((1 - fresnelZ) * diffuseFactor * baseColor.z +
-          fresnelZ * specularFactor) *
+        ((1 - fresnelZ) * diffuseFactor * baseColor.z + fresnelZ * specularFactor) *
         this.uniforms.lightCol.z *
         lightScale;
     }
@@ -173,10 +160,6 @@ export class PbrShader extends BaseShader {
     const ambientG = (baseColor.y * (1 - metallic) + f0y) * ambientIntensity;
     const ambientB = (baseColor.z * (1 - metallic) + f0z) * ambientIntensity;
 
-    return new Vector3(
-      ambientR + directR,
-      ambientG + directG,
-      ambientB + directB,
-    );
+    return new Vector3(ambientR + directR, ambientG + directG, ambientB + directB);
   };
 }

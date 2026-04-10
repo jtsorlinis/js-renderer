@@ -29,7 +29,7 @@ export class GouraudShader extends BaseShader {
     const i = this.vertexId;
 
     const worldPos = this.uniforms.modelMat.transformPoint(model.vertices[i]);
-    const normal = this.uniforms.normalMat
+    const worldNormal = this.uniforms.normalMat
       .transformDirection(model.normals[i])
       .normalize();
 
@@ -37,9 +37,9 @@ export class GouraudShader extends BaseShader {
       ? this.uniforms.worldViewDir
       : this.uniforms.camPos.subtract(worldPos).normalize();
     const halfwayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
-    let spec = Math.pow(Math.max(normal.dot(halfwayDir), 0), shininess);
+    let spec = Math.pow(Math.max(worldNormal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;
-    const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
+    const diffuse = Math.max(-worldNormal.dot(this.uniforms.lightDir), 0);
     const lighting = this.uniforms.lightCol.scale(diffuse + spec + ambient);
     const vertColor = baseColor.multiply(lighting);
     this.v2f(this.vertexColor, vertColor);
