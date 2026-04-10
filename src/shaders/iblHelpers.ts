@@ -39,13 +39,12 @@ export const wrapUnit = (value: number) => {
   return value - Math.floor(value);
 };
 
-export const sampleLatLongMapInto = (
+export const sampleLatLongMap = (
   data: Float32Array,
   width: number,
   height: number,
   u: number,
   v: number,
-  out: Vector3,
   layerIndex = 0,
   layerStride = width * height * 3,
 ) => {
@@ -71,10 +70,11 @@ export const sampleLatLongMapInto = (
   const g1 = data[base01 + 1] + (data[base11 + 1] - data[base01 + 1]) * xBlend;
   const b0 = data[base00 + 2] + (data[base10 + 2] - data[base00 + 2]) * xBlend;
   const b1 = data[base01 + 2] + (data[base11 + 2] - data[base01 + 2]) * xBlend;
-  out.x = r0 + (r1 - r0) * yBlend;
-  out.y = g0 + (g1 - g0) * yBlend;
-  out.z = b0 + (b1 - b0) * yBlend;
-  return out;
+  return new Vector3(
+    r0 + (r1 - r0) * yBlend,
+    g0 + (g1 - g0) * yBlend,
+    b0 + (b1 - b0) * yBlend,
+  );
 };
 
 const directionToLatLongUv = (x: number, y: number, z: number) => {

@@ -12,10 +12,10 @@ import {
   saturate,
 } from "./pbrHelpers";
 import {
-  sampleLatLongMapInto,
   type IblData,
   wrapUnit,
   INV_TAU,
+  sampleLatLongMap,
 } from "./iblHelpers";
 
 export interface Uniforms {
@@ -56,9 +56,6 @@ export class IblShader extends BaseShader {
   vWorldNormal = this.varying<Vector3>();
   vWorldTangent = this.varying<Vector4>();
   vLightSpacePos = this.varying<Vector3>();
-
-  private diffuseEnv = new Vector3();
-  private specularEnv = new Vector3();
 
   vertex = (): Vector4 => {
     const model = this.uniforms.model;
@@ -226,13 +223,12 @@ export class IblShader extends BaseShader {
       Math.atan2(diffuseDirX, diffuseDirZ) * INV_TAU + 0.5,
     );
     const diffuseV = Math.acos(Math.max(-1, Math.min(1, normalY))) * INV_PI;
-    sampleLatLongMapInto(
+    const diffuseEnv = sampleLatLongMap(
       ibl.diffuseIrradianceMap,
       ibl.diffuseIrradianceMapWidth,
       ibl.diffuseIrradianceMapHeight,
       diffuseU,
       diffuseV,
-      this.diffuseEnv,
     );
 
     const reflectionScale = 2 * rawNDotV;
@@ -254,13 +250,12 @@ export class IblShader extends BaseShader {
       ibl.specularPrefilterRoughnessMaxIndex,
       Math.round(roughness * ibl.specularPrefilterRoughnessMaxIndex),
     );
-    sampleLatLongMapInto(
+    const specularEnv = sampleLatLongMap(
       ibl.specularPrefilterMap,
       ibl.specularPrefilterMapWidth,
       ibl.specularPrefilterMapHeight,
       reflectionU,
       reflectionV,
-      this.specularEnv,
       specularRoughnessIndex,
       ibl.specularPrefilterLayerStride,
     );
@@ -339,16 +334,16 @@ export class IblShader extends BaseShader {
     const diffuseWeightZ = Math.max(0, 1 - specularWeightZ);
 
     const ambientR =
-      (diffuseWeightX * baseColor.x * this.diffuseEnv.x * ambientDiffuseFactor +
-        specularWeightX * this.specularEnv.x) *
+      (diffuseWeightX * baseColor.x * diffuseEnv.x * ambientDiffuseFactor +
+        specularWeightX * specularEnv.x) *
       environmentIntensity;
     const ambientG =
-      (diffuseWeightY * baseColor.y * this.diffuseEnv.y * ambientDiffuseFactor +
-        specularWeightY * this.specularEnv.y) *
+      (diffuseWeightY * baseColor.y * diffuseEnv.y * ambientDiffuseFactor +
+        specularWeightY * specularEnv.y) *
       environmentIntensity;
     const ambientB =
-      (diffuseWeightZ * baseColor.z * this.diffuseEnv.z * ambientDiffuseFactor +
-        specularWeightZ * this.specularEnv.z) *
+      (diffuseWeightZ * baseColor.z * diffuseEnv.z * ambientDiffuseFactor +
+        specularWeightZ * specularEnv.z) *
       environmentIntensity;
 
     return new Vector3(
