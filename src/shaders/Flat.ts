@@ -5,7 +5,7 @@ export interface Uniforms {
   model: Verts;
   mvp: Matrix4;
   normalMat: Matrix4;
-  lightDir: Vector3;
+  worldLightDir: Vector3;
   lightCol: Vector3;
 }
 
@@ -27,7 +27,7 @@ export class FlatShader extends BaseShader {
       const worldNormal = this.uniforms.normalMat
         .transformDirection(model.faceNormals[this.vertexId])
         .normalize();
-      const diffuse = Math.max(-worldNormal.dot(this.uniforms.lightDir), 0);
+      const diffuse = Math.max(-worldNormal.dot(this.uniforms.worldLightDir), 0);
       const lighting = this.uniforms.lightCol.scale(diffuse + ambient);
       this.lighting = baseColor.multiply(lighting);
     }

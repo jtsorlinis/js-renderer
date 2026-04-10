@@ -19,9 +19,9 @@ export interface Uniforms {
   modelMat: Matrix4;
   normalMat: Matrix4;
   lightCol: Vector3;
-  negLightDir: Vector3;
+  worldLightDir: Vector3;
   envYaw: { sin: number; cos: number };
-  camPos: Vector3;
+  worldCamPos: Vector3;
   orthographic: boolean;
   worldViewDir: Vector3;
   texture: Texture;
@@ -60,7 +60,7 @@ export class IblShader extends BaseShader {
     const worldTangent = this.uniforms.modelMat.transformDirection4(model.tangents[i]).normalize3();
     const worldViewDir = this.uniforms.orthographic
       ? this.uniforms.worldViewDir
-      : this.uniforms.camPos.subtract(worldPos).normalize();
+      : this.uniforms.worldCamPos.subtract(worldPos).normalize();
 
     this.v2f(this.vUV, model.uvs[i]);
     this.v2f(this.vWorldViewDir, worldViewDir);
@@ -102,8 +102,8 @@ export class IblShader extends BaseShader {
     const Ny = T.y * normalTexel.x + By * normalTexel.y + worldNormal.y * normalTexel.z;
     const Nz = T.z * normalTexel.x + Bz * normalTexel.y + worldNormal.z * normalTexel.z;
     const NLengthSq = Nx * Nx + Ny * Ny + Nz * Nz;
-    const Nscale = NLengthSq > EPSILON ? 1 / Math.sqrt(NLengthSq) : 0;
-    const normal = new Vector3(Nx * Nscale, Ny * Nscale, Nz * Nscale);
+    const NScale = NLengthSq > EPSILON ? 1 / Math.sqrt(NLengthSq) : 0;
+    const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
 
     const baseColor = this.sample(this.uniforms.texture, uv).multiplyInPlace(
       this.uniforms.pbrMaterial.baseColorFactor,
@@ -118,14 +118,14 @@ export class IblShader extends BaseShader {
     const f0y = DIELECTRIC_F0.y + (baseColor.y - DIELECTRIC_F0.y) * metallic;
     const f0z = DIELECTRIC_F0.z + (baseColor.z - DIELECTRIC_F0.z) * metallic;
 
-    const worldLightDir = this.uniforms.negLightDir;
+    const worldLightDir = this.uniforms.worldLightDir;
     const nDotL = saturate(
-      normal.x * worldLightDir.x + normal.y * worldLightDir.y + normal.z * worldLightDir.z,
+      -(normal.x * worldLightDir.x + normal.y * worldLightDir.y + normal.z * worldLightDir.z),
     );
     const rawNDotV =
       normal.x * worldViewDir.x + normal.y * worldViewDir.y + normal.z * worldViewDir.z;
     const nDotV = saturate(rawNDotV);
-    const halfDir = worldLightDir.add(worldViewDir);
+    const halfDir = worldViewDir.subtract(worldLightDir);
 
     let directR = 0;
     let directG = 0;
@@ -135,7 +135,7 @@ export class IblShader extends BaseShader {
       if (this.uniforms.receiveShadows) {
         const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
         const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-        const faceNDotL = saturate(worldNormal.dot(this.uniforms.negLightDir));
+        const faceNDotL = saturate(-worldNormal.dot(this.uniforms.worldLightDir));
         const bias = minBias + (maxBias - minBias) * (1 - faceNDotL);
         shadow = lightSpacePos.z - bias > depth ? 0 : 1;
       }

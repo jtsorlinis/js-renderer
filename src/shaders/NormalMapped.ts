@@ -102,14 +102,14 @@ export class NormalMappedShader extends BaseShader {
     }
 
     // Blinn-Phong shading
-    const lightDir = this.uniforms.modelLightDir;
+    const modelLightDir = this.uniforms.modelLightDir;
     const viewDir = this.uniforms.orthographic
       ? this.uniforms.modelViewDir
       : this.uniforms.modelCamPos.subtract(modelPos).normalize();
-    const halfwayDir = viewDir.subtract(lightDir).normalize();
+    const halfwayDir = viewDir.subtract(modelLightDir).normalize();
     let spec = Math.pow(Math.max(normal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;
-    const diffuse = Math.max(-normal.dot(lightDir), 0);
+    const diffuse = Math.max(-normal.dot(modelLightDir), 0);
     const lighting = this.uniforms.lightCol.scale((diffuse + spec) * shadow + ambient);
 
     // Final lit color.
