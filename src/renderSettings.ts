@@ -5,7 +5,8 @@ export type MaterialMode =
   | "textured"
   | "smooth"
   | "flat"
-  | "unlit";
+  | "unlit"
+  | "depth";
 
 export type RenderMode = "filled" | "depthWireframe" | "wireframe";
 export type ProjectionMode = "orthographic" | "perspective";
@@ -82,19 +83,19 @@ export const resolveShadingSelection = (
       };
     case "depthWireframe":
       return {
-        material: "unlit",
+        material: "depth",
         renderMode: "depthWireframe",
         normalizedValue: value,
       };
     case "perspective":
       return {
-        material: "unlit",
+        material: "depth",
         renderMode: "wireframe",
         normalizedValue: value,
       };
     default:
       return {
-        material: "unlit",
+        material: "depth",
         renderMode: "wireframe",
         projection: "orthographic",
         normalizedValue: "wireframe",
