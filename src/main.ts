@@ -1,12 +1,6 @@
 import "./style.css";
 import { Matrix4, Vector3, Vector4 } from "./maths";
-import {
-  DepthTexture,
-  Framebuffer,
-  edgeFunction,
-  line,
-  triangle,
-} from "./drawing";
+import { DepthTexture, Framebuffer, edgeFunction, line, triangle } from "./drawing";
 import { getModelRadius } from "./utils/mesh";
 import {
   ensureModelOption,
@@ -30,11 +24,7 @@ import {
   estimateEnvironmentYaw,
   rebuildEnvironmentBackdrop,
 } from "./shaders/iblHelpers";
-import {
-  RenderSelection,
-  resolveShadingSelection,
-  type RenderMode,
-} from "./renderSettings";
+import { RenderSelection, resolveShadingSelection, type RenderMode } from "./renderSettings";
 import { loadHdrTexture } from "./utils/hdrLoader";
 
 const CANVAS_WIDTH = 800;
@@ -51,14 +41,10 @@ const FPS_UPDATE_INTERVAL_MS = 250;
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
-const textureSizeText = document.getElementById(
-  "textureSize",
-) as HTMLSpanElement;
+const textureSizeText = document.getElementById("textureSize") as HTMLSpanElement;
 const highResCb = document.getElementById("highResCb") as HTMLInputElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
-const shadingSlider = document.getElementById(
-  "shadingSlider",
-) as HTMLInputElement;
+const shadingSlider = document.getElementById("shadingSlider") as HTMLInputElement;
 const modelDd = document.getElementById("modelDd") as HTMLSelectElement;
 const loadGlbBtn = document.getElementById("loadGlbBtn") as HTMLButtonElement;
 const glbInput = document.getElementById("glbInput") as HTMLInputElement;
@@ -71,17 +57,14 @@ const getShadingButton = () => {
 };
 
 const setShadingValue = (value: string) => {
-  const button = shadingList.querySelector<HTMLButtonElement>(
-    `[data-shading-value="${value}"]`,
-  );
+  const button = shadingList.querySelector<HTMLButtonElement>(`[data-shading-value="${value}"]`);
   shadingSlider.value = button?.dataset.shadingIndex || "0";
   syncShadingButtons();
 };
 
 const syncShadingButtons = () => {
   const activeButton = getShadingButton();
-  const previousButton =
-    shadingList.querySelector<HTMLButtonElement>(".is-active");
+  const previousButton = shadingList.querySelector<HTMLButtonElement>(".is-active");
   previousButton?.classList.remove("is-active");
   previousButton?.setAttribute("aria-pressed", "false");
   activeButton?.classList.add("is-active");
@@ -146,9 +129,7 @@ setRenderResolution();
 window.addEventListener("resize", fitCanvas);
 setHighResTextureLimits(highResCb.checked);
 
-const hdrEnvironment = await loadHdrTexture(
-  `${import.meta.env.BASE_URL}environments/sunny.hdr`,
-);
+const hdrEnvironment = await loadHdrTexture(`${import.meta.env.BASE_URL}environments/sunny.hdr`);
 
 // Scene and camera
 const lightDir = new Vector3(1, -1, 1).normalize();
@@ -157,9 +138,8 @@ const camPos = new Vector3(0, 0, -2.5);
 let cameraOrthoSize = 1.44;
 
 // Derived scene data
-const negLightDir = lightDir.scale(-1);
 const cameraLookDir = Vector3.Forward;
-const orthoViewDir = cameraLookDir.scale(-1);
+const viewDir = cameraLookDir.scale(-1);
 const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
 rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw);
@@ -329,7 +309,7 @@ const draw = () => {
   const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
   const modelLightDir = invModelMat.transformDirection(lightDir).normalize();
   const modelCamPos = invModelMat.transformPoint(camPos);
-  const modelViewDir = invModelMat.transformDirection(orthoViewDir).normalize();
+  const modelViewDir = invModelMat.transformDirection(viewDir).normalize();
 
   // 4) Build camera transform and final clip transform.
   const isOrtho = renderSettings.projection === "orthographic";
@@ -347,16 +327,14 @@ const draw = () => {
     modelMat,
     mvp,
     normalMat,
-    lightDir,
-    negLightDir,
+    worldLightDir: lightDir,
     envYaw,
-
     modelLightDir,
     lightCol,
-    camPos,
+    worldCamPos: camPos,
     modelCamPos,
     orthographic: isOrtho,
-    worldViewDir: orthoViewDir,
+    worldViewDir: viewDir,
     modelViewDir,
     texture,
     normalTexture,

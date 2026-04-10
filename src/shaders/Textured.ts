@@ -7,9 +7,9 @@ export interface Uniforms {
   modelMat: Matrix4;
   mvp: Matrix4;
   normalMat: Matrix4;
-  lightDir: Vector3;
+  worldLightDir: Vector3;
   lightCol: Vector3;
-  camPos: Vector3;
+  worldCamPos: Vector3;
   orthographic: boolean;
   worldViewDir: Vector3;
   texture: Texture;
@@ -33,9 +33,7 @@ export class TexturedShader extends BaseShader {
     const model = this.uniforms.model;
     const i = this.vertexId;
     const worldPos = this.uniforms.modelMat.transformPoint(model.vertices[i]);
-    const worldNormal = this.uniforms.normalMat
-      .transformDirection(model.normals[i])
-      .normalize();
+    const worldNormal = this.uniforms.normalMat.transformDirection(model.normals[i]).normalize();
 
     // Emit per-vertex values to be interpolated over the triangle.
     this.v2f(this.vWorldNormal, worldNormal);
@@ -56,13 +54,13 @@ export class TexturedShader extends BaseShader {
     const baseColor = this.sample(this.uniforms.texture, uv);
 
     // Basic Blinn-Phong lighting in world space.
-    const viewDir = this.uniforms.orthographic
+    const worldViewDir = this.uniforms.orthographic
       ? this.uniforms.worldViewDir
-      : this.uniforms.camPos.subtract(worldPos).normalize();
-    const halfwayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
+      : this.uniforms.worldCamPos.subtract(worldPos).normalize();
+    const halfwayDir = worldViewDir.subtract(this.uniforms.worldLightDir).normalize();
     let spec = Math.pow(Math.max(worldNormal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;
-    const diffuse = Math.max(-worldNormal.dot(this.uniforms.lightDir), 0);
+    const diffuse = Math.max(-worldNormal.dot(this.uniforms.worldLightDir), 0);
     const lighting = this.uniforms.lightCol.scale(diffuse + spec + ambient);
 
     return baseColor.multiplyInPlace(lighting);
