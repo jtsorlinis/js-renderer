@@ -28,12 +28,18 @@ import { IblShader } from "./shaders/Ibl";
 import {
   buildEnvironmentIbl,
   estimateEnvironmentYaw,
+  rebuildEnvironmentBackdrop,
 } from "./shaders/iblHelpers";
-import { resolveShadingSelection, type RenderMode } from "./renderSettings";
+import {
+  RenderSelection,
+  resolveShadingSelection,
+  type RenderMode,
+} from "./renderSettings";
 import { loadHdrTexture } from "./utils/hdrLoader";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
+const FOV = 60;
 const SHADOW_MAP_SIZE = 512;
 const ROTATION_SPEED = 0.2;
 const ROTATE_SENSITIVITY = 250;
@@ -115,6 +121,8 @@ let zBuffer = new DepthTexture(CANVAS_WIDTH, CANVAS_HEIGHT);
 let shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
 let shadowImageData = new ImageData(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
 let shadowBuffer = new Framebuffer(shadowImageData);
+let bgImageData = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
+let bgBuffer = new Framebuffer(bgImageData);
 
 const setRenderResolution = (scale = 1) => {
   const width = CANVAS_WIDTH * scale;
@@ -130,6 +138,8 @@ const setRenderResolution = (scale = 1) => {
   shadowMap = new DepthTexture(shadowMapSize, shadowMapSize);
   shadowImageData = new ImageData(shadowMapSize, shadowMapSize);
   shadowBuffer = new Framebuffer(shadowImageData);
+  bgImageData = new ImageData(width, height);
+  bgBuffer = new Framebuffer(bgImageData);
   fitCanvas();
 };
 
@@ -152,9 +162,8 @@ const negLightDir = lightDir.scale(-1);
 const cameraLookDir = Vector3.Forward;
 const orthoViewDir = cameraLookDir.scale(-1);
 const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
-const envYawSin = Math.sin(envYaw);
-const envYawCos = Math.cos(envYaw);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
+rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw);
 
 const diceModel = await ensureModelOption("dice");
 prefetchRemainingModels("dice");
@@ -180,12 +189,7 @@ const shaders = {
   unlit: new UnlitShader(),
 };
 
-type Material = keyof typeof shaders;
-type RenderSettings = {
-  material: Material;
-  renderMode: RenderMode;
-  useShadows: boolean;
-};
+type RenderSettings = Omit<RenderSelection, "normalizedValue">;
 
 const depthShader = new DepthShader();
 const triVerts: Vector4[] = [];
@@ -242,6 +246,7 @@ const loadSelectedGlb = async (file: File, resetTransform = true) => {
 
 highResCb.addEventListener("change", () => {
   setRenderResolution(highResCb.checked ? 2 : 1);
+  rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw);
   if (!setHighResTextureLimits(highResCb.checked)) return;
   if (customGlbFile) {
     loadSelectedGlb(customGlbFile, false);
@@ -263,6 +268,7 @@ const getRenderSettings = (): RenderSettings => {
     material: selection.material,
     renderMode: selection.renderMode,
     useShadows: selection.useShadows,
+    showEnvironmentBackground: selection.showEnvironmentBackground,
   };
 };
 
@@ -301,12 +307,16 @@ const update = (dt: number) => {
 };
 
 const draw = () => {
+  const renderSettings = getRenderSettings();
+
   // 1) Clear all render targets for a new frame.
-  frameBuffer.clear();
+  if (renderSettings.showEnvironmentBackground) {
+    frameBuffer.copyFrom(bgBuffer);
+  } else {
+    frameBuffer.clear();
+  }
   zBuffer.clear(1000);
   shadowMap.clear(1000);
-
-  const renderSettings = getRenderSettings();
 
   // 2) Build model-space transforms.
   const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
@@ -326,7 +336,7 @@ const draw = () => {
   const viewMat = Matrix4.LookTo(camPos, cameraLookDir, Vector3.Up);
   const projMat = isOrthographic
     ? Matrix4.Ortho(cameraOrthoSize, aspectRatio)
-    : Matrix4.Perspective(60, aspectRatio);
+    : Matrix4.Perspective(FOV, aspectRatio);
   const mvp = projMat.multiply(viewMat).multiply(modelMat);
 
   // 5) Select active material shader and update uniforms.
@@ -339,8 +349,8 @@ const draw = () => {
     normalMat,
     lightDir,
     negLightDir,
-    envYawSin,
-    envYawCos,
+    envYaw,
+
     modelLightDir,
     lightCol,
     camPos,

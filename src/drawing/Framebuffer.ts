@@ -26,6 +26,10 @@ export class Framebuffer {
     this.data.fill(0);
   };
 
+  copyFrom = (src: Framebuffer) => {
+    this.data.set(src.data);
+  };
+
   viewportTransform = (v: Vector4) => {
     const x = (v.x + 1) * (this.width * 0.5);
     const y = (-v.y + 1) * (this.height * 0.5);

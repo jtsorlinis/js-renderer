@@ -12,7 +12,8 @@ export type RenderMode = "filled" | "depthWireframe" | "wireframe";
 export type RenderSelection = {
   material: MaterialMode;
   renderMode: RenderMode;
-  useShadows: boolean;
+  useShadows?: boolean;
+  showEnvironmentBackground?: boolean;
   normalizedValue: string;
 };
 
@@ -38,6 +39,7 @@ export const resolveShadingSelection = (
         material: "ibl",
         renderMode: "filled",
         useShadows: true,
+        showEnvironmentBackground: true,
         normalizedValue: value,
       };
     case "pbr":
@@ -58,49 +60,42 @@ export const resolveShadingSelection = (
       return {
         material: "normalMapped",
         renderMode: "filled",
-        useShadows: false,
         normalizedValue: value,
       };
     case "textured":
       return {
         material: "textured",
         renderMode: "filled",
-        useShadows: false,
         normalizedValue: value,
       };
     case "smooth":
       return {
         material: "smooth",
         renderMode: "filled",
-        useShadows: false,
         normalizedValue: value,
       };
     case "flat":
       return {
         material: "flat",
         renderMode: "filled",
-        useShadows: false,
         normalizedValue: value,
       };
     case "unlit":
       return {
         material: "unlit",
         renderMode: "filled",
-        useShadows: false,
         normalizedValue: value,
       };
     case "depthWireframe":
       return {
         material: "unlit",
         renderMode: "depthWireframe",
-        useShadows: false,
         normalizedValue: value,
       };
     default:
       return {
         material: "unlit",
         renderMode: "wireframe",
-        useShadows: false,
         normalizedValue: "wireframe",
       };
   }

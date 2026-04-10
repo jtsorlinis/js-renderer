@@ -1,4 +1,4 @@
-import { Texture } from "../drawing";
+import { Framebuffer, Texture } from "../drawing";
 import { Vector3 } from "../maths";
 import { EPSILON, INV_PI } from "./pbrHelpers";
 
@@ -75,6 +75,49 @@ export const sampleLatLongMap = (
     g0 + (g1 - g0) * yBlend,
     b0 + (b1 - b0) * yBlend,
   );
+};
+
+export const rebuildEnvironmentBackdrop = (
+  targetBuffer: Framebuffer,
+  iblData: IblData,
+  aspectRatio: number,
+  cameraFov: number,
+  envYaw: { sin: number; cos: number },
+  blurAmount = 0.5,
+) => {
+  const tanHalfFov = Math.tan((cameraFov * Math.PI) / 360);
+  const roughnessLayer = Math.round(
+    blurAmount * iblData.specularPrefilterRoughnessMaxIndex,
+  );
+
+  for (let y = 0; y < targetBuffer.height; y++) {
+    const ndcY = 1 - ((y + 0.5) / targetBuffer.height) * 2;
+    const viewY = ndcY * tanHalfFov;
+
+    for (let x = 0; x < targetBuffer.width; x++) {
+      const ndcX = ((x + 0.5) / targetBuffer.width) * 2 - 1;
+      const viewX = ndcX * aspectRatio * tanHalfFov;
+      const invViewLength = 1 / Math.hypot(viewX, viewY, 1);
+      const dirX = viewX * invViewLength;
+      const dirY = viewY * invViewLength;
+      const dirZ = invViewLength;
+      const rotatedX = dirX * envYaw.cos - dirZ * envYaw.sin;
+      const rotatedZ = dirX * envYaw.sin + dirZ * envYaw.cos;
+      const u = (Math.atan2(rotatedX, rotatedZ) / TAU + 1.5) % 1;
+      const v = Math.acos(clampSignedUnit(dirY)) / Math.PI;
+
+      const backgroundEnvSample = sampleLatLongMap(
+        iblData.specularPrefilterMap,
+        iblData.specularPrefilterMapWidth,
+        iblData.specularPrefilterMapHeight,
+        u,
+        v,
+        roughnessLayer,
+        iblData.specularPrefilterLayerStride,
+      );
+      targetBuffer.setPixel(x, y, backgroundEnvSample);
+    }
+  }
 };
 
 const directionToLatLongUv = (x: number, y: number, z: number) => {
@@ -255,12 +298,21 @@ export const estimateEnvironmentYaw = (texture: Texture, lightDir: Vector3) => {
     lightDirectionToSource.z * lightDirectionToSource.z;
 
   if (sunLengthSq <= Number.EPSILON || lightLengthSq <= Number.EPSILON) {
-    return 0;
+    return {
+      angle: 0,
+      sin: 0,
+      cos: 1,
+    };
   }
 
-  return wrapAngle(
+  const angle = wrapAngle(
     directionToYaw(lightDirectionToSource) - directionToYaw(sunDirection),
   );
+  return {
+    angle,
+    sin: Math.sin(angle),
+    cos: Math.cos(angle),
+  };
 };
 
 const radicalInverseVdc = (bits: number) => {

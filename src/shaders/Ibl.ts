@@ -25,8 +25,7 @@ export interface Uniforms {
   normalMat: Matrix4;
   lightCol: Vector3;
   negLightDir: Vector3;
-  envYawSin: number;
-  envYawCos: number;
+  envYaw: { sin: number; cos: number };
   camPos: Vector3;
   orthographic: boolean;
   worldViewDir: Vector3;
@@ -214,11 +213,10 @@ export class IblShader extends BaseShader {
 
     // Ambient uses directional irradiance plus split-sum style specular from
     // the precomputed environment maps.
+    const envYaw = this.uniforms.envYaw;
     const ambientDiffuseFactor = 1 - metallic;
-    const diffuseDirX =
-      normalX * this.uniforms.envYawCos - normalZ * this.uniforms.envYawSin;
-    const diffuseDirZ =
-      normalX * this.uniforms.envYawSin + normalZ * this.uniforms.envYawCos;
+    const diffuseDirX = normalX * envYaw.cos - normalZ * envYaw.sin;
+    const diffuseDirZ = normalX * envYaw.sin + normalZ * envYaw.cos;
     const diffuseU = wrapUnit(
       Math.atan2(diffuseDirX, diffuseDirZ) * INV_TAU + 0.5,
     );
@@ -236,11 +234,9 @@ export class IblShader extends BaseShader {
     const reflectionY = normalY * reflectionScale - viewDir.y;
     const reflectionZ = normalZ * reflectionScale - viewDir.z;
     const rotatedReflectionX =
-      reflectionX * this.uniforms.envYawCos -
-      reflectionZ * this.uniforms.envYawSin;
+      reflectionX * envYaw.cos - reflectionZ * envYaw.sin;
     const rotatedReflectionZ =
-      reflectionX * this.uniforms.envYawSin +
-      reflectionZ * this.uniforms.envYawCos;
+      reflectionX * envYaw.sin + reflectionZ * envYaw.cos;
     const reflectionU = wrapUnit(
       Math.atan2(rotatedReflectionX, rotatedReflectionZ) * INV_TAU + 0.5,
     );
