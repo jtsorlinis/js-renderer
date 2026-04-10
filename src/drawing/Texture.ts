@@ -29,9 +29,7 @@ export const linearToSrgb = (value: number) => {
 };
 
 export const setHighResTextureLimit = (enabled: boolean) => {
-  textureSizeLimit = enabled
-    ? HIGH_RES_TEXTURE_SIZE_LIMIT
-    : DEFAULT_TEXTURE_SIZE_LIMIT;
+  textureSizeLimit = enabled ? HIGH_RES_TEXTURE_SIZE_LIMIT : DEFAULT_TEXTURE_SIZE_LIMIT;
 };
 
 export class DepthTexture {
@@ -79,12 +77,7 @@ export class Texture {
     offScreenCtx.imageSmoothingEnabled = true;
     offScreenCtx.imageSmoothingQuality = "high";
     offScreenCtx.drawImage(img, 0, 0, targetWidth, targetHeight);
-    const imageData = offScreenCtx.getImageData(
-      0,
-      0,
-      targetWidth,
-      targetHeight,
-    );
+    const imageData = offScreenCtx.getImageData(0, 0, targetWidth, targetHeight);
     const data = new Float32Array((imageData.data.length / 4) * 3);
     let dataIndex = 0;
     for (let i = 0; i < imageData.data.length; i += 4) {

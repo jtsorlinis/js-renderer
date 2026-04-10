@@ -3,8 +3,7 @@ import { Vector3 } from "../maths";
 import { loadGlbAsset } from "./glbLoader";
 import { type LoadedModel } from "./mesh";
 
-const assetPath = (fileName: string) =>
-  `${import.meta.env.BASE_URL}models/${fileName}`;
+const assetPath = (fileName: string) => `${import.meta.env.BASE_URL}models/${fileName}`;
 
 const modelAssets: Record<string, ModelAssetSource> = {
   dice: {
@@ -39,9 +38,7 @@ const modelAssets: Record<string, ModelAssetSource> = {
   },
 };
 
-export const MODEL_KEYS = Object.keys(
-  modelAssets,
-) as (keyof typeof modelAssets)[];
+export const MODEL_KEYS = Object.keys(modelAssets) as (keyof typeof modelAssets)[];
 
 export type ModelKey = keyof typeof modelAssets;
 
@@ -71,9 +68,7 @@ type ModelAssetSource = {
 const prefetchAsset = async (url: string) => {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(
-      `Failed to prefetch asset: ${url} (${response.status} ${response.statusText})`,
-    );
+    throw new Error(`Failed to prefetch asset: ${url} (${response.status} ${response.statusText})`);
   }
   await response.blob();
 };
@@ -127,11 +122,7 @@ export const ensureModelOption = (modelKey: ModelKey) => {
   return modelAsset.pending;
 };
 
-export const loadCustomGlb = async (
-  file: File,
-  normalize = true,
-  scale = 1,
-) => {
+export const loadCustomGlb = async (file: File, normalize = true, scale = 1) => {
   const objectUrl = URL.createObjectURL(file);
 
   try {

@@ -60,9 +60,7 @@ export class Matrix4 {
 
   // YXZ rotation order (Yaw, Pitch, Roll)
   public static RotateYXZ(r: Vector3) {
-    return Matrix4.RotateZ(r.z)
-      .multiply(Matrix4.RotateX(r.x))
-      .multiply(Matrix4.RotateY(r.y));
+    return Matrix4.RotateZ(r.z).multiply(Matrix4.RotateX(r.x)).multiply(Matrix4.RotateY(r.y));
   }
 
   public static Translate(t: Vector3) {
@@ -74,9 +72,7 @@ export class Matrix4 {
   }
 
   public static TRS(t: Vector3, r: Vector3, s: Vector3) {
-    return Matrix4.Translate(t)
-      .multiply(Matrix4.RotateYXZ(r))
-      .multiply(Matrix4.Scale(s));
+    return Matrix4.Translate(t).multiply(Matrix4.RotateYXZ(r)).multiply(Matrix4.Scale(s));
   }
 
   public static LookTo(eye: Vector3, dir: Vector3, up: Vector3) {
@@ -100,11 +96,7 @@ export class Matrix4 {
     return m;
   }
 
-  public static LookAt(
-    eye: Vector3,
-    target: Vector3,
-    up: Vector3 = Vector3.Up,
-  ) {
+  public static LookAt(eye: Vector3, target: Vector3, up: Vector3 = Vector3.Up) {
     const z = target.subtract(eye).normalize();
     const x = up.cross(z).normalize();
     const y = z.cross(x).normalize();

@@ -30,8 +30,7 @@ export class Vector4 {
   }
 
   public normalize3() {
-    const invLength =
-      1 / Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+    const invLength = 1 / Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
     this.x *= invLength;
     this.y *= invLength;
     this.z *= invLength;

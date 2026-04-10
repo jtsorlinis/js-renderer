@@ -140,9 +140,7 @@ const requireValue = <T>(value: T | undefined, message: string): T => {
 const readGlb = async (url: string): Promise<ParsedGlb> => {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(
-      `Failed to load GLB asset: ${url} (${response.status} ${response.statusText})`,
-    );
+    throw new Error(`Failed to load GLB asset: ${url} (${response.status} ${response.statusText})`);
   }
 
   const fileBuffer = await response.arrayBuffer();
@@ -179,9 +177,7 @@ const readGlb = async (url: string): Promise<ParsedGlb> => {
     }
 
     if (chunkType === JSON_CHUNK_TYPE) {
-      jsonChunk = decoder.decode(
-        new Uint8Array(fileBuffer, chunkStart, chunkLength),
-      );
+      jsonChunk = decoder.decode(new Uint8Array(fileBuffer, chunkStart, chunkLength));
     } else if (chunkType === BIN_CHUNK_TYPE) {
       binaryChunk = fileBuffer.slice(chunkStart, chunkEnd);
     }
@@ -244,17 +240,13 @@ const getNodeMatrix = (node: GltfNode) => {
   const rotation = node.rotation ?? [0, 0, 0, 1];
   const scale = node.scale ?? [1, 1, 1];
 
-  return Matrix4.Translate(
-    new Vector3(translation[0], translation[1], translation[2]),
-  )
+  return Matrix4.Translate(new Vector3(translation[0], translation[1], translation[2]))
     .multiply(rotationFromQuaternion(rotation))
     .multiply(Matrix4.Scale(new Vector3(scale[0], scale[1], scale[2])));
 };
 
 const normaliseDirection = (direction: Vector3) => {
-  return direction.lengthSq() > 0.00000001
-    ? direction.normalize()
-    : new Vector3(0, 0, 1);
+  return direction.lengthSq() > 0.00000001 ? direction.normalize() : new Vector3(0, 0, 1);
 };
 
 const toRendererSpacePosition = (position: Vector3) => {
@@ -299,11 +291,7 @@ const readComponent = (
   }
 };
 
-const readAccessor = (
-  gltf: Gltf,
-  binaryChunk: ArrayBuffer,
-  accessorIndex: number,
-) => {
+const readAccessor = (gltf: Gltf, binaryChunk: ArrayBuffer, accessorIndex: number) => {
   const accessor = requireValue(
     gltf.accessors?.[accessorIndex],
     `Missing accessor ${accessorIndex}`,
@@ -316,9 +304,7 @@ const readAccessor = (
   const componentCount = TYPE_COMPONENT_COUNTS[accessor.type];
   const componentSize = COMPONENT_TYPE_SIZES[accessor.componentType];
   if (!componentSize) {
-    throw new Error(
-      `Unsupported accessor component type: ${accessor.componentType}`,
-    );
+    throw new Error(`Unsupported accessor component type: ${accessor.componentType}`);
   }
 
   if (accessor.bufferView === undefined) {
@@ -340,14 +326,9 @@ const readAccessor = (
   const values = new Array<number>(accessor.count * componentCount);
 
   for (let elementIndex = 0; elementIndex < accessor.count; elementIndex++) {
-    const elementOffset =
-      bufferViewOffset + accessorOffset + elementIndex * byteStride;
+    const elementOffset = bufferViewOffset + accessorOffset + elementIndex * byteStride;
 
-    for (
-      let componentIndex = 0;
-      componentIndex < componentCount;
-      componentIndex++
-    ) {
+    for (let componentIndex = 0; componentIndex < componentCount; componentIndex++) {
       const valueOffset = elementOffset + componentIndex * componentSize;
       values[elementIndex * componentCount + componentIndex] = readComponent(
         dataView,
@@ -375,26 +356,18 @@ const collectPrimitiveInstances = (gltf: Gltf) => {
       }
     }
 
-    return gltf.nodes
-      .map((_, index) => index)
-      .filter((index) => !childNodeIndices.has(index));
+    return gltf.nodes.map((_, index) => index).filter((index) => !childNodeIndices.has(index));
   })();
   const scene =
     gltf.scenes?.[gltf.scene ?? 0] ??
     (rootNodeIndices.length ? { nodes: rootNodeIndices } : undefined);
 
   const visitNode = (nodeIndex: number, parentMatrix: Matrix4) => {
-    const node = requireValue(
-      gltf.nodes?.[nodeIndex],
-      `Missing node ${nodeIndex}`,
-    );
+    const node = requireValue(gltf.nodes?.[nodeIndex], `Missing node ${nodeIndex}`);
     const worldMatrix = parentMatrix.multiply(getNodeMatrix(node));
 
     if (node.mesh !== undefined) {
-      const mesh = requireValue(
-        gltf.meshes?.[node.mesh],
-        `Missing mesh ${node.mesh}`,
-      );
+      const mesh = requireValue(gltf.meshes?.[node.mesh], `Missing mesh ${node.mesh}`);
       for (const primitive of mesh.primitives) {
         if ((primitive.mode ?? TRIANGLES_MODE) !== TRIANGLES_MODE) {
           continue;
@@ -421,9 +394,7 @@ const assertSupportedTexCoord = (
   textureLabel: string,
 ) => {
   if (textureInfo && (textureInfo.texCoord ?? 0) !== 0) {
-    throw new Error(
-      `Unsupported GLB asset: ${textureLabel} must use TEXCOORD_0`,
-    );
+    throw new Error(`Unsupported GLB asset: ${textureLabel} must use TEXCOORD_0`);
   }
 };
 
@@ -435,9 +406,7 @@ const convertGlbGeometry = (
 ): ConvertedGlb => {
   const primitiveInstances = collectPrimitiveInstances(gltf);
   if (primitiveInstances.length > 1) {
-    throw new Error(
-      "Unsupported GLB asset: only a single primitive/material is supported",
-    );
+    throw new Error("Unsupported GLB asset: only a single primitive/material is supported");
   }
 
   const vertices: Vector3[] = [];
@@ -457,26 +426,18 @@ const convertGlbGeometry = (
     }
 
     const material =
-      primitive.material !== undefined
-        ? gltf.materials?.[primitive.material]
-        : undefined;
+      primitive.material !== undefined ? gltf.materials?.[primitive.material] : undefined;
     const pbrMaterial = material?.pbrMetallicRoughness;
     const baseColorTexture = pbrMaterial?.baseColorTexture;
     const metallicRoughnessTexture = pbrMaterial?.metallicRoughnessTexture;
     const normalTexture = material?.normalTexture;
     assertSupportedTexCoord(baseColorTexture, "base color texture");
     assertSupportedTexCoord(normalTexture, "normal texture");
-    assertSupportedTexCoord(
-      metallicRoughnessTexture,
-      "metallic-roughness texture",
-    );
+    assertSupportedTexCoord(metallicRoughnessTexture, "metallic-roughness texture");
 
-    const hasTexturedMaterial =
-      !!baseColorTexture || !!normalTexture || !!metallicRoughnessTexture;
+    const hasTexturedMaterial = !!baseColorTexture || !!normalTexture || !!metallicRoughnessTexture;
     if (hasTexturedMaterial && primitive.attributes.TEXCOORD_0 === undefined) {
-      throw new Error(
-        "Unsupported GLB asset: textured materials must provide TEXCOORD_0",
-      );
+      throw new Error("Unsupported GLB asset: textured materials must provide TEXCOORD_0");
     }
 
     const uvAccessorIndex = primitive.attributes.TEXCOORD_0;
@@ -487,9 +448,7 @@ const convertGlbGeometry = (
         ? readAccessor(gltf, binaryChunk, primitive.attributes.NORMAL)
         : undefined;
     const sourceUvs =
-      uvAccessorIndex !== undefined
-        ? readAccessor(gltf, binaryChunk, uvAccessorIndex)
-        : undefined;
+      uvAccessorIndex !== undefined ? readAccessor(gltf, binaryChunk, uvAccessorIndex) : undefined;
 
     const positionCount = positions.length / 3;
     const indices =
@@ -517,11 +476,7 @@ const convertGlbGeometry = (
 
     const normalMatrix = worldMatrix.invert().transpose();
 
-    for (
-      let triangleIndex = 0;
-      triangleIndex < indices.length;
-      triangleIndex += 3
-    ) {
+    for (let triangleIndex = 0; triangleIndex < indices.length; triangleIndex += 3) {
       const triangleVertexIndices = [
         indices[triangleIndex],
         indices[triangleIndex + 2],
@@ -542,9 +497,7 @@ const convertGlbGeometry = (
           const uvOffset = vertexIndex * 2;
           // glTF UV space uses an upper-left origin, while the renderer
           // expects a lower-left V convention.
-          meshUvs.push(
-            new Vector2(sourceUvs[uvOffset], 1 - sourceUvs[uvOffset + 1]),
-          );
+          meshUvs.push(new Vector2(sourceUvs[uvOffset], 1 - sourceUvs[uvOffset + 1]));
         }
 
         if (sourceNormals) {
@@ -596,10 +549,7 @@ const loadTextureFromImage = async (
   assetUrl: string,
   descriptor: TextureDescriptor,
 ) => {
-  const image = requireValue(
-    gltf.images?.[imageIndex],
-    `Missing image ${imageIndex}`,
-  );
+  const image = requireValue(gltf.images?.[imageIndex], `Missing image ${imageIndex}`);
 
   if (image.bufferView !== undefined) {
     const bufferView = requireValue(
@@ -608,14 +558,8 @@ const loadTextureFromImage = async (
     );
     const byteOffset = bufferView.byteOffset ?? 0;
     const mimeType = image.mimeType ?? "image/png";
-    const bytes = new Uint8Array(
-      binaryChunk,
-      byteOffset,
-      bufferView.byteLength,
-    );
-    const objectUrl = URL.createObjectURL(
-      new Blob([bytes], { type: mimeType }),
-    );
+    const bytes = new Uint8Array(binaryChunk, byteOffset, bufferView.byteLength);
+    const objectUrl = URL.createObjectURL(new Blob([bytes], { type: mimeType }));
     try {
       return await Texture.Load(objectUrl, descriptor);
     } finally {
@@ -643,28 +587,15 @@ const loadTextureFromSlot = async (
     return fallback;
   }
 
-  const texture = requireValue(
-    gltf.textures?.[textureIndex],
-    `Missing texture ${textureIndex}`,
-  );
+  const texture = requireValue(gltf.textures?.[textureIndex], `Missing texture ${textureIndex}`);
   if (texture.source === undefined) {
     return fallback;
   }
 
-  return loadTextureFromImage(
-    gltf,
-    binaryChunk,
-    texture.source,
-    assetUrl,
-    descriptor,
-  );
+  return loadTextureFromImage(gltf, binaryChunk, texture.source, assetUrl, descriptor);
 };
 
-export const loadGlbAsset = async (
-  url: string,
-  normalize = true,
-  scale = 1,
-) => {
+export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => {
   const { json, binaryChunk } = await readGlb(url);
   const converted = convertGlbGeometry(json, binaryChunk, normalize, scale);
 
