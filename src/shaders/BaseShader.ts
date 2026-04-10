@@ -13,7 +13,7 @@ export abstract class BaseShader {
   vertexId = 0;
   nthVert = 0;
   bc = { u: 0, v: 0, w: 0 };
-  fragPos = new Vector2();
+  fragPos = new Vector3();
 
   v2f = <T>(varying: Array<T>, value: T) => {
     varying[this.nthVert] = value;
