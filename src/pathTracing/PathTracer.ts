@@ -530,7 +530,7 @@ export class PathTracer {
   ) => {
     const r1 = this.nextRandom();
     const r2 = this.nextRandom();
-    const alpha = Math.max(0.02, roughness * roughness);
+    const alpha = roughness * roughness;
     const alphaSq = alpha * alpha;
     const phi = Math.PI * 2 * r1;
     const cosTheta = Math.sqrt(
