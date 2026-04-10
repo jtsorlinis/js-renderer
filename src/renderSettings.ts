@@ -15,7 +15,6 @@ export type RenderSelection = {
   material: MaterialMode;
   normalizedValue: string;
   renderMode?: RenderMode;
-  projection?: ProjectionMode;
   useShadows?: boolean;
   showEnvironmentBackground?: boolean;
 };
@@ -28,10 +27,7 @@ export const resolveShadingSelection = (
 
   if (
     !canUseTexturedModes &&
-    (value === "ibl" ||
-      value === "pbr" ||
-      value === "textured" ||
-      value.includes("normalMapped"))
+    (value === "ibl" || value === "pbr" || value === "textured" || value.includes("normalMapped"))
   ) {
     value = "smooth";
   }
@@ -87,17 +83,10 @@ export const resolveShadingSelection = (
         renderMode: "depthWireframe",
         normalizedValue: value,
       };
-    case "perspective":
-      return {
-        material: "depth",
-        renderMode: "wireframe",
-        normalizedValue: value,
-      };
     default:
       return {
         material: "depth",
         renderMode: "wireframe",
-        projection: "orthographic",
         normalizedValue: "wireframe",
       };
   }

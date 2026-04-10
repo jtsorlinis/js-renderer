@@ -31,7 +31,7 @@ const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
 const FOV = 60;
 const SHADOW_MAP_SIZE = 512;
-const ROTATION_SPEED = 0.2;
+const ROTATION_SPEED = 0;
 const ROTATE_SENSITIVITY = 250;
 const PAN_SENSITIVITY = 250;
 const ZOOM_SENSITIVITY = 100;
@@ -40,6 +40,7 @@ const FPS_UPDATE_INTERVAL_MS = 250;
 // UI handles
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
+const orthoCb = document.getElementById("orthoCb") as HTMLInputElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
 const textureSizeText = document.getElementById("textureSize") as HTMLSpanElement;
 const highResCb = document.getElementById("highResCb") as HTMLInputElement;
@@ -246,7 +247,6 @@ const getRenderSettings = (): RenderSettings => {
   return {
     material: selection.material,
     renderMode: selection.renderMode,
-    projection: selection.projection,
     useShadows: selection.useShadows,
     showEnvironmentBackground: selection.showEnvironmentBackground,
   };
@@ -312,7 +312,7 @@ const draw = () => {
   const modelViewDir = invModelMat.transformDirection(viewDir).normalize();
 
   // 4) Build camera transform and final clip transform.
-  const isOrtho = renderSettings.projection === "orthographic";
+  const isOrtho = orthoCb.checked;
   const viewMat = Matrix4.LookTo(camPos, cameraLookDir, Vector3.Up);
   const projMat = isOrtho
     ? Matrix4.Ortho(cameraOrthoSize, aspectRatio)
