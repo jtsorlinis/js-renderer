@@ -40,6 +40,13 @@ export class NormalMappedShader extends BaseShader {
     const i = this.vertexId;
     const modelPos = model.vertices[i];
 
+    // Emit varyings for interpolation across the triangle.
+    this.v2f(this.vUV, model.uvs[i]);
+    this.v2f(this.vNormal, model.normals[i]);
+    this.v2f(this.vTangent, model.tangents[i]);
+    this.v2f(this.vModelPos, modelPos);
+
+    // Shadow mapping if enabled
     if (this.uniforms.receiveShadows) {
       const lightSpacePos =
         this.uniforms.lightSpaceMat.transformPoint(modelPos);
@@ -47,12 +54,6 @@ export class NormalMappedShader extends BaseShader {
       lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
       this.v2f(this.vLightSpacePos, lightSpacePos);
     }
-
-    // Emit varyings for interpolation across the triangle.
-    this.v2f(this.vUV, model.uvs[i]);
-    this.v2f(this.vNormal, model.normals[i]);
-    this.v2f(this.vTangent, model.tangents[i]);
-    this.v2f(this.vModelPos, modelPos);
 
     // Final clip-space position for rasterization.
     return this.uniforms.mvp.transformPoint4(modelPos);
@@ -65,15 +66,6 @@ export class NormalMappedShader extends BaseShader {
     const mNormal = this.interpolateVec3(this.vNormal).normalize();
     const mTangent = this.interpolateVec4(this.vTangent);
     const handedness = mTangent.w < 0 ? -1 : 1;
-
-    let shadow = 1;
-    if (this.uniforms.receiveShadows) {
-      const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
-      const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-      const nDotL = Math.max(-mNormal.dot(this.uniforms.modelLightDir), 0.0);
-      const bias = minBias + (maxBias - minBias) * (1 - nDotL);
-      shadow = lightSpacePos.z - bias > depth ? 0 : 1;
-    }
 
     // Sample material inputs.
     const color = this.sample(this.uniforms.texture, uv);
@@ -99,6 +91,16 @@ export class NormalMappedShader extends BaseShader {
     const NLengthSq = Nx * Nx + Ny * Ny + Nz * Nz;
     const NScale = NLengthSq > 1e-8 ? 1 / Math.sqrt(NLengthSq) : 0;
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
+
+    // Shadow mapping if enabled
+    let shadow = 1;
+    if (this.uniforms.receiveShadows) {
+      const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
+      const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
+      const nDotL = Math.max(-mNormal.dot(this.uniforms.modelLightDir), 0.0);
+      const bias = minBias + (maxBias - minBias) * (1 - nDotL);
+      shadow = lightSpacePos.z - bias > depth ? 0 : 1;
+    }
 
     // Blinn-Phong shading
     const lightDir = this.uniforms.modelLightDir;
