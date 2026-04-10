@@ -186,11 +186,11 @@ const shaders = {
   smooth: new SmoothShader(),
   flat: new FlatShader(),
   unlit: new UnlitShader(),
+  depth: new DepthShader(),
 };
 
 type RenderSettings = Omit<RenderSelection, "normalizedValue">;
 
-const depthShader = new DepthShader();
 const triVerts: Vector4[] = [];
 
 const updateModelStats = () => {
@@ -366,19 +366,20 @@ const draw = () => {
     shadowMap,
     receiveShadows: renderSettings.useShadows,
   };
+  shaders.depth.uniforms = { model, clipMat: mvp };
 
-  // 6) Optional shadow pass first, then visible color pass.
+  // Optional shadow pass first
   if (renderSettings.useShadows) {
-    depthShader.uniforms = { model, clipMat: lightSpaceMat };
-    renderMesh(depthShader, shadowMap, "filled", shadowBuffer);
+    shaders.depth.uniforms.clipMat = lightSpaceMat;
+    renderMesh(shaders.depth, shadowMap, "filled", shadowBuffer);
   }
 
-  // Depth only pass for wireframe culling
+  // We need a depth prepass for wireframe culling
   if (renderSettings.renderMode === "depthWireframe") {
-    depthShader.uniforms = { model, clipMat: mvp };
-    renderMesh(depthShader, zBuffer, "filled");
+    renderMesh(shaders.depth, zBuffer, "filled");
   }
 
+  // 6) Main render pass
   renderMesh(shader, zBuffer, renderSettings.renderMode);
   ctx.putImageData(imageData, 0, 0);
 };
