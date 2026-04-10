@@ -8,13 +8,15 @@ export type MaterialMode =
   | "unlit";
 
 export type RenderMode = "filled" | "depthWireframe" | "wireframe";
+export type ProjectionMode = "orthographic" | "perspective";
 
 export type RenderSelection = {
   material: MaterialMode;
-  renderMode: RenderMode;
+  normalizedValue: string;
+  renderMode?: RenderMode;
+  projection?: ProjectionMode;
   useShadows?: boolean;
   showEnvironmentBackground?: boolean;
-  normalizedValue: string;
 };
 
 export const resolveShadingSelection = (
@@ -37,7 +39,6 @@ export const resolveShadingSelection = (
     case "ibl":
       return {
         material: "ibl",
-        renderMode: "filled",
         useShadows: true,
         showEnvironmentBackground: true,
         normalizedValue: value,
@@ -45,45 +46,38 @@ export const resolveShadingSelection = (
     case "pbr":
       return {
         material: "pbr",
-        renderMode: "filled",
         useShadows: true,
         normalizedValue: value,
       };
     case "normalMapped-shadows":
       return {
         material: "normalMapped",
-        renderMode: "filled",
         useShadows: true,
         normalizedValue: value,
       };
     case "normalMapped":
       return {
         material: "normalMapped",
-        renderMode: "filled",
         normalizedValue: value,
       };
     case "textured":
       return {
         material: "textured",
-        renderMode: "filled",
         normalizedValue: value,
       };
     case "smooth":
       return {
         material: "smooth",
-        renderMode: "filled",
         normalizedValue: value,
       };
     case "flat":
       return {
         material: "flat",
-        renderMode: "filled",
         normalizedValue: value,
       };
     case "unlit":
       return {
         material: "unlit",
-        renderMode: "filled",
         normalizedValue: value,
       };
     case "depthWireframe":
@@ -92,10 +86,17 @@ export const resolveShadingSelection = (
         renderMode: "depthWireframe",
         normalizedValue: value,
       };
+    case "perspective":
+      return {
+        material: "unlit",
+        renderMode: "wireframe",
+        normalizedValue: value,
+      };
     default:
       return {
         material: "unlit",
         renderMode: "wireframe",
+        projection: "orthographic",
         normalizedValue: "wireframe",
       };
   }

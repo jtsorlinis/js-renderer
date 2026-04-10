@@ -54,7 +54,6 @@ const trisText = document.getElementById("tris") as HTMLSpanElement;
 const textureSizeText = document.getElementById(
   "textureSize",
 ) as HTMLSpanElement;
-const orthographicCb = document.getElementById("orthoCb") as HTMLInputElement;
 const highResCb = document.getElementById("highResCb") as HTMLInputElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
 const shadingSlider = document.getElementById(
@@ -267,6 +266,7 @@ const getRenderSettings = (): RenderSettings => {
   return {
     material: selection.material,
     renderMode: selection.renderMode,
+    projection: selection.projection,
     useShadows: selection.useShadows,
     showEnvironmentBackground: selection.showEnvironmentBackground,
   };
@@ -332,9 +332,9 @@ const draw = () => {
   const modelViewDir = invModelMat.transformDirection(orthoViewDir).normalize();
 
   // 4) Build camera transform and final clip transform.
-  const isOrthographic = orthographicCb.checked;
+  const isOrtho = renderSettings.projection === "orthographic";
   const viewMat = Matrix4.LookTo(camPos, cameraLookDir, Vector3.Up);
-  const projMat = isOrthographic
+  const projMat = isOrtho
     ? Matrix4.Ortho(cameraOrthoSize, aspectRatio)
     : Matrix4.Perspective(FOV, aspectRatio);
   const mvp = projMat.multiply(viewMat).multiply(modelMat);
@@ -355,7 +355,7 @@ const draw = () => {
     lightCol,
     camPos,
     modelCamPos,
-    orthographic: isOrthographic,
+    orthographic: isOrtho,
     worldViewDir: orthoViewDir,
     modelViewDir,
     texture,
