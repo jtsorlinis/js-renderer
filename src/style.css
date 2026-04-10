@@ -119,7 +119,7 @@ body {
   flex: 1;
   flex-direction: column;
   gap: 6px;
-  counter-reset: shading-step 10;
+  counter-reset: shading-step 12;
 }
 
 .shading-list li {
@@ -192,7 +192,7 @@ body {
 .shading-slider {
   margin: 0;
   width: 18px;
-  min-height: 218px;
+  min-height: 242px;
   accent-color: var(--accent);
   cursor: pointer;
   writing-mode: vertical-lr;
