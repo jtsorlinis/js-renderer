@@ -1,5 +1,5 @@
 import { DepthTexture, Framebuffer } from ".";
-import { Vector2, Vector4 } from "../maths";
+import { Vector3, Vector4 } from "../maths";
 import { BaseShader } from "../shaders/BaseShader";
 
 export interface Barycentric {
@@ -15,7 +15,7 @@ export const edgeFunction = (a: Vector4, b: Vector4, c: Vector4) => {
 
 // Only instantiate these once and reuse them
 const bcClip: Barycentric = { u: 0, v: 0, w: 0 };
-const fragPos = new Vector2();
+const fragPos = new Vector3();
 
 // Draw a triangle in screen space (pixels)
 export const triangle = (
@@ -112,6 +112,7 @@ export const triangle = (
             // Pass fragment screen position to fragment shader
             fragPos.x = x;
             fragPos.y = y;
+            fragPos.z = z;
 
             const frag = fragment();
 
