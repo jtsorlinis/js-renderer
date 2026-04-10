@@ -18,11 +18,7 @@ export const fresnelSchlick = (cosTheta: number, f0: Vector3) => {
   );
 };
 
-export const fresnelSchlickRoughness = (
-  cosTheta: number,
-  f0: Vector3,
-  roughness: number,
-) => {
+export const fresnelSchlickRoughness = (cosTheta: number, f0: Vector3, roughness: number) => {
   const factor = Math.pow(1 - saturate(cosTheta), 5);
   const f90x = Math.max(1 - roughness, f0.x);
   const f90y = Math.max(1 - roughness, f0.y);
@@ -47,12 +43,6 @@ const geometrySchlickGGX = (nDotX: number, roughness: number) => {
   return nDotX / Math.max(nDotX * (1 - k) + k, EPSILON);
 };
 
-export const geometrySmith = (
-  nDotV: number,
-  nDotL: number,
-  roughness: number,
-) => {
-  return (
-    geometrySchlickGGX(nDotV, roughness) * geometrySchlickGGX(nDotL, roughness)
-  );
+export const geometrySmith = (nDotV: number, nDotL: number, roughness: number) => {
+  return geometrySchlickGGX(nDotV, roughness) * geometrySchlickGGX(nDotL, roughness);
 };

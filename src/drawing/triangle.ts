@@ -63,12 +63,9 @@ export const triangle = (
 
   // Calculate barycentric coordinates for first pixel
   const invArea = 1 / area;
-  let uRow =
-    ((minX - p2x) * (p1y - p2y) - (minY - p2y) * (p1x - p2x)) * invArea;
-  let vRow =
-    ((minX - p0x) * (p2y - p0y) - (minY - p0y) * (p2x - p0x)) * invArea;
-  let wRow =
-    ((minX - p1x) * (p0y - p1y) - (minY - p1y) * (p0x - p1x)) * invArea;
+  let uRow = ((minX - p2x) * (p1y - p2y) - (minY - p2y) * (p1x - p2x)) * invArea;
+  let vRow = ((minX - p0x) * (p2y - p0y) - (minY - p0y) * (p2x - p0x)) * invArea;
+  let wRow = ((minX - p1x) * (p0y - p1y) - (minY - p1y) * (p0x - p1x)) * invArea;
 
   // Calculate barycentric coordinate steps
   const uStepX = (p1y - p2y) * invArea;

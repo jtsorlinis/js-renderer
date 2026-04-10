@@ -28,11 +28,7 @@ const readAsciiLine = (bytes: Uint8Array, offset: number) => {
   };
 };
 
-const decodeRleScanline = (
-  bytes: Uint8Array,
-  offset: number,
-  width: number,
-) => {
+const decodeRleScanline = (bytes: Uint8Array, offset: number, width: number) => {
   if (
     width < 8 ||
     width > 0x7fff ||
@@ -45,9 +41,7 @@ const decodeRleScanline = (
 
   const scanlineWidth = (bytes[offset + 2] << 8) | bytes[offset + 3];
   if (scanlineWidth !== width) {
-    throw new Error(
-      `Invalid HDR scanline width: expected ${width}, got ${scanlineWidth}`,
-    );
+    throw new Error(`Invalid HDR scanline width: expected ${width}, got ${scanlineWidth}`);
   }
 
   offset += 4;
@@ -65,13 +59,13 @@ const decodeRleScanline = (
         const runLength = count - 128;
         const value = bytes[offset++];
         for (let i = 0; i < runLength; i++) {
-          scanline[(x++ * 4) + channel] = value;
+          scanline[x++ * 4 + channel] = value;
         }
         continue;
       }
 
       for (let i = 0; i < count; i++) {
-        scanline[(x++ * 4) + channel] = bytes[offset++];
+        scanline[x++ * 4 + channel] = bytes[offset++];
       }
     }
   }

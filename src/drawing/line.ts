@@ -6,12 +6,7 @@ const WHITE = new Vector3(1, 1, 1);
 const depthEpsilon = 0.001;
 
 // Bresenham's line algorithm
-export const line = (
-  start: Vector4,
-  end: Vector4,
-  buffer: Framebuffer,
-  zBuffer?: DepthTexture,
-) => {
+export const line = (start: Vector4, end: Vector4, buffer: Framebuffer, zBuffer?: DepthTexture) => {
   // Clip near and far planes
   if (start.z < 0 || end.z < 0) return;
   if (start.z > 1 || end.z > 1) return;

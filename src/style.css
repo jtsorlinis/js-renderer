@@ -8,7 +8,12 @@
   --radius: 6px;
   --sidebar-width: 220px;
 
-  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family:
+    "Inter",
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
   color: var(--text);
   background: var(--bg);
   margin: 0;
@@ -164,21 +169,13 @@ body {
 
 .shading-list li:has(.is-active) ~ li .shading-option {
   border-color: rgba(233, 69, 96, 0.34);
-  background: linear-gradient(
-    135deg,
-    rgba(233, 69, 96, 0.14),
-    rgba(15, 52, 96, 0.82)
-  );
+  background: linear-gradient(135deg, rgba(233, 69, 96, 0.14), rgba(15, 52, 96, 0.82));
   box-shadow: 0 0 0 1px rgba(233, 69, 96, 0.08);
 }
 
 .shading-option.is-active {
   border-color: var(--accent);
-  background: linear-gradient(
-    135deg,
-    rgba(233, 69, 96, 0.28),
-    rgba(15, 52, 96, 0.95)
-  );
+  background: linear-gradient(135deg, rgba(233, 69, 96, 0.28), rgba(15, 52, 96, 0.95));
   box-shadow: 0 0 0 1px rgba(233, 69, 96, 0.2);
   transform: translateX(2px);
 }
@@ -214,7 +211,9 @@ body {
   cursor: pointer;
   position: relative;
   flex-shrink: 0;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .section input[type="checkbox"]:checked {
