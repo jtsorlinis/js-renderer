@@ -46,7 +46,7 @@
               <button
                 type="button"
                 class="shading-option is-active"
-                data-shading-index="10"
+                data-shading-index="9"
                 data-shading-value="ibl"
                 aria-pressed="true"
               >
@@ -57,7 +57,7 @@
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="9"
+                data-shading-index="8"
                 data-shading-value="pbr"
                 aria-pressed="false"
               >
@@ -68,7 +68,7 @@
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="8"
+                data-shading-index="7"
                 data-shading-value="normalMapped-shadows"
                 aria-pressed="false"
               >
@@ -79,7 +79,7 @@
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="7"
+                data-shading-index="6"
                 data-shading-value="normalMapped"
                 aria-pressed="false"
               >
@@ -90,7 +90,7 @@
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="6"
+                data-shading-index="5"
                 data-shading-value="textured"
                 aria-pressed="false"
               >
@@ -101,7 +101,7 @@
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="5"
+                data-shading-index="4"
                 data-shading-value="smooth"
                 aria-pressed="false"
               >
@@ -112,7 +112,7 @@
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="4"
+                data-shading-index="3"
                 data-shading-value="flat"
                 aria-pressed="false"
               >
@@ -123,7 +123,7 @@
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="3"
+                data-shading-index="2"
                 data-shading-value="unlit"
                 aria-pressed="false"
               >
@@ -134,22 +134,11 @@
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="2"
+                data-shading-index="1"
                 data-shading-value="depthWireframe"
                 aria-pressed="false"
               >
                 Depth
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                class="shading-option"
-                data-shading-index="1"
-                data-shading-value="perspective"
-                aria-pressed="false"
-              >
-                Perspective
               </button>
             </li>
             <li>
@@ -170,15 +159,16 @@
             class="shading-slider"
             type="range"
             min="0"
-            max="10"
+            max="9"
             step="1"
-            value="10"
+            value="9"
             aria-label="Shading"
           />
         </div>
       </div>
 
       <div class="section">
+        <label><input type="checkbox" id="orthoCb" /> Orthographic</label>
         <label><input type="checkbox" id="highResCb" /> High Res (2x)</label>
       </div>
 
@@ -194,15 +184,8 @@
       </div>
 
       <div class="section load-glb">
-        <button type="button" class="shading-option" id="loadGlbBtn">
-          Load GLB
-        </button>
-        <input
-          id="glbInput"
-          type="file"
-          accept=".glb,model/gltf-binary"
-          hidden
-        />
+        <button type="button" class="shading-option" id="loadGlbBtn">Load GLB</button>
+        <input id="glbInput" type="file" accept=".glb,model/gltf-binary" hidden />
       </div>
     </aside>
 
