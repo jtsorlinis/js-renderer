@@ -1,5 +1,3 @@
-import { Vector3 } from "../maths";
-
 const DEFAULT_TEXTURE_SIZE_LIMIT = 1024;
 const HIGH_RES_TEXTURE_SIZE_LIMIT = 2048;
 let textureSizeLimit = DEFAULT_TEXTURE_SIZE_LIMIT;
