@@ -27,7 +27,6 @@ const lightIntensity = 1.88;
 const environmentIntensity = 0.6;
 const maxBounces = 4;
 const rouletteBounces = 3;
-const renderEnvironment = false;
 
 interface HitRecord {
   baseColor: Vector3;
@@ -50,6 +49,7 @@ export interface PathTraceScene {
   invModelMat: Matrix4;
   normalMat: Matrix4;
   material: Material;
+  renderEnvironment: boolean | undefined;
 }
 
 export interface PathTraceCamera {
@@ -217,7 +217,7 @@ export class PathTracer {
     for (let bounce = 0; bounce < maxBounces; bounce++) {
       const hit = this.traceClosest(origin, direction, scene);
       if (!hit) {
-        if (bounce > 0 || renderEnvironment) {
+        if (bounce > 0 || scene.renderEnvironment) {
           const environment = sampleEnvironment(scene.environment, scene.envYaw, direction).scale(
             environmentIntensity,
           );

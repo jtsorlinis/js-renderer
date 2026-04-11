@@ -25,7 +25,7 @@ export const resolveShadingSelection = (value: string): RenderSelection => {
       return {
         material: "pathTrace",
         renderMode: "filled",
-        useShadows: false,
+        showEnvironmentBackground: true,
         normalizedValue: value,
       };
     case "ibl":

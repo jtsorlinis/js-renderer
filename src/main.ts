@@ -344,6 +344,7 @@ const draw = () => {
         invModelMat,
         normalMat,
         material,
+        renderEnvironment: renderSettings.showEnvironmentBackground,
       },
       {
         aspectRatio,
@@ -359,11 +360,6 @@ const draw = () => {
   }
 
   pathTraceStatsText = usePathTracePreview ? "Preview" : "";
-
-  // 2) Clear all render targets for a new frame.
-  frameBuffer.clear();
-  depthBuffer.clear(1000);
-  shadowMap.clear(1000);
 
   // 3) Build light-space transform (for shadow mapping).
   const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), Vector3.Zero);
