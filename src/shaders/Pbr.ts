@@ -83,7 +83,7 @@ export class PbrShader extends BaseShader {
     const Ty = modelTangent.y - modelNormal.y * tDotN;
     const Tz = modelTangent.z - modelNormal.z * tDotN;
     const TLengthSq = Tx * Tx + Ty * Ty + Tz * Tz;
-    const TScale = TLengthSq > EPSILON ? 1 / Math.sqrt(TLengthSq) : 0;
+    const TScale = 1 / Math.sqrt(TLengthSq);
     const T = new Vector3(Tx * TScale, Ty * TScale, Tz * TScale);
 
     const Bx = (modelNormal.y * T.z - modelNormal.z * T.y) * handedness;
@@ -95,7 +95,7 @@ export class PbrShader extends BaseShader {
     const Ny = T.y * normalTexel.x + By * normalTexel.y + modelNormal.y * normalTexel.z;
     const Nz = T.z * normalTexel.x + Bz * normalTexel.y + modelNormal.z * normalTexel.z;
     const NLengthSq = Nx * Nx + Ny * Ny + Nz * Nz;
-    const NScale = NLengthSq > EPSILON ? 1 / Math.sqrt(NLengthSq) : 0;
+    const NScale = 1 / Math.sqrt(NLengthSq);
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
 
     const baseColor = this.sample(material.colorTexture, uv).multiplyInPlace(material.colorFactor);
@@ -121,7 +121,7 @@ export class PbrShader extends BaseShader {
     let directR = 0;
     let directG = 0;
     let directB = 0;
-    if (nDotL > 0 && nDotV > 0 && halfDir.lengthSq() > EPSILON) {
+    if (nDotL > 0 && nDotV > 0) {
       halfDir.normalize();
       const nDotH = saturate(normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z);
       const vDotH = saturate(modelViewDir.dot(halfDir));
