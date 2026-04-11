@@ -177,8 +177,8 @@ const triVerts: Vector4[] = [];
 const updateModelStats = () => {
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
   textureSizeText.innerText = `${Math.max(
-    material.baseColorTexture.width,
-    material.baseColorTexture.height,
+    material.colorTexture.width,
+    material.colorTexture.height,
   )}`;
 };
 

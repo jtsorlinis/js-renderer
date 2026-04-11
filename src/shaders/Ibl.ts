@@ -104,9 +104,7 @@ export class IblShader extends BaseShader {
     const NScale = NLengthSq > EPSILON ? 1 / Math.sqrt(NLengthSq) : 0;
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
 
-    const baseColor = this.sample(material.baseColorTexture, uv).multiplyInPlace(
-      material.baseColorFactor,
-    );
+    const baseColor = this.sample(material.colorTexture, uv).multiplyInPlace(material.colorFactor);
     const metallicRoughness = this.sample(material.metallicRoughnessTexture, uv);
     const roughness = Math.max(0.045, saturate(metallicRoughness.y * material.roughnessFactor));
     const metallic = saturate(metallicRoughness.z * material.metallicFactor);
