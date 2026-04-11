@@ -1,6 +1,6 @@
 import { Texture, type TextureDescriptor } from "../drawing";
 import { Matrix4, Vector2, Vector3 } from "../maths";
-import { buildLoadedModel, type LoadedModel } from "./mesh";
+import { buildLoadedModel, type Mesh } from "./mesh";
 
 type Gltf = {
   accessors?: GltfAccessor[];
@@ -97,7 +97,7 @@ type ParsedGlb = {
 };
 
 type ConvertedGlb = {
-  mesh: LoadedModel;
+  mesh: Mesh;
   baseColorTextureIndex?: number;
   normalTextureIndex?: number;
   pbrMaterial: {
@@ -599,7 +599,7 @@ export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => 
   const { json, binaryChunk } = await readGlb(url);
   const converted = convertGlbGeometry(json, binaryChunk, normalize, scale);
 
-  const [texture, normalTexture, metallicRoughnessTexture] = await Promise.all([
+  const [baseColorTexture, normalTexture, metallicRoughnessTexture] = await Promise.all([
     loadTextureFromSlot(json, binaryChunk, converted.baseColorTextureIndex, url, Texture.White, {
       type: "color",
       colorSpace: "srgb",
@@ -620,9 +620,9 @@ export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => 
 
   return {
     mesh: converted.mesh,
-    texture,
-    normalTexture,
-    pbrMaterial: {
+    material: {
+      baseColorTexture,
+      normalTexture,
       baseColorFactor: converted.pbrMaterial.baseColorFactor,
       metallicFactor: converted.pbrMaterial.metallicFactor,
       metallicRoughnessTexture,

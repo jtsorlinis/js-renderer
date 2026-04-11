@@ -151,9 +151,7 @@ const initialModelOption = await ensureModelOption(initialModelKey);
 prefetchRemainingModels(initialModelKey);
 
 let model = initialModelOption.mesh;
-let texture = initialModelOption.texture;
-let normalTexture = initialModelOption.normalTexture;
-let pbrMaterial = initialModelOption.pbrMaterial;
+let material = initialModelOption.material;
 let shadowOrthoSize = getModelRadius(model);
 
 let modelPos = new Vector3(0, 0, 0);
@@ -178,7 +176,10 @@ const triVerts: Vector4[] = [];
 
 const updateModelStats = () => {
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
-  textureSizeText.innerText = `${Math.max(texture.width, texture.height)}`;
+  textureSizeText.innerText = `${Math.max(
+    material.baseColorTexture.width,
+    material.baseColorTexture.height,
+  )}`;
 };
 
 const resetModelTransform = () => {
@@ -191,9 +192,7 @@ let activeModelRequest = 0;
 
 const applyModelOption = (selectedModel: ModelOption) => {
   model = selectedModel.mesh;
-  texture = selectedModel.texture;
-  normalTexture = selectedModel.normalTexture;
-  pbrMaterial = selectedModel.pbrMaterial;
+  material = selectedModel.material;
   shadowOrthoSize = getModelRadius(model);
   updateModelStats();
 };
@@ -337,9 +336,7 @@ const draw = () => {
     orthographic: isOrtho,
     worldViewDir: viewDir,
     modelViewDir,
-    texture,
-    normalTexture,
-    pbrMaterial,
+    material,
     iblData,
     lightSpaceMat,
     shadowMap,

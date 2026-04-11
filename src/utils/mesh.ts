@@ -2,7 +2,7 @@ import { Vector2, Vector3, Vector4 } from "../maths";
 
 const EPSILON = 0.00000001;
 
-export type LoadedModel = {
+export type Mesh = {
   vertices: Vector3[];
   normals: Vector3[];
   faceNormals: Vector3[];
@@ -10,7 +10,7 @@ export type LoadedModel = {
   tangents: Vector4[];
 };
 
-type LoadedModelSource = {
+type MeshSource = {
   vertices: Vector3[];
   normals?: Vector3[];
   uvs?: Vector2[];
@@ -113,15 +113,11 @@ const getTangents = (vertices: Vector3[], normals: Vector3[], uvs: Vector2[]) =>
   return tangents;
 };
 
-export const getModelRadius = (mesh: LoadedModel) => {
+export const getModelRadius = (mesh: Mesh) => {
   return mesh.vertices.reduce((max, vertex) => Math.max(max, vertex.length()), 0);
 };
 
-export const buildLoadedModel = (
-  source: LoadedModelSource,
-  normalize = false,
-  scale = 1,
-): LoadedModel => {
+export const buildLoadedModel = (source: MeshSource, normalize = false, scale = 1): Mesh => {
   const vertices = source.vertices.map((vertex) => vertex.clone());
   const uvs = source.uvs?.map((uv) => uv.clone()) ?? [];
 

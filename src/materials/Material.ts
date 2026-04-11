@@ -1,14 +1,18 @@
 import { Texture } from "../drawing";
 import { Vector3 } from "../maths";
 
-export type PbrMaterial = {
+export type Material = {
+  baseColorTexture: Texture;
+  normalTexture: Texture;
   metallicRoughnessTexture: Texture;
   baseColorFactor: Vector3;
   metallicFactor: number;
   roughnessFactor: number;
 };
 
-export const defaultPbrMaterial: PbrMaterial = {
+export const defaultMaterial: Material = {
+  baseColorTexture: Texture.White,
+  normalTexture: Texture.Normal,
   metallicRoughnessTexture: Texture.White,
   baseColorFactor: Vector3.One,
   metallicFactor: 0,
