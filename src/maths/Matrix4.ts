@@ -1,12 +1,11 @@
 import { Vector3, Vector4 } from ".";
 
+// Matrices are stored in column-major order and transform column vectors.
 export class Matrix4 {
   m: Float32Array;
   constructor() {
     this.m = new Float32Array(16);
   }
-
-  // Matrices are stored in column-major order and transform column vectors.
 
   public static Identity() {
     const m = new Matrix4();
