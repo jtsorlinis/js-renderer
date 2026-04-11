@@ -387,15 +387,23 @@ window.onpointerup = (e) => {
   mouseButtonState = e.buttons;
 };
 
+let prevX = NaN;
+let prevY = NaN;
 canvas.onpointermove = (e) => {
+  const dx = isNaN(prevX) ? 0 : e.clientX - prevX;
+  const dy = isNaN(prevY) ? 0 : e.clientY - prevY;
+  prevX = e.clientX;
+  prevY = e.clientY;
+
   const dragging = mouseButtonState === 1;
   const panning = mouseButtonState === 2 || mouseButtonState === 4;
+
   if (dragging) {
-    modelRotation.y -= e.movementX / ROTATE_SENSITIVITY;
-    modelRotation.x -= e.movementY / ROTATE_SENSITIVITY;
+    modelRotation.y -= dx / ROTATE_SENSITIVITY;
+    modelRotation.x -= dy / ROTATE_SENSITIVITY;
   } else if (panning) {
-    camPos.x -= e.movementX / PAN_SENSITIVITY;
-    camPos.y += e.movementY / PAN_SENSITIVITY;
+    camPos.x -= dx / PAN_SENSITIVITY;
+    camPos.y += dy / PAN_SENSITIVITY;
   }
 };
 
