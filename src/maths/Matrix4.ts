@@ -338,6 +338,14 @@ export class Matrix4 {
       return result;
   }
 
+  public lerp(to: Matrix4, t: number) {
+    const result = new Matrix4();
+    for (let i = 0; i < 16; i++) {
+      result.m[i] = this.m[i] + (to.m[i] - this.m[i]) * t;
+    }
+    return result;
+  }
+
   // prettier-ignore
   public print() {
     console.log(this.m[0].toFixed(2), this.m[4].toFixed(2), this.m[8].toFixed(2), this.m[12].toFixed(2));

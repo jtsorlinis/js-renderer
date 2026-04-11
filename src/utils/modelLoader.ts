@@ -1,6 +1,6 @@
 import { setHighResTextureLimit, Texture } from "../drawing";
-import { Vector3 } from "../maths";
 import { loadGlbAsset } from "./glbLoader";
+import type { PbrMaterial } from "./material";
 import { type LoadedModel } from "./mesh";
 
 const assetPath = (fileName: string) => `${import.meta.env.BASE_URL}models/${fileName}`;
@@ -41,13 +41,6 @@ const modelAssets: Record<string, ModelAssetSource> = {
 export const MODEL_KEYS = Object.keys(modelAssets) as (keyof typeof modelAssets)[];
 
 export type ModelKey = keyof typeof modelAssets;
-
-export type PbrMaterial = {
-  metallicRoughnessTexture: Texture;
-  baseColorFactor: Vector3;
-  metallicFactor: number;
-  roughnessFactor: number;
-};
 
 export type ModelOption = {
   mesh: LoadedModel;

@@ -238,10 +238,7 @@ highResCb.addEventListener("change", () => {
 
 const getRenderSettings = (): RenderSettings => {
   const shadingValue = getShadingButton()?.dataset.shadingValue || "wireframe";
-  const selection = resolveShadingSelection(
-    shadingValue,
-    texture.data.length > 0 && model.uvs.length > 0,
-  );
+  const selection = resolveShadingSelection(shadingValue);
   if (selection.normalizedValue !== shadingValue) {
     setShadingValue(selection.normalizedValue);
   }
