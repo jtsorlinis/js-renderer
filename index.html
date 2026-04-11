@@ -14,22 +14,20 @@
     </div>
 
     <aside class="sidebar">
-      <span class="title">Software Renderer</span>
+      <span class="title hideMobile">Software Renderer</span>
 
       <div class="section">
-        <label>
-          Model (Faces):
-          <select id="modelDd">
-            <option value="dice">Dice (20)</option>
-            <option value="rock">Rock (500)</option>
-            <option value="hydrant">Hydrant (3k)</option>
-            <option value="treasure">Treasure (10k)</option>
-            <option value="head">Head (50k)</option>
-            <option value="dragon">Dragon (100k)</option>
-            <option value="spartan">Spartan (300k)</option>
-            <option value="nyxy" hidden>Nyxy (10k)</option>
-          </select>
-        </label>
+        <span class="section-heading">Model (Faces)</span>
+        <select id="modelDd">
+          <option value="dice">Dice (20)</option>
+          <option value="rock">Rock (500)</option>
+          <option value="hydrant">Hydrant (3k)</option>
+          <option value="treasure">Treasure (10k)</option>
+          <option value="head">Head (50k)</option>
+          <option value="dragon">Dragon (100k)</option>
+          <option value="spartan">Spartan (300k)</option>
+          <option value="nyxy" hidden>Nyxy (10k)</option>
+        </select>
       </div>
 
       <div class="section">
@@ -156,7 +154,7 @@
 
           <input
             id="shadingSlider"
-            class="shading-slider"
+            class="shading-slider hideMobile"
             type="range"
             min="0"
             max="9"
@@ -167,9 +165,9 @@
         </div>
       </div>
 
-      <div class="section">
+      <div class="section options">
         <label><input type="checkbox" id="orthoCb" /> Orthographic</label>
-        <label><input type="checkbox" id="highResCb" /> High Res (2x)</label>
+        <label class="hideMobile"><input type="checkbox" id="highResCb" /> High Res (2x)</label>
       </div>
 
       <div class="stats">
@@ -183,7 +181,7 @@
         </div>
       </div>
 
-      <div class="section load-glb">
+      <div class="section load-glb hideMobile">
         <button type="button" class="shading-option" id="loadGlbBtn">Load GLB</button>
         <input id="glbInput" type="file" accept=".glb,model/gltf-binary" hidden />
       </div>
