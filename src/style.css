@@ -25,7 +25,7 @@
 
 body {
   margin: 0;
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   overflow: hidden;
 }
@@ -276,7 +276,7 @@ body {
 .viewport {
   flex: 1;
   min-width: 0;
-  height: 100vh;
+  height: 100dvh;
   background: #000;
   overflow: hidden;
   position: relative;
@@ -309,7 +309,7 @@ canvas:active {
 
   .sidebar {
     width: 100%;
-    max-height: 50vh;
+    max-height: 50dvh;
   }
 
   .shading-list {
