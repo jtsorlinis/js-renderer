@@ -50,6 +50,7 @@ const modelDd = document.getElementById("modelDd") as HTMLSelectElement;
 const loadGlbBtn = document.getElementById("loadGlbBtn") as HTMLButtonElement;
 const glbInput = document.getElementById("glbInput") as HTMLInputElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+let mouseButtonState = 0;
 
 const getShadingButton = () => {
   return shadingList.querySelector<HTMLButtonElement>(
@@ -283,7 +284,9 @@ const renderMesh = (
 };
 
 const update = (dt: number) => {
-  modelRotation.y -= dt * ROTATION_SPEED;
+  if (mouseButtonState !== 1) {
+    modelRotation.y -= dt * ROTATION_SPEED;
+  }
 };
 
 const draw = () => {
@@ -382,11 +385,20 @@ const loop = () => {
   requestAnimationFrame(loop);
 };
 
-canvas.onmousemove = (e) => {
-  if (e.buttons === 1) {
+canvas.onpointerdown = (e) => {
+  mouseButtonState = e.buttons;
+};
+window.onpointerup = (e) => {
+  mouseButtonState = e.buttons;
+};
+
+canvas.onpointermove = (e) => {
+  const dragging = mouseButtonState === 1;
+  const panning = mouseButtonState === 2 || mouseButtonState === 4;
+  if (dragging) {
     modelRotation.y -= e.movementX / ROTATE_SENSITIVITY;
     modelRotation.x -= e.movementY / ROTATE_SENSITIVITY;
-  } else if (e.buttons === 2 || e.buttons === 4) {
+  } else if (panning) {
     camPos.x -= e.movementX / PAN_SENSITIVITY;
     camPos.y += e.movementY / PAN_SENSITIVITY;
   }

@@ -44,6 +44,11 @@ body {
   overflow: auto;
 }
 
+.section {
+  display: flex;
+  flex-direction: column;
+}
+
 .title {
   font-size: 14px;
   font-weight: 700;
@@ -124,7 +129,7 @@ body {
   flex: 1;
   flex-direction: column;
   gap: 6px;
-  counter-reset: shading-step 11;
+  counter-reset: shading-step 10;
 }
 
 .shading-list li {
@@ -238,7 +243,6 @@ body {
 }
 
 /* ── Stats ── */
-
 .stats {
   display: flex;
   flex-direction: column;
@@ -285,10 +289,44 @@ canvas {
   left: 50%;
   transform: translate(-50%, -50%);
   cursor: grab;
+  touch-action: none;
 }
 
 /* JS sets the actual CSS size; these are fallbacks */
 
 canvas:active {
   cursor: grabbing;
+}
+
+@media (max-width: 576px) {
+  .hideMobile {
+    display: none !important;
+  }
+
+  body {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    max-height: 50vh;
+  }
+
+  .shading-list {
+    flex-direction: row-reverse;
+    overflow: auto;
+  }
+
+  .shading-list li {
+    min-width: 110px;
+  }
+
+  .shading-option.is-active {
+    transform: none;
+  }
+
+  .section.options {
+    flex-direction: row;
+    justify-content: space-between;
+  }
 }
