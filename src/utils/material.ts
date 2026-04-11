@@ -9,8 +9,8 @@ export type PbrMaterial = {
 };
 
 export const defaultPbrMaterial: PbrMaterial = {
-  metallicRoughnessTexture: new Texture(),
+  metallicRoughnessTexture: Texture.White,
   baseColorFactor: Vector3.One,
-  metallicFactor: 1,
-  roughnessFactor: 1,
+  metallicFactor: 0,
+  roughnessFactor: 0.5,
 };
