@@ -18,19 +18,7 @@ export type RenderSelection = {
   showEnvironmentBackground?: boolean;
 };
 
-export const resolveShadingSelection = (
-  rawValue: string,
-  canUseTexturedModes: boolean,
-): RenderSelection => {
-  let value = rawValue;
-
-  if (
-    !canUseTexturedModes &&
-    (value === "ibl" || value === "pbr" || value === "textured" || value.includes("normalMapped"))
-  ) {
-    value = "smooth";
-  }
-
+export const resolveShadingSelection = (value: string): RenderSelection => {
   switch (value) {
     case "ibl":
       return {
