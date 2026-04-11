@@ -90,14 +90,9 @@ export class Texture {
     let dataIndex = 0;
     for (let i = 0; i < imageData.data.length; i += 4) {
       if (descriptor.type === "normal") {
-        const normal = new Vector3(
-          (imageData.data[i] / 255) * 2 - 1,
-          (imageData.data[i + 1] / 255) * 2 - 1,
-          (imageData.data[i + 2] / 255) * 2 - 1,
-        ).normalize();
-        data[dataIndex++] = normal.x;
-        data[dataIndex++] = normal.y;
-        data[dataIndex++] = normal.z;
+        data[dataIndex++] = (imageData.data[i] / 255) * 2 - 1;
+        data[dataIndex++] = (imageData.data[i + 1] / 255) * 2 - 1;
+        data[dataIndex++] = (imageData.data[i + 2] / 255) * 2 - 1;
       } else {
         let r = imageData.data[i] / 255;
         let g = imageData.data[i + 1] / 255;

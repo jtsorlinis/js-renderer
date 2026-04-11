@@ -479,8 +479,8 @@ const convertGlbGeometry = (
     for (let triangleIndex = 0; triangleIndex < indices.length; triangleIndex += 3) {
       const triangleVertexIndices = [
         indices[triangleIndex],
-        indices[triangleIndex + 2],
         indices[triangleIndex + 1],
+        indices[triangleIndex + 2],
       ];
 
       for (const vertexIndex of triangleVertexIndices) {
