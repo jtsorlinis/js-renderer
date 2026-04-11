@@ -9,7 +9,6 @@ export type MaterialMode =
   | "depth";
 
 export type RenderMode = "filled" | "depthWireframe" | "wireframe";
-export type ProjectionMode = "orthographic" | "perspective";
 
 export type RenderSelection = {
   material: MaterialMode;
