@@ -29,7 +29,7 @@ import { loadHdrTexture } from "./utils/hdrLoader";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
-const FOV = 60;
+const FOV = 50;
 const SHADOW_MAP_SIZE = 512;
 const ROTATION_SPEED = 0.2;
 const ROTATE_SENSITIVITY = 250;
@@ -136,8 +136,8 @@ const hdrEnvironment = await loadHdrTexture(`${import.meta.env.BASE_URL}environm
 // Scene and camera
 const lightDir = new Vector3(1, -1, 1).normalize();
 const lightCol = new Vector3(1, 1, 1);
-const camPos = new Vector3(0, 0, -2.5);
-let cameraOrthoSize = 1.44;
+const camPos = new Vector3(0, 0, -3);
+let orthoSize = -camPos.z * Math.tan((FOV * Math.PI) / 180 / 2);
 
 // Derived scene data
 const cameraLookDir = Vector3.Forward;
@@ -184,8 +184,8 @@ const updateModelStats = () => {
 
 const resetModelTransform = () => {
   modelRotation.set(0, Math.PI / 2, 0);
-  camPos.set(0, 0, -2.5);
-  cameraOrthoSize = 1.44;
+  camPos.set(0, 0, -3);
+  orthoSize = -camPos.z * Math.tan((FOV * Math.PI) / 180 / 2);
 };
 
 let activeModelRequest = 0;
@@ -315,7 +315,7 @@ const draw = () => {
   const isOrtho = orthoCb.checked;
   const viewMat = Matrix4.LookTo(camPos, cameraLookDir, Vector3.Up);
   const projMat = isOrtho
-    ? Matrix4.Ortho(cameraOrthoSize, aspectRatio)
+    ? Matrix4.Ortho(orthoSize, aspectRatio)
     : Matrix4.Perspective(FOV, aspectRatio);
   const mvp = projMat.multiply(viewMat).multiply(modelMat);
 
@@ -409,7 +409,8 @@ canvas.onpointermove = (e) => {
 
 canvas.onwheel = (e) => {
   e.preventDefault();
-  cameraOrthoSize += (e.deltaY * 0.58) / ZOOM_SENSITIVITY;
+  const scale = Math.tan((FOV * 0.5 * Math.PI) / 180);
+  orthoSize += (e.deltaY * scale) / ZOOM_SENSITIVITY;
   camPos.z -= e.deltaY / ZOOM_SENSITIVITY;
 };
 
