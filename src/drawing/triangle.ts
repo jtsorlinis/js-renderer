@@ -8,9 +8,10 @@ export interface Barycentric {
   w: number;
 }
 
-// Calculates the signed area of a triangle from 3 points
+// Calculates the signed area of a triangle from 3 points.
+// Counter-clockwise winding is positive in NDC/Y-up space.
 export const edgeFunction = (a: Vector4, b: Vector4, c: Vector4) => {
-  return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x);
+  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
 };
 
 // Only instantiate these once and reuse them
@@ -38,8 +39,8 @@ export const triangle = (
   const p2x = (v2.x + 1) * halfWidth;
   const p2y = (-v2.y + 1) * halfHeight;
 
-  // Backface culling based on winding order
-  const area = (p0x - p2x) * (p1y - p2y) - (p0y - p2y) * (p1x - p2x);
+  // Treat counter-clockwise triangles in NDC as front-facing.
+  const area = (p2x - p0x) * (p1y - p0y) - (p2y - p0y) * (p1x - p0x);
   if (area <= 0) return;
 
   // Clip near and far planes [0,1]
@@ -63,17 +64,17 @@ export const triangle = (
 
   // Calculate barycentric coordinates for first pixel
   const invArea = 1 / area;
-  let uRow = ((minX - p2x) * (p1y - p2y) - (minY - p2y) * (p1x - p2x)) * invArea;
-  let vRow = ((minX - p0x) * (p2y - p0y) - (minY - p0y) * (p2x - p0x)) * invArea;
-  let wRow = ((minX - p1x) * (p0y - p1y) - (minY - p1y) * (p0x - p1x)) * invArea;
+  let uRow = ((minX - p1x) * (p2y - p1y) - (minY - p1y) * (p2x - p1x)) * invArea;
+  let vRow = ((minX - p2x) * (p0y - p2y) - (minY - p2y) * (p0x - p2x)) * invArea;
+  let wRow = ((minX - p0x) * (p1y - p0y) - (minY - p0y) * (p1x - p0x)) * invArea;
 
   // Calculate barycentric coordinate steps
-  const uStepX = (p1y - p2y) * invArea;
-  const uStepY = (p2x - p1x) * invArea;
-  const vStepX = (p2y - p0y) * invArea;
-  const vStepY = (p0x - p2x) * invArea;
-  const wStepX = (p0y - p1y) * invArea;
-  const wStepY = (p1x - p0x) * invArea;
+  const uStepX = (p2y - p1y) * invArea;
+  const uStepY = (p1x - p2x) * invArea;
+  const vStepX = (p0y - p2y) * invArea;
+  const vStepY = (p2x - p0x) * invArea;
+  const wStepX = (p1y - p0y) * invArea;
+  const wStepY = (p0x - p1x) * invArea;
 
   const fragment = shader.fragment;
   shader.bc = bcClip;

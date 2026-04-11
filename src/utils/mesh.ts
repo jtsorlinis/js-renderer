@@ -29,9 +29,9 @@ const getFaceNormals = (vertices: Vector3[]) => {
   const faceNormals: Vector3[] = [];
 
   for (let i = 0; i < vertices.length; i += 3) {
-    const normal = vertices[i + 1]
+    const normal = vertices[i + 2]
       .subtract(vertices[i])
-      .cross(vertices[i + 2].subtract(vertices[i]))
+      .cross(vertices[i + 1].subtract(vertices[i]))
       .normalize();
     faceNormals.push(normal, normal, normal);
   }
