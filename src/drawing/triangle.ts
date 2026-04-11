@@ -22,7 +22,7 @@ export const triangle = (
   verts: Vector4[],
   shader: BaseShader,
   buffer: Framebuffer,
-  zBuffer: DepthTexture,
+  depthBuffer: DepthTexture,
 ) => {
   const v0 = verts[0];
   const v1 = verts[1];
@@ -94,9 +94,9 @@ export const triangle = (
         const z = v0.z * u + v1.z * v + v2.z * w;
 
         // Check pixel's depth against z buffer, if pixel is closer, draw it
-        if (z < zBuffer.data[index]) {
+        if (z < depthBuffer.data[index]) {
           // Update z buffer with new depth
-          zBuffer.data[index] = z;
+          depthBuffer.data[index] = z;
 
           // Skip if no fragment shader is defined (e.g. depth pass)
           if (fragment) {

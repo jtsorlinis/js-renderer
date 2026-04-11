@@ -600,28 +600,20 @@ export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => 
   const converted = convertGlbGeometry(json, binaryChunk, normalize, scale);
 
   const [texture, normalTexture, metallicRoughnessTexture] = await Promise.all([
-    loadTextureFromSlot(
-      json,
-      binaryChunk,
-      converted.baseColorTextureIndex,
-      url,
-      new Texture(new Float32Array([1, 1, 1]), 1, 1),
-      { type: "color", colorSpace: "srgb" },
-    ),
-    loadTextureFromSlot(
-      json,
-      binaryChunk,
-      converted.normalTextureIndex,
-      url,
-      new Texture(new Float32Array([0, 0, 1]), 1, 1),
-      { type: "normal", colorSpace: "linear" },
-    ),
+    loadTextureFromSlot(json, binaryChunk, converted.baseColorTextureIndex, url, new Texture(), {
+      type: "color",
+      colorSpace: "srgb",
+    }),
+    loadTextureFromSlot(json, binaryChunk, converted.normalTextureIndex, url, new Texture(), {
+      type: "normal",
+      colorSpace: "linear",
+    }),
     loadTextureFromSlot(
       json,
       binaryChunk,
       converted.pbrMaterial.metallicRoughnessTextureIndex,
       url,
-      new Texture(new Float32Array([1, 1, 1]), 1, 1),
+      new Texture(),
       { type: "color", colorSpace: "linear" },
     ),
   ]);
