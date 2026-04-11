@@ -146,13 +146,14 @@ const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
 rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw);
 
-const diceModel = await ensureModelOption("dice");
-prefetchRemainingModels("dice");
+const initialModelKey = "dice";
+const initialModelOption = await ensureModelOption(initialModelKey);
+prefetchRemainingModels(initialModelKey);
 
-let model = diceModel.mesh;
-let texture = diceModel.texture;
-let normalTexture = diceModel.normalTexture;
-let pbrMaterial = diceModel.pbrMaterial;
+let model = initialModelOption.mesh;
+let texture = initialModelOption.texture;
+let normalTexture = initialModelOption.normalTexture;
+let pbrMaterial = initialModelOption.pbrMaterial;
 let shadowOrthoSize = getModelRadius(model);
 
 let modelPos = new Vector3(0, 0, 0);

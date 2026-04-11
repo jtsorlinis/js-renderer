@@ -53,14 +53,18 @@ export class Texture {
   width: number;
   height: number;
 
-  constructor(
-    data: Float32Array = new Float32Array([0.5, 0.5, 0.5]),
-    width: number = 1,
-    height: number = 1,
-  ) {
+  constructor(data: Float32Array, width: number = 1, height: number = 1) {
     this.data = data;
     this.width = width;
     this.height = height;
+  }
+
+  static get White() {
+    return new Texture(new Float32Array([1, 1, 1]));
+  }
+
+  static get Normal() {
+    return new Texture(new Float32Array([0, 0, 1]));
   }
 
   static Load = async (imageURL: string, descriptor: TextureDescriptor) => {
