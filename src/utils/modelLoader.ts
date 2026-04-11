@@ -1,6 +1,6 @@
 import { setHighResTextureLimit, Texture } from "../drawing";
+import type { PbrMaterial } from "../materials/PbrMaterial";
 import { loadGlbAsset } from "./glbLoader";
-import type { PbrMaterial } from "./material";
 import { type LoadedModel } from "./mesh";
 
 const assetPath = (fileName: string) => `${import.meta.env.BASE_URL}models/${fileName}`;

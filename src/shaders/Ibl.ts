@@ -1,7 +1,7 @@
 import { BaseShader, Verts } from "./BaseShader";
 import { Vector3, Matrix4, Vector4, Vector2 } from "../maths";
 import { DepthTexture, Texture } from "../drawing";
-import { type PbrMaterial } from "../utils/material";
+import { type PbrMaterial } from "../materials/PbrMaterial";
 import {
   DIELECTRIC_F0,
   EPSILON,
