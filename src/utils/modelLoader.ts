@@ -1,7 +1,7 @@
-import { setHighResTextureLimit, Texture } from "../drawing";
-import type { PbrMaterial } from "../materials/PbrMaterial";
+import { setHighResTextureLimit } from "../drawing";
+import type { Material } from "../materials/Material";
 import { loadGlbAsset } from "./glbLoader";
-import { type LoadedModel } from "./mesh";
+import { type Mesh } from "./mesh";
 
 const assetPath = (fileName: string) => `${import.meta.env.BASE_URL}models/${fileName}`;
 
@@ -43,10 +43,8 @@ export const MODEL_KEYS = Object.keys(modelAssets) as (keyof typeof modelAssets)
 export type ModelKey = keyof typeof modelAssets;
 
 export type ModelOption = {
-  mesh: LoadedModel;
-  texture: Texture;
-  normalTexture: Texture;
-  pbrMaterial: PbrMaterial;
+  mesh: Mesh;
+  material: Material;
 };
 
 type ModelAssetSource = {

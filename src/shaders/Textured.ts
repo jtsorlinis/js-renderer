@@ -1,6 +1,6 @@
 import { BaseShader, Verts } from "./BaseShader";
 import { Vector3, Matrix4, Vector4, Vector2 } from "../maths";
-import { Texture } from "../drawing";
+import { Material } from "../materials/Material";
 
 export interface Uniforms {
   model: Verts;
@@ -12,7 +12,7 @@ export interface Uniforms {
   worldCamPos: Vector3;
   orthographic: boolean;
   worldViewDir: Vector3;
-  texture: Texture;
+  material: Material;
 }
 
 const specularStrength = 0.5;
@@ -51,7 +51,7 @@ export class TexturedShader extends BaseShader {
     const uv = this.interpolateVec2(this.vUV);
 
     // Sample albedo texture.
-    const baseColor = this.sample(this.uniforms.texture, uv);
+    const baseColor = this.sample(this.uniforms.material.baseColorTexture, uv);
 
     // Basic Blinn-Phong lighting in world space.
     const worldViewDir = this.uniforms.orthographic

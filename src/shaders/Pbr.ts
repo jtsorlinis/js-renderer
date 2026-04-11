@@ -1,7 +1,7 @@
 import { BaseShader, Verts } from "./BaseShader";
 import { Vector3, Matrix4, Vector4, Vector2 } from "../maths";
-import { DepthTexture, Texture } from "../drawing";
-import { type PbrMaterial } from "../materials/PbrMaterial";
+import { DepthTexture } from "../drawing";
+import { type Material } from "../materials/Material";
 import {
   DIELECTRIC_F0,
   EPSILON,
@@ -19,9 +19,7 @@ export interface Uniforms {
   modelCamPos: Vector3;
   orthographic: boolean;
   modelViewDir: Vector3;
-  texture: Texture;
-  normalTexture: Texture;
-  pbrMaterial: PbrMaterial;
+  material: Material;
   lightSpaceMat: Matrix4;
   shadowMap: DepthTexture;
   receiveShadows: boolean;
@@ -65,6 +63,7 @@ export class PbrShader extends BaseShader {
 
   fragment = () => {
     const uv = this.interpolateVec2(this.vUV);
+    const material = this.uniforms.material;
     const modelPos = this.interpolateVec3(this.vModelPos);
     const modelNormal = this.interpolateVec3(this.vModelNormal).normalize();
     const modelTangent = this.interpolateVec4(this.vModelTangent);
@@ -91,7 +90,7 @@ export class PbrShader extends BaseShader {
     const By = (modelNormal.z * T.x - modelNormal.x * T.z) * handedness;
     const Bz = (modelNormal.x * T.y - modelNormal.y * T.x) * handedness;
 
-    const normalTexel = this.sample(this.uniforms.normalTexture, uv);
+    const normalTexel = this.sample(material.normalTexture, uv);
     const Nx = T.x * normalTexel.x + Bx * normalTexel.y + modelNormal.x * normalTexel.z;
     const Ny = T.y * normalTexel.x + By * normalTexel.y + modelNormal.y * normalTexel.z;
     const Nz = T.z * normalTexel.x + Bz * normalTexel.y + modelNormal.z * normalTexel.z;
@@ -99,15 +98,12 @@ export class PbrShader extends BaseShader {
     const NScale = NLengthSq > EPSILON ? 1 / Math.sqrt(NLengthSq) : 0;
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
 
-    const baseColor = this.sample(this.uniforms.texture, uv).multiplyInPlace(
-      this.uniforms.pbrMaterial.baseColorFactor,
+    const baseColor = this.sample(material.baseColorTexture, uv).multiplyInPlace(
+      material.baseColorFactor,
     );
-    const metallicRoughness = this.sample(this.uniforms.pbrMaterial.metallicRoughnessTexture, uv);
-    const roughness = Math.max(
-      0.045,
-      saturate(metallicRoughness.y * this.uniforms.pbrMaterial.roughnessFactor),
-    );
-    const metallic = saturate(metallicRoughness.z * this.uniforms.pbrMaterial.metallicFactor);
+    const metallicRoughness = this.sample(material.metallicRoughnessTexture, uv);
+    const roughness = Math.max(0.045, saturate(metallicRoughness.y * material.roughnessFactor));
+    const metallic = saturate(metallicRoughness.z * material.metallicFactor);
     const f0x = DIELECTRIC_F0.x + (baseColor.x - DIELECTRIC_F0.x) * metallic;
     const f0y = DIELECTRIC_F0.y + (baseColor.y - DIELECTRIC_F0.y) * metallic;
     const f0z = DIELECTRIC_F0.z + (baseColor.z - DIELECTRIC_F0.z) * metallic;

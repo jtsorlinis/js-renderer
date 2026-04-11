@@ -1,6 +1,7 @@
 import { BaseShader, Verts } from "./BaseShader";
 import { Vector3, Matrix4, Vector4, Vector2 } from "../maths";
-import { DepthTexture, Texture } from "../drawing";
+import { DepthTexture } from "../drawing";
+import { Material } from "../materials/Material";
 
 export interface Uniforms {
   model: Verts;
@@ -9,10 +10,9 @@ export interface Uniforms {
   modelCamPos: Vector3;
   orthographic: boolean;
   modelViewDir: Vector3;
-  texture: Texture;
   modelLightDir: Vector3;
-  normalTexture: Texture;
   lightSpaceMat: Matrix4;
+  material: Material;
   shadowMap: DepthTexture;
   receiveShadows: boolean;
 }
@@ -67,8 +67,8 @@ export class NormalMappedShader extends BaseShader {
     const handedness = modelTangent.w < 0 ? -1 : 1;
 
     // Sample material inputs.
-    const color = this.sample(this.uniforms.texture, uv);
-    const normalTexel = this.sample(this.uniforms.normalTexture, uv);
+    const color = this.sample(this.uniforms.material.baseColorTexture, uv);
+    const normalTexel = this.sample(this.uniforms.material.normalTexture, uv);
 
     // Rebuild TBN in scalar form for performance.
     const tDotN = modelTangent.dot3(modelNormal);
