@@ -1,21 +1,8 @@
 import { line } from "./line";
 import { edgeFunction, triangle } from "./triangle";
-import {
-  Texture,
-  DepthTexture,
-  setHighResTextureLimit,
-  type TextureDescriptor,
-} from "./Texture";
+import { Texture, DepthTexture, setHighResTextureLimit, type TextureDescriptor } from "./Texture";
 import { Framebuffer } from "./Framebuffer";
 
-export {
-  line,
-  triangle,
-  edgeFunction,
-  Texture,
-  DepthTexture,
-  Framebuffer,
-  setHighResTextureLimit,
-};
+export { line, triangle, edgeFunction, Texture, DepthTexture, Framebuffer, setHighResTextureLimit };
 
 export type { TextureDescriptor };

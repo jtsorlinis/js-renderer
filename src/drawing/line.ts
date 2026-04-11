@@ -10,7 +10,7 @@ export const line = (
   start: Vector4,
   end: Vector4,
   buffer: Framebuffer,
-  zBuffer?: DepthTexture,
+  depthBuffer?: DepthTexture,
 ) => {
   // Clip near and far planes
   if (start.z < 0 || end.z < 0) return;
@@ -43,7 +43,7 @@ export const line = (
   while (true) {
     if (s.x >= 0 && s.x < buffer.width && s.y >= 0 && s.y < buffer.height) {
       const index = s.x + s.y * buffer.width;
-      if (!zBuffer || z <= zBuffer.data[index] + depthEpsilon) {
+      if (!depthBuffer || z <= depthBuffer.data[index] + depthEpsilon) {
         buffer.setPixel(s.x, s.y, WHITE);
       }
     }

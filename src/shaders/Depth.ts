@@ -11,9 +11,7 @@ export class DepthShader extends BaseShader {
 
   vertex = () => {
     // Depth-only passes only need clip-space coordinates.
-    return this.uniforms.clipMat.transformPoint4(
-      this.uniforms.model.vertices[this.vertexId],
-    );
+    return this.uniforms.clipMat.transformPoint4(this.uniforms.model.vertices[this.vertexId]);
   };
 
   // Depth comes from rasterized z, so no fragment color output is needed.

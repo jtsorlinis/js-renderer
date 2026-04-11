@@ -1,4 +1,4 @@
-import { Texture } from "../drawing";
+import { Framebuffer, Texture } from "../drawing";
 import { Vector3 } from "../maths";
 import { EPSILON, INV_PI } from "./pbrHelpers";
 
@@ -39,13 +39,12 @@ export const wrapUnit = (value: number) => {
   return value - Math.floor(value);
 };
 
-export const sampleLatLongMapInto = (
+export const sampleLatLongMap = (
   data: Float32Array,
   width: number,
   height: number,
   u: number,
   v: number,
-  out: Vector3,
   layerIndex = 0,
   layerStride = width * height * 3,
 ) => {
@@ -71,10 +70,48 @@ export const sampleLatLongMapInto = (
   const g1 = data[base01 + 1] + (data[base11 + 1] - data[base01 + 1]) * xBlend;
   const b0 = data[base00 + 2] + (data[base10 + 2] - data[base00 + 2]) * xBlend;
   const b1 = data[base01 + 2] + (data[base11 + 2] - data[base01 + 2]) * xBlend;
-  out.x = r0 + (r1 - r0) * yBlend;
-  out.y = g0 + (g1 - g0) * yBlend;
-  out.z = b0 + (b1 - b0) * yBlend;
-  return out;
+  return new Vector3(r0 + (r1 - r0) * yBlend, g0 + (g1 - g0) * yBlend, b0 + (b1 - b0) * yBlend);
+};
+
+export const rebuildEnvironmentBackdrop = (
+  targetBuffer: Framebuffer,
+  iblData: IblData,
+  aspectRatio: number,
+  cameraFov: number,
+  envYaw: { sin: number; cos: number },
+  blurAmount = 0.5,
+) => {
+  const tanHalfFov = Math.tan((cameraFov * Math.PI) / 360);
+  const roughnessLayer = Math.round(blurAmount * iblData.specularPrefilterRoughnessMaxIndex);
+
+  for (let y = 0; y < targetBuffer.height; y++) {
+    const ndcY = 1 - ((y + 0.5) / targetBuffer.height) * 2;
+    const viewY = ndcY * tanHalfFov;
+
+    for (let x = 0; x < targetBuffer.width; x++) {
+      const ndcX = ((x + 0.5) / targetBuffer.width) * 2 - 1;
+      const viewX = ndcX * aspectRatio * tanHalfFov;
+      const invViewLength = 1 / Math.hypot(viewX, viewY, 1);
+      const dirX = viewX * invViewLength;
+      const dirY = viewY * invViewLength;
+      const dirZ = invViewLength;
+      const rotatedX = dirX * envYaw.cos - dirZ * envYaw.sin;
+      const rotatedZ = dirX * envYaw.sin + dirZ * envYaw.cos;
+      const u = (Math.atan2(rotatedX, rotatedZ) / TAU + 1.5) % 1;
+      const v = Math.acos(clampSignedUnit(dirY)) / Math.PI;
+
+      const backgroundEnvSample = sampleLatLongMap(
+        iblData.specularPrefilterMap,
+        iblData.specularPrefilterMapWidth,
+        iblData.specularPrefilterMapHeight,
+        u,
+        v,
+        roughnessLayer,
+        iblData.specularPrefilterLayerStride,
+      );
+      targetBuffer.setPixel(x, y, backgroundEnvSample);
+    }
+  }
 };
 
 const directionToLatLongUv = (x: number, y: number, z: number) => {
@@ -154,20 +191,9 @@ const sampleLatLongData = (
   };
 };
 
-const sampleEnvironment = (
-  texture: Texture,
-  x: number,
-  y: number,
-  z: number,
-) => {
+const sampleEnvironment = (texture: Texture, x: number, y: number, z: number) => {
   const uv = directionToLatLongUv(x, y, z);
-  return sampleLatLongData(
-    texture.data,
-    texture.width,
-    texture.height,
-    uv.u,
-    uv.v,
-  );
+  return sampleLatLongData(texture.data, texture.width, texture.height, uv.u, uv.v);
 };
 
 const wrapAngle = (angle: number) => {
@@ -191,9 +217,7 @@ export const estimateEnvironmentSunDirection = (texture: Texture) => {
 
   for (let i = 0; i < texture.data.length; i += 3) {
     const luminance =
-      texture.data[i] * 0.2126 +
-      texture.data[i + 1] * 0.7152 +
-      texture.data[i + 2] * 0.0722;
+      texture.data[i] * 0.2126 + texture.data[i + 1] * 0.7152 + texture.data[i + 2] * 0.0722;
     maxLuminance = Math.max(maxLuminance, luminance);
   }
 
@@ -238,29 +262,31 @@ export const estimateEnvironmentSunDirection = (texture: Texture) => {
     return Vector3.Forward;
   }
 
-  return new Vector3(
-    sunX / totalWeight,
-    sunY / totalWeight,
-    sunZ / totalWeight,
-  ).normalize();
+  return new Vector3(sunX / totalWeight, sunY / totalWeight, sunZ / totalWeight).normalize();
 };
 
 export const estimateEnvironmentYaw = (texture: Texture, lightDir: Vector3) => {
   const sunDirection = estimateEnvironmentSunDirection(texture);
   const lightDirectionToSource = lightDir.scale(-1);
-  const sunLengthSq =
-    sunDirection.x * sunDirection.x + sunDirection.z * sunDirection.z;
+  const sunLengthSq = sunDirection.x * sunDirection.x + sunDirection.z * sunDirection.z;
   const lightLengthSq =
     lightDirectionToSource.x * lightDirectionToSource.x +
     lightDirectionToSource.z * lightDirectionToSource.z;
 
   if (sunLengthSq <= Number.EPSILON || lightLengthSq <= Number.EPSILON) {
-    return 0;
+    return {
+      angle: 0,
+      sin: 0,
+      cos: 1,
+    };
   }
 
-  return wrapAngle(
-    directionToYaw(lightDirectionToSource) - directionToYaw(sunDirection),
-  );
+  const angle = wrapAngle(directionToYaw(lightDirectionToSource) - directionToYaw(sunDirection));
+  return {
+    angle,
+    sin: Math.sin(angle),
+    cos: Math.cos(angle),
+  };
 };
 
 const radicalInverseVdc = (bits: number) => {
@@ -279,10 +305,7 @@ const geometrySchlickGGXIbl = (nDotX: number, roughness: number) => {
 };
 
 const geometrySmithIbl = (nDotV: number, nDotL: number, roughness: number) => {
-  return (
-    geometrySchlickGGXIbl(nDotV, roughness) *
-    geometrySchlickGGXIbl(nDotL, roughness)
-  );
+  return geometrySchlickGGXIbl(nDotV, roughness) * geometrySchlickGGXIbl(nDotL, roughness);
 };
 
 const buildDiffuseIrradianceLut = (
@@ -317,17 +340,11 @@ const buildDiffuseIrradianceLut = (
           const sinThetaCosPhi = sinTheta * Math.cos(phi);
           const sinThetaSinPhi = sinTheta * Math.sin(phi);
           const sampleX =
-            basis.tx * sinThetaCosPhi +
-            basis.bx * sinThetaSinPhi +
-            normal.x * cosTheta;
+            basis.tx * sinThetaCosPhi + basis.bx * sinThetaSinPhi + normal.x * cosTheta;
           const sampleY =
-            basis.ty * sinThetaCosPhi +
-            basis.by * sinThetaSinPhi +
-            normal.y * cosTheta;
+            basis.ty * sinThetaCosPhi + basis.by * sinThetaSinPhi + normal.y * cosTheta;
           const sampleZ =
-            basis.tz * sinThetaCosPhi +
-            basis.bz * sinThetaSinPhi +
-            normal.z * cosTheta;
+            basis.tz * sinThetaCosPhi + basis.bz * sinThetaSinPhi + normal.z * cosTheta;
           const sample = sampleEnvironment(texture, sampleX, sampleY, sampleZ);
           irradianceR += sample.r * sampleWeight;
           irradianceG += sample.g * sampleWeight;
@@ -354,11 +371,7 @@ const buildSpecularPrefilterLut = (
 ) => {
   const map = new Float32Array(width * height * roughnessLutSize * 3);
 
-  for (
-    let roughnessIndex = 0;
-    roughnessIndex < roughnessLutSize;
-    roughnessIndex++
-  ) {
+  for (let roughnessIndex = 0; roughnessIndex < roughnessLutSize; roughnessIndex++) {
     const roughness = Math.max(0.045, roughnessIndex / (roughnessLutSize - 1));
     const alpha = roughness * roughness;
     const alphaSq = alpha * alpha;
@@ -379,29 +392,18 @@ const buildSpecularPrefilterLut = (
           const xiX = sampleIndex / sampleCount;
           const xiY = radicalInverseVdc(sampleIndex);
           const phi = Math.PI * 2 * xiX;
-          const cosTheta = Math.sqrt(
-            (1 - xiY) / Math.max(1 + (alphaSq - 1) * xiY, EPSILON),
-          );
+          const cosTheta = Math.sqrt((1 - xiY) / Math.max(1 + (alphaSq - 1) * xiY, EPSILON));
           const sinTheta = Math.sqrt(Math.max(0, 1 - cosTheta * cosTheta));
           const hLocalX = Math.cos(phi) * sinTheta;
           const hLocalY = Math.sin(phi) * sinTheta;
-          const hx =
-            basis.tx * hLocalX + basis.bx * hLocalY + reflection.x * cosTheta;
-          const hy =
-            basis.ty * hLocalX + basis.by * hLocalY + reflection.y * cosTheta;
-          const hz =
-            basis.tz * hLocalX + basis.bz * hLocalY + reflection.z * cosTheta;
-          const vDotH = Math.max(
-            reflection.x * hx + reflection.y * hy + reflection.z * hz,
-            0,
-          );
+          const hx = basis.tx * hLocalX + basis.bx * hLocalY + reflection.x * cosTheta;
+          const hy = basis.ty * hLocalX + basis.by * hLocalY + reflection.y * cosTheta;
+          const hz = basis.tz * hLocalX + basis.bz * hLocalY + reflection.z * cosTheta;
+          const vDotH = Math.max(reflection.x * hx + reflection.y * hy + reflection.z * hz, 0);
           const lx = 2 * vDotH * hx - reflection.x;
           const ly = 2 * vDotH * hy - reflection.y;
           const lz = 2 * vDotH * hz - reflection.z;
-          const nDotL = Math.max(
-            reflection.x * lx + reflection.y * ly + reflection.z * lz,
-            0,
-          );
+          const nDotL = Math.max(reflection.x * lx + reflection.y * ly + reflection.z * lz, 0);
           if (nDotL <= 0) {
             continue;
           }
@@ -444,9 +446,7 @@ const buildSpecularBrdfLut = (lutSize: number, sampleCount: number) => {
         const xiX = sampleIndex / sampleCount;
         const xiY = radicalInverseVdc(sampleIndex);
         const phi = Math.PI * 2 * xiX;
-        const cosTheta = Math.sqrt(
-          (1 - xiY) / Math.max(1 + (alphaSq - 1) * xiY, EPSILON),
-        );
+        const cosTheta = Math.sqrt((1 - xiY) / Math.max(1 + (alphaSq - 1) * xiY, EPSILON));
         const sinTheta = Math.sqrt(Math.max(0, 1 - cosTheta * cosTheta));
         const hx = Math.cos(phi) * sinTheta;
         const hz = cosTheta;
@@ -459,8 +459,7 @@ const buildSpecularBrdfLut = (lutSize: number, sampleCount: number) => {
         }
 
         const geometry = geometrySmithIbl(nDotV, nDotL, roughness);
-        const visibility =
-          (geometry * vDotH) / Math.max(nDotH * nDotV, EPSILON);
+        const visibility = (geometry * vDotH) / Math.max(nDotH * nDotV, EPSILON);
         const fresnel = Math.pow(1 - vDotH, 5);
         brdfA += (1 - fresnel) * visibility;
         brdfB += fresnel * visibility;
@@ -492,16 +491,12 @@ export const buildEnvironmentIbl = (environmentTexture: Texture): IblData => {
       specularPrefilterRoughnessLutSize,
       specularPrefilterSampleCount,
     ),
-    specularBrdfLut: buildSpecularBrdfLut(
-      specularBrdfLutSize,
-      specularBrdfSampleCount,
-    ),
+    specularBrdfLut: buildSpecularBrdfLut(specularBrdfLutSize, specularBrdfSampleCount),
     diffuseIrradianceMapWidth,
     diffuseIrradianceMapHeight,
     specularPrefilterMapWidth,
     specularPrefilterMapHeight,
-    specularPrefilterLayerStride:
-      specularPrefilterMapWidth * specularPrefilterMapHeight * 3,
+    specularPrefilterLayerStride: specularPrefilterMapWidth * specularPrefilterMapHeight * 3,
     specularPrefilterRoughnessLutSize,
     specularPrefilterRoughnessMaxIndex: specularPrefilterRoughnessLutSize - 1,
     specularBrdfLutSize,

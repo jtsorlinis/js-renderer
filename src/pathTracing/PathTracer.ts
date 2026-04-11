@@ -18,8 +18,8 @@ import {
   evaluateDirectSunLighting,
   getSpecularSamplingProbability,
 } from "./pathTracingLighting";
-import { type PbrMaterial } from "../utils/modelLoader";
-import { type LoadedModel } from "../utils/mesh";
+import { Material } from "../materials/Material";
+import { Mesh } from "../utils/mesh";
 
 const RAY_EPSILON = 0.001;
 
@@ -41,23 +41,20 @@ interface HitRecord {
 
 export interface PathTraceScene {
   environment: Texture;
-  envYawCos: number;
-  envYawSin: number;
+  envYaw: { angle: number; sin: number; cos: number };
   iblData: IblData;
   lightColor: Vector3;
-  lightDirectionToLight: Vector3;
-  model: LoadedModel;
+  worldLightDir: Vector3;
+  model: Mesh;
   modelMat: Matrix4;
   invModelMat: Matrix4;
   normalMat: Matrix4;
-  normalTexture: Texture;
-  pbrMaterial: PbrMaterial;
-  texture: Texture;
+  material: Material;
 }
 
 export interface PathTraceCamera {
   aspectRatio: number;
-  cameraOrthoSize: number;
+  orthoSize: number;
   orthographic: boolean;
   position: Vector3;
 }
@@ -99,10 +96,7 @@ export class PathTracer {
     const deadline = performance.now() + timeBudgetMs;
     let processedPixels = 0;
 
-    while (
-      totalPixels > 0 &&
-      (processedPixels === 0 || performance.now() < deadline)
-    ) {
+    while (totalPixels > 0 && (processedPixels === 0 || performance.now() < deadline)) {
       const pixelIndex = this.workIndex;
       const x = pixelIndex % this.internalWidth;
       const y = Math.floor(pixelIndex / this.internalWidth);
@@ -128,15 +122,12 @@ export class PathTracer {
     return totalPixels ? this.sampleCount + this.workIndex / totalPixels : 0;
   };
 
-  private syncAccumulationState = (
-    scene: PathTraceScene,
-    camera: PathTraceCamera,
-  ) => {
+  private syncAccumulationState = (scene: PathTraceScene, camera: PathTraceCamera) => {
     const modelMatrix = scene.modelMat.m;
     let stateChanged =
       camera.orthographic !== this.lastOrthographic ||
       this.differs(camera.aspectRatio, this.lastAspectRatio) ||
-      this.differs(camera.cameraOrthoSize, this.lastCameraOrthoSize) ||
+      this.differs(camera.orthoSize, this.lastCameraOrthoSize) ||
       this.differs(camera.position.x, this.lastCameraPosition.x) ||
       this.differs(camera.position.y, this.lastCameraPosition.y) ||
       this.differs(camera.position.z, this.lastCameraPosition.z);
@@ -157,7 +148,7 @@ export class PathTracer {
     this.needsReset = true;
     this.lastOrthographic = camera.orthographic;
     this.lastAspectRatio = camera.aspectRatio;
-    this.lastCameraOrthoSize = camera.cameraOrthoSize;
+    this.lastCameraOrthoSize = camera.orthoSize;
     this.lastCameraPosition.x = camera.position.x;
     this.lastCameraPosition.y = camera.position.y;
     this.lastCameraPosition.z = camera.position.z;
@@ -190,12 +181,7 @@ export class PathTracer {
     this.needsReset = false;
   };
 
-  private tracePixel = (
-    x: number,
-    y: number,
-    scene: PathTraceScene,
-    camera: PathTraceCamera,
-  ) => {
+  private tracePixel = (x: number, y: number, scene: PathTraceScene, camera: PathTraceCamera) => {
     const jitterX = this.nextRandom();
     const jitterY = this.nextRandom();
     const ndcX = ((x + jitterX) / this.internalWidth) * 2 - 1;
@@ -205,7 +191,7 @@ export class PathTracer {
       ndcY,
       camera.position,
       camera.aspectRatio,
-      camera.cameraOrthoSize,
+      camera.orthoSize,
       camera.orthographic,
     );
 
@@ -232,19 +218,11 @@ export class PathTracer {
       const hit = this.traceClosest(origin, direction, scene);
       if (!hit) {
         if (bounce > 0 || renderEnvironment) {
-          const environment = sampleEnvironment(
-            scene.environment,
-            scene.envYawCos,
-            scene.envYawSin,
-            direction,
-          ).scale(environmentIntensity);
+          const environment = sampleEnvironment(scene.environment, scene.envYaw, direction).scale(
+            environmentIntensity,
+          );
           const environmentPdf = hasSampledBsdf
-            ? this.environmentSampler.directionPdf(
-                scene.environment,
-                scene.envYawCos,
-                scene.envYawSin,
-                direction,
-              )
+            ? this.environmentSampler.directionPdf(scene.environment, scene.envYaw, direction)
             : 0;
           const environmentWeight =
             hasSampledBsdf && environmentPdf > 0
@@ -260,12 +238,7 @@ export class PathTracer {
       const viewDir = direction.scale(-1).normalize();
       const specularChance = getSpecularSamplingProbability(hit, viewDir);
       const directLight = this.evaluateDirectSun(hit, viewDir, scene);
-      const directEnvironment = this.evaluateDirectEnvironment(
-        hit,
-        viewDir,
-        specularChance,
-        scene,
-      );
+      const directEnvironment = this.evaluateDirectEnvironment(hit, viewDir, specularChance, scene);
       radianceR += throughputR * directLight.x;
       radianceR += throughputR * directEnvironment.x;
       radianceG += throughputG * directLight.y;
@@ -279,22 +252,12 @@ export class PathTracer {
 
       let nextDirection: Vector3;
       if (this.nextRandom() < specularChance) {
-        nextDirection = this.sampleSpecularDirection(
-          hit.shadingNormal,
-          direction,
-          hit.roughness,
-        );
+        nextDirection = this.sampleSpecularDirection(hit.shadingNormal, direction, hit.roughness);
       } else {
         nextDirection = this.sampleDiffuseDirection(hit.shadingNormal);
       }
 
-      const bsdf = evaluateBsdf(
-        hit,
-        viewDir,
-        nextDirection,
-        specularChance,
-        scene.iblData,
-      );
+      const bsdf = evaluateBsdf(hit, viewDir, nextDirection, specularChance, scene.iblData);
       if (bsdf.nDotL <= 0 || bsdf.pdf <= 0) {
         break;
       }
@@ -326,12 +289,8 @@ export class PathTracer {
     return new Vector3(radianceR, radianceG, radianceB);
   };
 
-  private evaluateDirectSun = (
-    hit: HitRecord,
-    viewDir: Vector3,
-    scene: PathTraceScene,
-  ) => {
-    const lightDir = scene.lightDirectionToLight;
+  private evaluateDirectSun = (hit: HitRecord, viewDir: Vector3, scene: PathTraceScene) => {
+    const lightDir = scene.worldLightDir.scale(-1);
     const contribution = evaluateDirectSunLighting(
       hit,
       viewDir,
@@ -344,9 +303,7 @@ export class PathTracer {
       return Vector3.Zero;
     }
 
-    const shadowOrigin = hit.position.add(
-      hit.geometricNormal.scale(RAY_EPSILON),
-    );
+    const shadowOrigin = hit.position.add(hit.geometricNormal.scale(RAY_EPSILON));
     if (this.traceAny(shadowOrigin, lightDir, scene)) {
       return Vector3.Zero;
     }
@@ -362,8 +319,7 @@ export class PathTracer {
   ) => {
     const environmentSample = this.environmentSampler.sampleLight(
       scene.environment,
-      scene.envYawCos,
-      scene.envYawSin,
+      scene.envYaw,
       this.nextRandom,
     );
     if (!environmentSample) {
@@ -384,9 +340,7 @@ export class PathTracer {
       return Vector3.Zero;
     }
 
-    const shadowOrigin = hit.position.add(
-      hit.geometricNormal.scale(RAY_EPSILON),
-    );
+    const shadowOrigin = hit.position.add(hit.geometricNormal.scale(RAY_EPSILON));
     if (this.traceAny(shadowOrigin, environmentSample.direction, scene)) {
       return Vector3.Zero;
     }
@@ -394,15 +348,9 @@ export class PathTracer {
     return contribution;
   };
 
-  private traceClosest = (
-    originWorld: Vector3,
-    directionWorld: Vector3,
-    scene: PathTraceScene,
-  ) => {
+  private traceClosest = (originWorld: Vector3, directionWorld: Vector3, scene: PathTraceScene) => {
     const originModel = scene.invModelMat.transformPoint(originWorld);
-    const directionModel = scene.invModelMat
-      .transformDirection(directionWorld)
-      .normalize();
+    const directionModel = scene.invModelMat.transformDirection(directionWorld).normalize();
     const hit = this.bvh.intersect(originModel, directionModel);
     if (!hit) {
       return undefined;
@@ -420,8 +368,7 @@ export class PathTracer {
     );
     const position = scene.modelMat.transformPoint(positionModel);
     const hasUvs = scene.model.uvs.length === scene.model.vertices.length;
-    const hasTangents =
-      scene.model.tangents.length === scene.model.vertices.length;
+    const hasTangents = scene.model.tangents.length === scene.model.vertices.length;
 
     const normal0 = scene.model.normals[vertexOffset];
     const normal1 = scene.model.normals[vertexOffset + 1];
@@ -432,12 +379,8 @@ export class PathTracer {
       normal0.z * baryW + normal1.z * hit.baryU + normal2.z * hit.baryV,
     ).normalize();
     const geometricNormalModel = scene.model.faceNormals[vertexOffset];
-    const geometricNormal = scene.normalMat
-      .transformDirection(geometricNormalModel)
-      .normalize();
-    let shadingNormal = scene.normalMat
-      .transformDirection(smoothNormalModel)
-      .normalize();
+    const geometricNormal = scene.normalMat.transformDirection(geometricNormalModel).normalize();
+    let shadingNormal = scene.normalMat.transformDirection(smoothNormalModel).normalize();
 
     let uv = new Vector2(0, 0);
     if (hasUvs) {
@@ -460,7 +403,7 @@ export class PathTracer {
         hit.baryU,
         hit.baryV,
         scene.modelMat,
-        scene.normalTexture,
+        scene.material.normalTexture,
         uv,
       );
     }
@@ -470,26 +413,18 @@ export class PathTracer {
     }
 
     const orientedGeometricNormal =
-      geometricNormal.dot(directionWorld) > 0
-        ? geometricNormal.scale(-1)
-        : geometricNormal;
+      geometricNormal.dot(directionWorld) > 0 ? geometricNormal.scale(-1) : geometricNormal;
 
-    const sampledBaseColor = hasUvs
-      ? sampleTexture(scene.texture, uv)
-      : Vector3.One;
-    const baseColor = sampledBaseColor.multiplyInPlace(
-      scene.pbrMaterial.baseColorFactor,
-    );
+    const sampledBaseColor = hasUvs ? sampleTexture(scene.material.colorTexture, uv) : Vector3.One;
+    const baseColor = sampledBaseColor.multiplyInPlace(scene.material.colorFactor);
     const metallicRoughness = hasUvs
-      ? sampleTexture(scene.pbrMaterial.metallicRoughnessTexture, uv)
+      ? sampleTexture(scene.material.metallicRoughnessTexture, uv)
       : Vector3.One;
     const roughness = Math.max(
       0.045,
-      saturate(metallicRoughness.y * scene.pbrMaterial.roughnessFactor),
+      saturate(metallicRoughness.y * scene.material.roughnessFactor),
     );
-    const metallic = saturate(
-      metallicRoughness.z * scene.pbrMaterial.metallicFactor,
-    );
+    const metallic = saturate(metallicRoughness.z * scene.material.metallicFactor);
     const f0 = new Vector3(
       DIELECTRIC_F0.x + (baseColor.x - DIELECTRIC_F0.x) * metallic,
       DIELECTRIC_F0.y + (baseColor.y - DIELECTRIC_F0.y) * metallic,
@@ -523,19 +458,13 @@ export class PathTracer {
       .normalize();
   };
 
-  private sampleSpecularDirection = (
-    normal: Vector3,
-    incident: Vector3,
-    roughness: number,
-  ) => {
+  private sampleSpecularDirection = (normal: Vector3, incident: Vector3, roughness: number) => {
     const r1 = this.nextRandom();
     const r2 = this.nextRandom();
     const alpha = roughness * roughness;
     const alphaSq = alpha * alpha;
     const phi = Math.PI * 2 * r1;
-    const cosTheta = Math.sqrt(
-      (1 - r2) / Math.max(1 + (alphaSq - 1) * r2, EPSILON),
-    );
+    const cosTheta = Math.sqrt((1 - r2) / Math.max(1 + (alphaSq - 1) * r2, EPSILON));
     const sinTheta = Math.sqrt(Math.max(0, 1 - cosTheta * cosTheta));
     const basis = buildBasis(normal);
     const halfVector = basis.tangent
@@ -546,34 +475,21 @@ export class PathTracer {
     return incident.reflect(halfVector).normalize();
   };
 
-  private traceAny = (
-    originWorld: Vector3,
-    directionWorld: Vector3,
-    scene: PathTraceScene,
-  ) => {
+  private traceAny = (originWorld: Vector3, directionWorld: Vector3, scene: PathTraceScene) => {
     const originModel = scene.invModelMat.transformPoint(originWorld);
-    const directionModel = scene.invModelMat
-      .transformDirection(directionWorld)
-      .normalize();
+    const directionModel = scene.invModelMat.transformDirection(directionWorld).normalize();
     return this.bvh.intersect(originModel, directionModel, true) !== undefined;
   };
 
   private present = (target: Framebuffer) => {
     const targetData = target.data;
 
-    for (
-      let pixelIndex = 0;
-      pixelIndex < this.pixelSampleCounts.length;
-      pixelIndex++
-    ) {
+    for (let pixelIndex = 0; pixelIndex < this.pixelSampleCounts.length; pixelIndex++) {
       const sourceIndex = pixelIndex * 3;
       const targetIndex = pixelIndex * 4;
       const sampleScale =
-        this.pixelSampleCounts[pixelIndex] > 0
-          ? 1 / this.pixelSampleCounts[pixelIndex]
-          : 0;
-      targetData[targetIndex] =
-        linearToSrgb(this.accumulation[sourceIndex] * sampleScale) * 255;
+        this.pixelSampleCounts[pixelIndex] > 0 ? 1 / this.pixelSampleCounts[pixelIndex] : 0;
+      targetData[targetIndex] = linearToSrgb(this.accumulation[sourceIndex] * sampleScale) * 255;
       targetData[targetIndex + 1] =
         linearToSrgb(this.accumulation[sourceIndex + 1] * sampleScale) * 255;
       targetData[targetIndex + 2] =
@@ -583,8 +499,7 @@ export class PathTracer {
   };
 
   private seedRandom = (pixelIndex: number, sampleCount: number) => {
-    this.randomState =
-      ((pixelIndex + 1) * 1973 + sampleCount * 9277 + 0x68bc21eb) >>> 0;
+    this.randomState = ((pixelIndex + 1) * 1973 + sampleCount * 9277 + 0x68bc21eb) >>> 0;
   };
 
   private nextRandom = () => {

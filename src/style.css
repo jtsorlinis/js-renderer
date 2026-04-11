@@ -8,7 +8,12 @@
   --radius: 6px;
   --sidebar-width: 220px;
 
-  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family:
+    "Inter",
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
   color: var(--text);
   background: var(--bg);
   margin: 0;
@@ -20,7 +25,7 @@
 
 body {
   margin: 0;
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   overflow: hidden;
 }
@@ -37,6 +42,11 @@ body {
   padding: 1rem;
   gap: 1rem;
   overflow: auto;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
 }
 
 .title {
@@ -168,21 +178,13 @@ body {
 
 .shading-list li:has(.is-active) ~ li .shading-option {
   border-color: rgba(233, 69, 96, 0.34);
-  background: linear-gradient(
-    135deg,
-    rgba(233, 69, 96, 0.14),
-    rgba(15, 52, 96, 0.82)
-  );
+  background: linear-gradient(135deg, rgba(233, 69, 96, 0.14), rgba(15, 52, 96, 0.82));
   box-shadow: 0 0 0 1px rgba(233, 69, 96, 0.08);
 }
 
 .shading-option.is-active {
   border-color: var(--accent);
-  background: linear-gradient(
-    135deg,
-    rgba(233, 69, 96, 0.28),
-    rgba(15, 52, 96, 0.95)
-  );
+  background: linear-gradient(135deg, rgba(233, 69, 96, 0.28), rgba(15, 52, 96, 0.95));
   box-shadow: 0 0 0 1px rgba(233, 69, 96, 0.2);
   transform: translateX(2px);
 }
@@ -196,7 +198,7 @@ body {
 .shading-slider {
   margin: 0;
   width: 18px;
-  min-height: 218px;
+  min-height: 242px;
   accent-color: var(--accent);
   cursor: pointer;
   writing-mode: vertical-lr;
@@ -218,7 +220,9 @@ body {
   cursor: pointer;
   position: relative;
   flex-shrink: 0;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .section input[type="checkbox"]:checked {
@@ -243,7 +247,6 @@ body {
 }
 
 /* ── Stats ── */
-
 .stats {
   display: flex;
   flex-direction: column;
@@ -277,7 +280,7 @@ body {
 .viewport {
   flex: 1;
   min-width: 0;
-  height: 100vh;
+  height: 100dvh;
   background: #000;
   overflow: hidden;
   position: relative;
@@ -290,10 +293,44 @@ canvas {
   left: 50%;
   transform: translate(-50%, -50%);
   cursor: grab;
+  touch-action: none;
 }
 
 /* JS sets the actual CSS size; these are fallbacks */
 
 canvas:active {
   cursor: grabbing;
+}
+
+@media (max-width: 576px) {
+  .hideMobile {
+    display: none !important;
+  }
+
+  body {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    max-height: 50dvh;
+  }
+
+  .shading-list {
+    flex-direction: row-reverse;
+    overflow: auto;
+  }
+
+  .shading-list li {
+    min-width: 110px;
+  }
+
+  .shading-option.is-active {
+    transform: none;
+  }
+
+  .section.options {
+    flex-direction: row;
+    justify-content: space-between;
+  }
 }

@@ -1,5 +1,3 @@
-import { Vector3 } from "../maths";
-
 const DEFAULT_TEXTURE_SIZE_LIMIT = 1024;
 const HIGH_RES_TEXTURE_SIZE_LIMIT = 2048;
 let textureSizeLimit = DEFAULT_TEXTURE_SIZE_LIMIT;
@@ -29,9 +27,7 @@ export const linearToSrgb = (value: number) => {
 };
 
 export const setHighResTextureLimit = (enabled: boolean) => {
-  textureSizeLimit = enabled
-    ? HIGH_RES_TEXTURE_SIZE_LIMIT
-    : DEFAULT_TEXTURE_SIZE_LIMIT;
+  textureSizeLimit = enabled ? HIGH_RES_TEXTURE_SIZE_LIMIT : DEFAULT_TEXTURE_SIZE_LIMIT;
 };
 
 export class DepthTexture {
@@ -55,10 +51,18 @@ export class Texture {
   width: number;
   height: number;
 
-  constructor(data: Float32Array, width: number, height: number) {
+  constructor(data: Float32Array, width: number = 1, height: number = 1) {
     this.data = data;
     this.width = width;
     this.height = height;
+  }
+
+  static get White() {
+    return new Texture(new Float32Array([1, 1, 1]));
+  }
+
+  static get Normal() {
+    return new Texture(new Float32Array([0, 0, 1]));
   }
 
   static Load = async (imageURL: string, descriptor: TextureDescriptor) => {
@@ -79,24 +83,14 @@ export class Texture {
     offScreenCtx.imageSmoothingEnabled = true;
     offScreenCtx.imageSmoothingQuality = "high";
     offScreenCtx.drawImage(img, 0, 0, targetWidth, targetHeight);
-    const imageData = offScreenCtx.getImageData(
-      0,
-      0,
-      targetWidth,
-      targetHeight,
-    );
+    const imageData = offScreenCtx.getImageData(0, 0, targetWidth, targetHeight);
     const data = new Float32Array((imageData.data.length / 4) * 3);
     let dataIndex = 0;
     for (let i = 0; i < imageData.data.length; i += 4) {
       if (descriptor.type === "normal") {
-        const normal = new Vector3(
-          (imageData.data[i] / 255) * 2 - 1,
-          (imageData.data[i + 1] / 255) * 2 - 1,
-          (imageData.data[i + 2] / 255) * 2 - 1,
-        ).normalize();
-        data[dataIndex++] = normal.x;
-        data[dataIndex++] = normal.y;
-        data[dataIndex++] = normal.z;
+        data[dataIndex++] = (imageData.data[i] / 255) * 2 - 1;
+        data[dataIndex++] = (imageData.data[i + 1] / 255) * 2 - 1;
+        data[dataIndex++] = (imageData.data[i + 2] / 255) * 2 - 1;
       } else {
         let r = imageData.data[i] / 255;
         let g = imageData.data[i + 1] / 255;

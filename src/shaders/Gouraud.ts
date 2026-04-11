@@ -6,9 +6,9 @@ export interface Uniforms {
   modelMat: Matrix4;
   mvp: Matrix4;
   normalMat: Matrix4;
-  lightDir: Vector3;
+  worldLightDir: Vector3;
   lightCol: Vector3;
-  camPos: Vector3;
+  worldCamPos: Vector3;
   orthographic: boolean;
   worldViewDir: Vector3;
 }
@@ -29,17 +29,15 @@ export class GouraudShader extends BaseShader {
     const i = this.vertexId;
 
     const worldPos = this.uniforms.modelMat.transformPoint(model.vertices[i]);
-    const normal = this.uniforms.normalMat
-      .transformDirection(model.normals[i])
-      .normalize();
+    const worldNormal = this.uniforms.normalMat.transformDirection(model.normals[i]).normalize();
 
-    const viewDir = this.uniforms.orthographic
+    const worldViewDir = this.uniforms.orthographic
       ? this.uniforms.worldViewDir
-      : this.uniforms.camPos.subtract(worldPos).normalize();
-    const halfwayDir = viewDir.subtract(this.uniforms.lightDir).normalize();
-    let spec = Math.pow(Math.max(normal.dot(halfwayDir), 0), shininess);
+      : this.uniforms.worldCamPos.subtract(worldPos).normalize();
+    const halfwayDir = worldViewDir.subtract(this.uniforms.worldLightDir).normalize();
+    let spec = Math.pow(Math.max(worldNormal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;
-    const diffuse = Math.max(-normal.dot(this.uniforms.lightDir), 0);
+    const diffuse = Math.max(-worldNormal.dot(this.uniforms.worldLightDir), 0);
     const lighting = this.uniforms.lightCol.scale(diffuse + spec + ambient);
     const vertColor = baseColor.multiply(lighting);
     this.v2f(this.vertexColor, vertColor);

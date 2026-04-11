@@ -21,10 +21,10 @@ export class Vector3 {
     return new Vector3(0, 0, 1);
   }
 
-  constructor(x?: number, y?: number, z?: number) {
-    this.x = x ?? 0;
-    this.y = y ?? 0;
-    this.z = z ?? 0;
+  constructor(x: number = 0, y: number = 0, z: number = 0) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
   }
 
   public toArray() {

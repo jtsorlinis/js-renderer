@@ -13,7 +13,7 @@ export abstract class BaseShader {
   vertexId = 0;
   nthVert = 0;
   bc = { u: 0, v: 0, w: 0 };
-  fragPos = new Vector2();
+  fragPos = new Vector3();
 
   v2f = <T>(varying: Array<T>, value: T) => {
     varying[this.nthVert] = value;
@@ -48,11 +48,7 @@ export abstract class BaseShader {
     return new Vector4(x, y, z, w);
   };
 
-  private toTexelIndex = (
-    uv: Vector2 | Vector3 | Vector4,
-    width: number,
-    height: number,
-  ) => {
+  private toTexelIndex = (uv: Vector2 | Vector3 | Vector4, width: number, height: number) => {
     const x = Math.max(0, Math.min(width - 1, ~~(uv.x * width)));
     const y = Math.max(0, Math.min(height - 1, ~~((1 - uv.y) * height)));
     return x + y * width;
@@ -61,22 +57,11 @@ export abstract class BaseShader {
   sample = (texture: Texture, uv: Vector2): Vector3 => {
     const texel = this.toTexelIndex(uv, texture.width, texture.height);
     const index = texel * 3;
-    return new Vector3(
-      texture.data[index],
-      texture.data[index + 1],
-      texture.data[index + 2],
-    );
+    return new Vector3(texture.data[index], texture.data[index + 1], texture.data[index + 2]);
   };
 
-  sampleDepth = (
-    depthTexture: DepthTexture,
-    uv: Vector2 | Vector3 | Vector4,
-  ) => {
-    const texel = this.toTexelIndex(
-      uv,
-      depthTexture.width,
-      depthTexture.height,
-    );
+  sampleDepth = (depthTexture: DepthTexture, uv: Vector2 | Vector3 | Vector4) => {
+    const texel = this.toTexelIndex(uv, depthTexture.width, depthTexture.height);
     return depthTexture.data[texel];
   };
 }

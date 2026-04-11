@@ -1,12 +1,11 @@
 import { Vector3, Vector4 } from ".";
 
+// Matrices are stored in column-major order and transform column vectors.
 export class Matrix4 {
   m: Float32Array;
   constructor() {
     this.m = new Float32Array(16);
   }
-
-  // Matrices are stored in column-major order and transform column vectors.
 
   public static Identity() {
     const m = new Matrix4();
@@ -60,9 +59,7 @@ export class Matrix4 {
 
   // YXZ rotation order (Yaw, Pitch, Roll)
   public static RotateYXZ(r: Vector3) {
-    return Matrix4.RotateZ(r.z)
-      .multiply(Matrix4.RotateX(r.x))
-      .multiply(Matrix4.RotateY(r.y));
+    return Matrix4.RotateZ(r.z).multiply(Matrix4.RotateX(r.x)).multiply(Matrix4.RotateY(r.y));
   }
 
   public static Translate(t: Vector3) {
@@ -74,9 +71,7 @@ export class Matrix4 {
   }
 
   public static TRS(t: Vector3, r: Vector3, s: Vector3) {
-    return Matrix4.Translate(t)
-      .multiply(Matrix4.RotateYXZ(r))
-      .multiply(Matrix4.Scale(s));
+    return Matrix4.Translate(t).multiply(Matrix4.RotateYXZ(r)).multiply(Matrix4.Scale(s));
   }
 
   public static LookTo(eye: Vector3, dir: Vector3, up: Vector3) {
@@ -100,11 +95,7 @@ export class Matrix4 {
     return m;
   }
 
-  public static LookAt(
-    eye: Vector3,
-    target: Vector3,
-    up: Vector3 = Vector3.Up,
-  ) {
+  public static LookAt(eye: Vector3, target: Vector3, up: Vector3 = Vector3.Up) {
     const z = target.subtract(eye).normalize();
     const x = up.cross(z).normalize();
     const y = z.cross(x).normalize();
@@ -345,6 +336,14 @@ export class Matrix4 {
       result.m[15] *= invDet;
      
       return result;
+  }
+
+  public lerp(to: Matrix4, t: number) {
+    const result = new Matrix4();
+    for (let i = 0; i < 16; i++) {
+      result.m[i] = this.m[i] + (to.m[i] - this.m[i]) * t;
+    }
+    return result;
   }
 
   // prettier-ignore

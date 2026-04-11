@@ -1,7 +1,7 @@
 import { BaseShader, Verts } from "./BaseShader";
 import { Vector3, Matrix4, Vector4, Vector2 } from "../maths";
-import { DepthTexture, Texture } from "../drawing";
-import { type PbrMaterial } from "../utils/modelLoader";
+import { DepthTexture } from "../drawing";
+import { type Material } from "../materials/Material";
 import {
   DIELECTRIC_F0,
   EPSILON,
@@ -11,12 +11,7 @@ import {
   geometrySmith,
   saturate,
 } from "./pbrHelpers";
-import {
-  sampleLatLongMapInto,
-  type IblData,
-  wrapUnit,
-  INV_TAU,
-} from "./iblHelpers";
+import { type IblData, wrapUnit, INV_TAU, sampleLatLongMap } from "./iblHelpers";
 
 export interface Uniforms {
   model: Verts;
@@ -24,15 +19,12 @@ export interface Uniforms {
   modelMat: Matrix4;
   normalMat: Matrix4;
   lightCol: Vector3;
-  negLightDir: Vector3;
-  envYawSin: number;
-  envYawCos: number;
-  camPos: Vector3;
+  worldLightDir: Vector3;
+  envYaw: { sin: number; cos: number };
+  worldCamPos: Vector3;
   orthographic: boolean;
   worldViewDir: Vector3;
-  texture: Texture;
-  normalTexture: Texture;
-  pbrMaterial: PbrMaterial;
+  material: Material;
   iblData: IblData;
   lightSpaceMat: Matrix4;
   shadowMap: DepthTexture;
@@ -57,25 +49,16 @@ export class IblShader extends BaseShader {
   vWorldTangent = this.varying<Vector4>();
   vLightSpacePos = this.varying<Vector3>();
 
-  private diffuseEnv = new Vector3();
-  private specularEnv = new Vector3();
-
   vertex = (): Vector4 => {
     const model = this.uniforms.model;
     const i = this.vertexId;
-    const normal = model.normals[i];
-    const tangent = model.tangents[i];
     const modelPos = model.vertices[i];
     const worldPos = this.uniforms.modelMat.transformPoint(modelPos);
-    const worldNormal = this.uniforms.normalMat
-      .transformDirection(normal)
-      .normalize();
-    const worldTangent = this.uniforms.modelMat
-      .transformDirection4(tangent)
-      .normalize3();
+    const worldNormal = this.uniforms.normalMat.transformDirection(model.normals[i]).normalize();
+    const worldTangent = this.uniforms.modelMat.transformDirection4(model.tangents[i]).normalize3();
     const worldViewDir = this.uniforms.orthographic
       ? this.uniforms.worldViewDir
-      : this.uniforms.camPos.subtract(worldPos).normalize();
+      : this.uniforms.worldCamPos.subtract(worldPos).normalize();
 
     this.v2f(this.vUV, model.uvs[i]);
     this.v2f(this.vWorldViewDir, worldViewDir);
@@ -83,8 +66,7 @@ export class IblShader extends BaseShader {
     this.v2f(this.vWorldTangent, worldTangent);
 
     if (this.uniforms.receiveShadows) {
-      const lightSpacePos =
-        this.uniforms.lightSpaceMat.transformPoint(modelPos);
+      const lightSpacePos = this.uniforms.lightSpaceMat.transformPoint(modelPos);
       lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
       lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
       this.v2f(this.vLightSpacePos, lightSpacePos);
@@ -94,79 +76,50 @@ export class IblShader extends BaseShader {
   };
 
   fragment = () => {
+    const material = this.uniforms.material;
     const ibl = this.uniforms.iblData;
     const uv = this.interpolateVec2(this.vUV);
-    const viewDir = this.interpolateVec3(this.vWorldViewDir).normalize();
-    const wTangent = this.interpolateVec4(this.vWorldTangent);
-    const handedness = wTangent.w < 0 ? -1 : 1;
-    const wNormal = this.interpolateVec3(this.vWorldNormal).normalize();
+    const worldViewDir = this.interpolateVec3(this.vWorldViewDir).normalize();
+    const worldNormal = this.interpolateVec3(this.vWorldNormal).normalize();
+    const worldTangent = this.interpolateVec4(this.vWorldTangent);
+    const handedness = worldTangent.w < 0 ? -1 : 1;
 
-    const tangentProjection =
-      wNormal.x * wTangent.x + wNormal.y * wTangent.y + wNormal.z * wTangent.z;
-    let tangentOrthoX = wTangent.x - wNormal.x * tangentProjection;
-    let tangentOrthoY = wTangent.y - wNormal.y * tangentProjection;
-    let tangentOrthoZ = wTangent.z - wNormal.z * tangentProjection;
-    const tangentOrthoLengthSq =
-      tangentOrthoX * tangentOrthoX +
-      tangentOrthoY * tangentOrthoY +
-      tangentOrthoZ * tangentOrthoZ;
-    const tangentOrthoScale =
-      tangentOrthoLengthSq > EPSILON ? 1 / Math.sqrt(tangentOrthoLengthSq) : 0;
-    tangentOrthoX *= tangentOrthoScale;
-    tangentOrthoY *= tangentOrthoScale;
-    tangentOrthoZ *= tangentOrthoScale;
-    const bitangentX =
-      (wNormal.y * tangentOrthoZ - wNormal.z * tangentOrthoY) * handedness;
-    const bitangentY =
-      (wNormal.z * tangentOrthoX - wNormal.x * tangentOrthoZ) * handedness;
-    const bitangentZ =
-      (wNormal.x * tangentOrthoY - wNormal.y * tangentOrthoX) * handedness;
-    const normalTexel = this.sample(this.uniforms.normalTexture, uv);
-    let normalX =
-      tangentOrthoX * normalTexel.x +
-      bitangentX * normalTexel.y +
-      wNormal.x * normalTexel.z;
-    let normalY =
-      tangentOrthoY * normalTexel.x +
-      bitangentY * normalTexel.y +
-      wNormal.y * normalTexel.z;
-    let normalZ =
-      tangentOrthoZ * normalTexel.x +
-      bitangentZ * normalTexel.y +
-      wNormal.z * normalTexel.z;
-    const normalLengthSq =
-      normalX * normalX + normalY * normalY + normalZ * normalZ;
-    const normalScale =
-      normalLengthSq > EPSILON ? 1 / Math.sqrt(normalLengthSq) : 0;
-    normalX *= normalScale;
-    normalY *= normalScale;
-    normalZ *= normalScale;
-    const baseColor = this.sample(this.uniforms.texture, uv).multiplyInPlace(
-      this.uniforms.pbrMaterial.baseColorFactor,
-    );
-    const metallicRoughness = this.sample(
-      this.uniforms.pbrMaterial.metallicRoughnessTexture,
-      uv,
-    );
-    const roughness = Math.max(
-      0.045,
-      saturate(metallicRoughness.y * this.uniforms.pbrMaterial.roughnessFactor),
-    );
-    const metallic = saturate(
-      metallicRoughness.z * this.uniforms.pbrMaterial.metallicFactor,
-    );
+    const tDotN = worldTangent.dot3(worldNormal);
+    const Tx = worldTangent.x - worldNormal.x * tDotN;
+    const Ty = worldTangent.y - worldNormal.y * tDotN;
+    const Tz = worldTangent.z - worldNormal.z * tDotN;
+    const TLengthSq = Tx * Tx + Ty * Ty + Tz * Tz;
+    const TScale = TLengthSq > EPSILON ? 1 / Math.sqrt(TLengthSq) : 0;
+    const T = new Vector3(Tx * TScale, Ty * TScale, Tz * TScale);
+
+    const Bx = (worldNormal.y * T.z - worldNormal.z * T.y) * handedness;
+    const By = (worldNormal.z * T.x - worldNormal.x * T.z) * handedness;
+    const Bz = (worldNormal.x * T.y - worldNormal.y * T.x) * handedness;
+
+    const normalTexel = this.sample(material.normalTexture, uv);
+    const Nx = T.x * normalTexel.x + Bx * normalTexel.y + worldNormal.x * normalTexel.z;
+    const Ny = T.y * normalTexel.x + By * normalTexel.y + worldNormal.y * normalTexel.z;
+    const Nz = T.z * normalTexel.x + Bz * normalTexel.y + worldNormal.z * normalTexel.z;
+    const NLengthSq = Nx * Nx + Ny * Ny + Nz * Nz;
+    const NScale = NLengthSq > EPSILON ? 1 / Math.sqrt(NLengthSq) : 0;
+    const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
+
+    const baseColor = this.sample(material.colorTexture, uv).multiplyInPlace(material.colorFactor);
+    const metallicRoughness = this.sample(material.metallicRoughnessTexture, uv);
+    const roughness = Math.max(0.045, saturate(metallicRoughness.y * material.roughnessFactor));
+    const metallic = saturate(metallicRoughness.z * material.metallicFactor);
     const f0x = DIELECTRIC_F0.x + (baseColor.x - DIELECTRIC_F0.x) * metallic;
     const f0y = DIELECTRIC_F0.y + (baseColor.y - DIELECTRIC_F0.y) * metallic;
     const f0z = DIELECTRIC_F0.z + (baseColor.z - DIELECTRIC_F0.z) * metallic;
 
-    const lightDir = this.uniforms.negLightDir;
+    const worldLightDir = this.uniforms.worldLightDir;
     const nDotL = saturate(
-      normalX * lightDir.x + normalY * lightDir.y + normalZ * lightDir.z,
+      -(normal.x * worldLightDir.x + normal.y * worldLightDir.y + normal.z * worldLightDir.z),
     );
     const rawNDotV =
-      normalX * viewDir.x + normalY * viewDir.y + normalZ * viewDir.z;
+      normal.x * worldViewDir.x + normal.y * worldViewDir.y + normal.z * worldViewDir.z;
     const nDotV = saturate(rawNDotV);
-    const halfDir = lightDir.add(viewDir);
+    const halfDir = worldViewDir.subtract(worldLightDir);
 
     let directR = 0;
     let directG = 0;
@@ -176,15 +129,14 @@ export class IblShader extends BaseShader {
       if (this.uniforms.receiveShadows) {
         const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
         const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-        const faceNDotL = saturate(wNormal.dot(this.uniforms.negLightDir));
+        const faceNDotL = saturate(-worldNormal.dot(this.uniforms.worldLightDir));
         const bias = minBias + (maxBias - minBias) * (1 - faceNDotL);
         shadow = lightSpacePos.z - bias > depth ? 0 : 1;
       }
+
       halfDir.normalize();
-      const nDotH = saturate(
-        normalX * halfDir.x + normalY * halfDir.y + normalZ * halfDir.z,
-      );
-      const vDotH = saturate(viewDir.dot(halfDir));
+      const nDotH = saturate(normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z);
+      const vDotH = saturate(worldViewDir.dot(halfDir));
       const fresnelBase = 1 - vDotH;
       const fresnelBaseSq = fresnelBase * fresnelBase;
       const fresnelFactor = fresnelBaseSq * fresnelBaseSq * fresnelBase;
@@ -193,125 +145,94 @@ export class IblShader extends BaseShader {
       const fresnelZ = f0z + (1 - f0z) * fresnelFactor;
       const distribution = distributionGGX(nDotH, roughness);
       const geometry = geometrySmith(nDotV, nDotL, roughness);
-      const specularFactor =
-        (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
+      const specularFactor = (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
       const diffuseFactor = (1 - metallic) * INV_PI;
       const lightScale = nDotL * shadow * lightIntensity;
 
       directR =
-        ((1 - fresnelX) * diffuseFactor * baseColor.x +
-          fresnelX * specularFactor) *
+        ((1 - fresnelX) * diffuseFactor * baseColor.x + fresnelX * specularFactor) *
         this.uniforms.lightCol.x *
         lightScale;
       directG =
-        ((1 - fresnelY) * diffuseFactor * baseColor.y +
-          fresnelY * specularFactor) *
+        ((1 - fresnelY) * diffuseFactor * baseColor.y + fresnelY * specularFactor) *
         this.uniforms.lightCol.y *
         lightScale;
       directB =
-        ((1 - fresnelZ) * diffuseFactor * baseColor.z +
-          fresnelZ * specularFactor) *
+        ((1 - fresnelZ) * diffuseFactor * baseColor.z + fresnelZ * specularFactor) *
         this.uniforms.lightCol.z *
         lightScale;
     }
 
     // Ambient uses directional irradiance plus split-sum style specular from
     // the precomputed environment maps.
+    const envYaw = this.uniforms.envYaw;
     const ambientDiffuseFactor = 1 - metallic;
-    const diffuseDirX =
-      normalX * this.uniforms.envYawCos - normalZ * this.uniforms.envYawSin;
-    const diffuseDirZ =
-      normalX * this.uniforms.envYawSin + normalZ * this.uniforms.envYawCos;
-    const diffuseU = wrapUnit(
-      Math.atan2(diffuseDirX, diffuseDirZ) * INV_TAU + 0.5,
-    );
-    const diffuseV = Math.acos(Math.max(-1, Math.min(1, normalY))) * INV_PI;
-    sampleLatLongMapInto(
+    const diffuseDirX = normal.x * envYaw.cos - normal.z * envYaw.sin;
+    const diffuseDirZ = normal.x * envYaw.sin + normal.z * envYaw.cos;
+    const diffuseU = wrapUnit(Math.atan2(diffuseDirX, diffuseDirZ) * INV_TAU + 0.5);
+    const diffuseV = Math.acos(Math.max(-1, Math.min(1, normal.y))) * INV_PI;
+    const diffuseEnv = sampleLatLongMap(
       ibl.diffuseIrradianceMap,
       ibl.diffuseIrradianceMapWidth,
       ibl.diffuseIrradianceMapHeight,
       diffuseU,
       diffuseV,
-      this.diffuseEnv,
     );
 
     const reflectionScale = 2 * rawNDotV;
-    const reflectionX = normalX * reflectionScale - viewDir.x;
-    const reflectionY = normalY * reflectionScale - viewDir.y;
-    const reflectionZ = normalZ * reflectionScale - viewDir.z;
-    const rotatedReflectionX =
-      reflectionX * this.uniforms.envYawCos -
-      reflectionZ * this.uniforms.envYawSin;
-    const rotatedReflectionZ =
-      reflectionX * this.uniforms.envYawSin +
-      reflectionZ * this.uniforms.envYawCos;
+    const reflectionX = normal.x * reflectionScale - worldViewDir.x;
+    const reflectionY = normal.y * reflectionScale - worldViewDir.y;
+    const reflectionZ = normal.z * reflectionScale - worldViewDir.z;
+    const rotatedReflectionX = reflectionX * envYaw.cos - reflectionZ * envYaw.sin;
+    const rotatedReflectionZ = reflectionX * envYaw.sin + reflectionZ * envYaw.cos;
     const reflectionU = wrapUnit(
       Math.atan2(rotatedReflectionX, rotatedReflectionZ) * INV_TAU + 0.5,
     );
-    const reflectionV =
-      Math.acos(Math.max(-1, Math.min(1, reflectionY))) * INV_PI;
+    const reflectionV = Math.acos(Math.max(-1, Math.min(1, reflectionY))) * INV_PI;
     const specularRoughnessIndex = Math.min(
       ibl.specularPrefilterRoughnessMaxIndex,
       Math.round(roughness * ibl.specularPrefilterRoughnessMaxIndex),
     );
-    sampleLatLongMapInto(
+    const specularEnv = sampleLatLongMap(
       ibl.specularPrefilterMap,
       ibl.specularPrefilterMapWidth,
       ibl.specularPrefilterMapHeight,
       reflectionU,
       reflectionV,
-      this.specularEnv,
       specularRoughnessIndex,
       ibl.specularPrefilterLayerStride,
     );
 
     const brdfViewCoord = nDotV * ibl.specularBrdfLutMaxIndex;
     const brdfViewIndex = Math.floor(brdfViewCoord);
-    const brdfViewNext = Math.min(
-      brdfViewIndex + 1,
-      ibl.specularBrdfLutMaxIndex,
-    );
+    const brdfViewNext = Math.min(brdfViewIndex + 1, ibl.specularBrdfLutMaxIndex);
     const brdfViewBlend = brdfViewCoord - brdfViewIndex;
     const brdfRoughnessCoord = roughness * ibl.specularBrdfLutMaxIndex;
     const brdfRoughnessIndex = Math.floor(brdfRoughnessCoord);
-    const brdfRoughnessNext = Math.min(
-      brdfRoughnessIndex + 1,
-      ibl.specularBrdfLutMaxIndex,
-    );
+    const brdfRoughnessNext = Math.min(brdfRoughnessIndex + 1, ibl.specularBrdfLutMaxIndex);
     const brdfRoughnessBlend = brdfRoughnessCoord - brdfRoughnessIndex;
-    const brdfBase00 =
-      (brdfRoughnessIndex * ibl.specularBrdfLutSize + brdfViewIndex) * 2;
-    const brdfBase10 =
-      (brdfRoughnessIndex * ibl.specularBrdfLutSize + brdfViewNext) * 2;
-    const brdfBase01 =
-      (brdfRoughnessNext * ibl.specularBrdfLutSize + brdfViewIndex) * 2;
-    const brdfBase11 =
-      (brdfRoughnessNext * ibl.specularBrdfLutSize + brdfViewNext) * 2;
+    const brdfBase00 = (brdfRoughnessIndex * ibl.specularBrdfLutSize + brdfViewIndex) * 2;
+    const brdfBase10 = (brdfRoughnessIndex * ibl.specularBrdfLutSize + brdfViewNext) * 2;
+    const brdfBase01 = (brdfRoughnessNext * ibl.specularBrdfLutSize + brdfViewIndex) * 2;
+    const brdfBase11 = (brdfRoughnessNext * ibl.specularBrdfLutSize + brdfViewNext) * 2;
     const brdfA0 =
       ibl.specularBrdfLut[brdfBase00] +
-      (ibl.specularBrdfLut[brdfBase10] - ibl.specularBrdfLut[brdfBase00]) *
-        brdfViewBlend;
+      (ibl.specularBrdfLut[brdfBase10] - ibl.specularBrdfLut[brdfBase00]) * brdfViewBlend;
     const brdfA1 =
       ibl.specularBrdfLut[brdfBase01] +
-      (ibl.specularBrdfLut[brdfBase11] - ibl.specularBrdfLut[brdfBase01]) *
-        brdfViewBlend;
+      (ibl.specularBrdfLut[brdfBase11] - ibl.specularBrdfLut[brdfBase01]) * brdfViewBlend;
     const brdfB0 =
       ibl.specularBrdfLut[brdfBase00 + 1] +
-      (ibl.specularBrdfLut[brdfBase10 + 1] -
-        ibl.specularBrdfLut[brdfBase00 + 1]) *
-        brdfViewBlend;
+      (ibl.specularBrdfLut[brdfBase10 + 1] - ibl.specularBrdfLut[brdfBase00 + 1]) * brdfViewBlend;
     const brdfB1 =
       ibl.specularBrdfLut[brdfBase01 + 1] +
-      (ibl.specularBrdfLut[brdfBase11 + 1] -
-        ibl.specularBrdfLut[brdfBase01 + 1]) *
-        brdfViewBlend;
+      (ibl.specularBrdfLut[brdfBase11 + 1] - ibl.specularBrdfLut[brdfBase01 + 1]) * brdfViewBlend;
     const envBrdfA = brdfA0 + (brdfA1 - brdfA0) * brdfRoughnessBlend;
     const envBrdfB = brdfB0 + (brdfB1 - brdfB0) * brdfRoughnessBlend;
 
     const ambientFresnelBase = 1 - nDotV;
     const ambientFresnelBaseSq = ambientFresnelBase * ambientFresnelBase;
-    const ambientFresnelFactor =
-      ambientFresnelBaseSq * ambientFresnelBaseSq * ambientFresnelBase;
+    const ambientFresnelFactor = ambientFresnelBaseSq * ambientFresnelBaseSq * ambientFresnelBase;
     const frX = Math.max(1 - roughness, f0x) - f0x;
     const frY = Math.max(1 - roughness, f0y) - f0y;
     const frZ = Math.max(1 - roughness, f0z) - f0z;
@@ -325,12 +246,9 @@ export class IblShader extends BaseShader {
     const favgX = f0x + (1 - f0x) * INV_21;
     const favgY = f0y + (1 - f0y) * INV_21;
     const favgZ = f0z + (1 - f0z) * INV_21;
-    const fmsEmsX =
-      ((fssEssX * favgX) / Math.max(1 - ems * favgX, EPSILON)) * ems;
-    const fmsEmsY =
-      ((fssEssY * favgY) / Math.max(1 - ems * favgY, EPSILON)) * ems;
-    const fmsEmsZ =
-      ((fssEssZ * favgZ) / Math.max(1 - ems * favgZ, EPSILON)) * ems;
+    const fmsEmsX = ((fssEssX * favgX) / Math.max(1 - ems * favgX, EPSILON)) * ems;
+    const fmsEmsY = ((fssEssY * favgY) / Math.max(1 - ems * favgY, EPSILON)) * ems;
+    const fmsEmsZ = ((fssEssZ * favgZ) / Math.max(1 - ems * favgZ, EPSILON)) * ems;
     const specularWeightX = fssEssX + fmsEmsX;
     const specularWeightY = fssEssY + fmsEmsY;
     const specularWeightZ = fssEssZ + fmsEmsZ;
@@ -339,22 +257,18 @@ export class IblShader extends BaseShader {
     const diffuseWeightZ = Math.max(0, 1 - specularWeightZ);
 
     const ambientR =
-      (diffuseWeightX * baseColor.x * this.diffuseEnv.x * ambientDiffuseFactor +
-        specularWeightX * this.specularEnv.x) *
+      (diffuseWeightX * baseColor.x * diffuseEnv.x * ambientDiffuseFactor +
+        specularWeightX * specularEnv.x) *
       environmentIntensity;
     const ambientG =
-      (diffuseWeightY * baseColor.y * this.diffuseEnv.y * ambientDiffuseFactor +
-        specularWeightY * this.specularEnv.y) *
+      (diffuseWeightY * baseColor.y * diffuseEnv.y * ambientDiffuseFactor +
+        specularWeightY * specularEnv.y) *
       environmentIntensity;
     const ambientB =
-      (diffuseWeightZ * baseColor.z * this.diffuseEnv.z * ambientDiffuseFactor +
-        specularWeightZ * this.specularEnv.z) *
+      (diffuseWeightZ * baseColor.z * diffuseEnv.z * ambientDiffuseFactor +
+        specularWeightZ * specularEnv.z) *
       environmentIntensity;
 
-    return new Vector3(
-      ambientR + directR,
-      ambientG + directG,
-      ambientB + directB,
-    );
+    return new Vector3(ambientR + directR, ambientG + directG, ambientB + directB);
   };
 }

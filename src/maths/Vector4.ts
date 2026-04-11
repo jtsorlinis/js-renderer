@@ -10,11 +10,11 @@ export class Vector4 {
     return new Vector4(0, 0, 0, 0);
   }
 
-  constructor(x?: number, y?: number, z?: number, w?: number) {
-    this.x = x ?? 0;
-    this.y = y ?? 0;
-    this.z = z ?? 0;
-    this.w = w ?? 0;
+  constructor(x: number = 0, y: number = 0, z: number = 0, w: number = 0) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+    this.w = w;
   }
 
   public toArray() {
@@ -30,8 +30,7 @@ export class Vector4 {
   }
 
   public normalize3() {
-    const invLength =
-      1 / Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+    const invLength = 1 / Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
     this.x *= invLength;
     this.y *= invLength;
     this.z *= invLength;

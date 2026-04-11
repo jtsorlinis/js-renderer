@@ -1,10 +1,9 @@
-import { setHighResTextureLimit, Texture } from "../drawing";
-import { Vector3 } from "../maths";
+import { setHighResTextureLimit } from "../drawing";
+import type { Material } from "../materials/Material";
 import { loadGlbAsset } from "./glbLoader";
-import { type LoadedModel } from "./mesh";
+import { type Mesh } from "./mesh";
 
-const assetPath = (fileName: string) =>
-  `${import.meta.env.BASE_URL}models/${fileName}`;
+const assetPath = (fileName: string) => `${import.meta.env.BASE_URL}models/${fileName}`;
 
 const modelAssets: Record<string, ModelAssetSource> = {
   dice: {
@@ -39,24 +38,13 @@ const modelAssets: Record<string, ModelAssetSource> = {
   },
 };
 
-export const MODEL_KEYS = Object.keys(
-  modelAssets,
-) as (keyof typeof modelAssets)[];
+export const MODEL_KEYS = Object.keys(modelAssets) as (keyof typeof modelAssets)[];
 
 export type ModelKey = keyof typeof modelAssets;
 
-export type PbrMaterial = {
-  metallicRoughnessTexture: Texture;
-  baseColorFactor: Vector3;
-  metallicFactor: number;
-  roughnessFactor: number;
-};
-
 export type ModelOption = {
-  mesh: LoadedModel;
-  texture: Texture;
-  normalTexture: Texture;
-  pbrMaterial: PbrMaterial;
+  mesh: Mesh;
+  material: Material;
 };
 
 type ModelAssetSource = {
@@ -71,9 +59,7 @@ type ModelAssetSource = {
 const prefetchAsset = async (url: string) => {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(
-      `Failed to prefetch asset: ${url} (${response.status} ${response.statusText})`,
-    );
+    throw new Error(`Failed to prefetch asset: ${url} (${response.status} ${response.statusText})`);
   }
   await response.blob();
 };
@@ -127,11 +113,7 @@ export const ensureModelOption = (modelKey: ModelKey) => {
   return modelAsset.pending;
 };
 
-export const loadCustomGlb = async (
-  file: File,
-  normalize = true,
-  scale = 1,
-) => {
+export const loadCustomGlb = async (file: File, normalize = true, scale = 1) => {
   const objectUrl = URL.createObjectURL(file);
 
   try {

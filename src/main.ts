@@ -1,12 +1,6 @@
 import "./style.css";
 import { Matrix4, Vector3, Vector4 } from "./maths";
-import {
-  DepthTexture,
-  Framebuffer,
-  edgeFunction,
-  line,
-  triangle,
-} from "./drawing";
+import { DepthTexture, Framebuffer, edgeFunction, line, triangle } from "./drawing";
 import { getModelRadius } from "./utils/mesh";
 import {
   ensureModelOption,
@@ -28,13 +22,15 @@ import { IblShader } from "./shaders/Ibl";
 import {
   buildEnvironmentIbl,
   estimateEnvironmentYaw,
+  rebuildEnvironmentBackdrop,
 } from "./shaders/iblHelpers";
 import { PathTracer } from "./pathTracing/PathTracer";
-import { resolveShadingSelection, type RenderMode } from "./renderSettings";
+import { RenderSelection, resolveShadingSelection, type RenderMode } from "./renderSettings";
 import { loadHdrTexture } from "./utils/hdrLoader";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
+const FOV = 50;
 const SHADOW_MAP_SIZE = 512;
 const ROTATION_SPEED = 0.2;
 const ROTATE_SENSITIVITY = 250;
@@ -46,21 +42,18 @@ const PATH_TRACE_FRAME_BUDGET_MS = 16;
 // UI handles
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
+const orthoCb = document.getElementById("orthoCb") as HTMLInputElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
-const textureSizeText = document.getElementById(
-  "textureSize",
-) as HTMLSpanElement;
-const orthographicCb = document.getElementById("orthoCb") as HTMLInputElement;
+const textureSizeText = document.getElementById("textureSize") as HTMLSpanElement;
 const highResCb = document.getElementById("highResCb") as HTMLInputElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
-const shadingSlider = document.getElementById(
-  "shadingSlider",
-) as HTMLInputElement;
+const shadingSlider = document.getElementById("shadingSlider") as HTMLInputElement;
 const modelDd = document.getElementById("modelDd") as HTMLSelectElement;
 const loadGlbBtn = document.getElementById("loadGlbBtn") as HTMLButtonElement;
 const glbInput = document.getElementById("glbInput") as HTMLInputElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 let pathTraceInteractive = true;
+let mouseButtonState = 0;
 
 const getShadingButton = () => {
   return shadingList.querySelector<HTMLButtonElement>(
@@ -69,17 +62,14 @@ const getShadingButton = () => {
 };
 
 const setShadingValue = (value: string) => {
-  const button = shadingList.querySelector<HTMLButtonElement>(
-    `[data-shading-value="${value}"]`,
-  );
+  const button = shadingList.querySelector<HTMLButtonElement>(`[data-shading-value="${value}"]`);
   shadingSlider.value = button?.dataset.shadingIndex || "0";
   syncShadingButtons();
 };
 
 const syncShadingButtons = () => {
   const activeButton = getShadingButton();
-  const previousButton =
-    shadingList.querySelector<HTMLButtonElement>(".is-active");
+  const previousButton = shadingList.querySelector<HTMLButtonElement>(".is-active");
   previousButton?.classList.remove("is-active");
   previousButton?.setAttribute("aria-pressed", "false");
   activeButton?.classList.add("is-active");
@@ -118,10 +108,12 @@ const fitCanvas = () => {
 };
 let imageData = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
 let frameBuffer = new Framebuffer(imageData);
-let zBuffer = new DepthTexture(CANVAS_WIDTH, CANVAS_HEIGHT);
+let depthBuffer = new DepthTexture(CANVAS_WIDTH, CANVAS_HEIGHT);
 let shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
 let shadowImageData = new ImageData(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
 let shadowBuffer = new Framebuffer(shadowImageData);
+let bgImageData = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
+let bgBuffer = new Framebuffer(bgImageData);
 
 const setRenderResolution = (scale = 1) => {
   const width = CANVAS_WIDTH * scale;
@@ -133,10 +125,12 @@ const setRenderResolution = (scale = 1) => {
   aspectRatio = width / height;
   imageData = new ImageData(width, height);
   frameBuffer = new Framebuffer(imageData);
-  zBuffer = new DepthTexture(width, height);
+  depthBuffer = new DepthTexture(width, height);
   shadowMap = new DepthTexture(shadowMapSize, shadowMapSize);
   shadowImageData = new ImageData(shadowMapSize, shadowMapSize);
   shadowBuffer = new Framebuffer(shadowImageData);
+  bgImageData = new ImageData(width, height);
+  bgBuffer = new Framebuffer(bgImageData);
   fitCanvas();
 };
 
@@ -144,32 +138,27 @@ setRenderResolution();
 window.addEventListener("resize", fitCanvas);
 setHighResTextureLimits(highResCb.checked);
 
-const hdrEnvironment = await loadHdrTexture(
-  `${import.meta.env.BASE_URL}environments/sunny.hdr`,
-);
+const hdrEnvironment = await loadHdrTexture(`${import.meta.env.BASE_URL}environments/sunny.hdr`);
 
 // Scene and camera
 const lightDir = new Vector3(1, -1, 1).normalize();
 const lightCol = new Vector3(1, 1, 1);
-const camPos = new Vector3(0, 0, -2.5);
-let cameraOrthoSize = 1.44;
+const camPos = new Vector3(0, 0, -3);
+let orthoSize = -camPos.z * Math.tan((FOV * Math.PI) / 180 / 2);
 
 // Derived scene data
-const negLightDir = lightDir.scale(-1);
 const cameraLookDir = Vector3.Forward;
-const orthoViewDir = cameraLookDir.scale(-1);
+const viewDir = cameraLookDir.scale(-1);
 const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
-const envYawSin = Math.sin(envYaw);
-const envYawCos = Math.cos(envYaw);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
+rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw);
 
-const diceModel = await ensureModelOption("dice");
-prefetchRemainingModels("dice");
+const initialModelKey = "dice";
+const initialModelOption = await ensureModelOption(initialModelKey);
+prefetchRemainingModels(initialModelKey);
 
-let model = diceModel.mesh;
-let texture = diceModel.texture;
-let normalTexture = diceModel.normalTexture;
-let pbrMaterial = diceModel.pbrMaterial;
+let model = initialModelOption.mesh;
+let material = initialModelOption.material;
 let shadowOrthoSize = getModelRadius(model);
 
 let modelPos = new Vector3(0, 0, 0);
@@ -185,28 +174,27 @@ const shaders = {
   smooth: new SmoothShader(),
   flat: new FlatShader(),
   unlit: new UnlitShader(),
+  depth: new DepthShader(),
 };
 
-type RenderSettings = {
-  material: keyof typeof shaders | "pathTrace";
-  renderMode: RenderMode;
-  useShadows: boolean;
-};
-
-const depthShader = new DepthShader();
 const pathTracer = new PathTracer();
+type RenderSettings = Omit<RenderSelection, "normalizedValue">;
+
 const triVerts: Vector4[] = [];
 let pathTraceStatsText = "";
 
 const updateModelStats = () => {
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
-  textureSizeText.innerText = `${Math.max(texture.width, texture.height)}`;
+  textureSizeText.innerText = `${Math.max(
+    material.colorTexture.width,
+    material.colorTexture.height,
+  )}`;
 };
 
 const resetModelTransform = () => {
   modelRotation.set(0, Math.PI / 2, 0);
-  camPos.set(0, 0, -2.5);
-  cameraOrthoSize = 1.44;
+  camPos.set(0, 0, -3);
+  orthoSize = -camPos.z * Math.tan((FOV * Math.PI) / 180 / 2);
   pathTraceInteractive = true;
 };
 
@@ -214,9 +202,7 @@ let activeModelRequest = 0;
 
 const applyModelOption = (selectedModel: ModelOption) => {
   model = selectedModel.mesh;
-  texture = selectedModel.texture;
-  normalTexture = selectedModel.normalTexture;
-  pbrMaterial = selectedModel.pbrMaterial;
+  material = selectedModel.material;
   shadowOrthoSize = getModelRadius(model);
   updateModelStats();
   pathTraceInteractive = true;
@@ -253,6 +239,7 @@ const loadSelectedGlb = async (file: File, resetTransform = true) => {
 highResCb.addEventListener("change", () => {
   pathTraceInteractive = true;
   setRenderResolution(highResCb.checked ? 2 : 1);
+  rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw);
   if (!setHighResTextureLimits(highResCb.checked)) return;
   if (customGlbFile) {
     loadSelectedGlb(customGlbFile, false);
@@ -261,16 +248,13 @@ highResCb.addEventListener("change", () => {
   setModel(modelDd.value as ModelKey, false);
 });
 
-orthographicCb.addEventListener("change", () => {
+orthoCb.addEventListener("change", () => {
   pathTraceInteractive = true;
 });
 
 const getRenderSettings = (): RenderSettings => {
   const shadingValue = getShadingButton()?.dataset.shadingValue || "wireframe";
-  const selection = resolveShadingSelection(
-    shadingValue,
-    texture.data.length > 0 && model.uvs.length > 0,
-  );
+  const selection = resolveShadingSelection(shadingValue);
   if (selection.normalizedValue !== shadingValue) {
     setShadingValue(selection.normalizedValue);
   }
@@ -278,6 +262,7 @@ const getRenderSettings = (): RenderSettings => {
     material: selection.material,
     renderMode: selection.renderMode,
     useShadows: selection.useShadows,
+    showEnvironmentBackground: selection.showEnvironmentBackground,
   };
 };
 
@@ -316,28 +301,31 @@ const update = (dt: number) => {
     return;
   }
 
-  modelRotation.y -= dt * ROTATION_SPEED;
+  if (mouseButtonState !== 1) {
+    modelRotation.y -= dt * ROTATION_SPEED;
+  }
 };
 
 const draw = () => {
   const renderSettings = getRenderSettings();
   const previewRenderSettings =
-    renderSettings.material === "pathTrace"
-      ? resolveShadingSelection(
-          "ibl",
-          texture.data.length > 0 && model.uvs.length > 0,
-        )
-      : renderSettings;
-  const usePathTracePreview =
-    renderSettings.material === "pathTrace" && pathTraceInteractive;
-  const activeRenderSettings = usePathTracePreview
-    ? previewRenderSettings
-    : renderSettings;
+    renderSettings.material === "pathTrace" ? resolveShadingSelection("ibl") : renderSettings;
+  const usePathTracePreview = renderSettings.material === "pathTrace" && pathTraceInteractive;
+  const activeRenderSettings = usePathTracePreview ? previewRenderSettings : renderSettings;
   if (renderSettings.material === "pathTrace") {
     pathTraceInteractive = false;
   }
 
-  // 1) Build model-space transforms.
+  // 1) Clear all render targets for a new frame.
+  if (renderSettings.showEnvironmentBackground) {
+    frameBuffer.copyFrom(bgBuffer);
+  } else {
+    frameBuffer.clear();
+  }
+  depthBuffer.clear(1000);
+  shadowMap.clear(1000);
+
+  // 2) Build model-space transforms.
   const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
   const invModelMat = modelMat.invert();
   const normalMat = invModelMat.transpose();
@@ -347,23 +335,20 @@ const draw = () => {
       frameBuffer,
       {
         environment: hdrEnvironment,
-        envYawCos,
-        envYawSin,
+        envYaw,
         iblData,
         lightColor: lightCol,
-        lightDirectionToLight: negLightDir,
+        worldLightDir: lightDir,
         model,
         modelMat,
         invModelMat,
         normalMat,
-        normalTexture,
-        pbrMaterial,
-        texture,
+        material,
       },
       {
         aspectRatio,
-        cameraOrthoSize,
-        orthographic: orthographicCb.checked,
+        orthoSize,
+        orthographic: orthoCb.checked,
         position: camPos,
       },
       PATH_TRACE_FRAME_BUDGET_MS,
@@ -377,7 +362,7 @@ const draw = () => {
 
   // 2) Clear all render targets for a new frame.
   frameBuffer.clear();
-  zBuffer.clear(1000);
+  depthBuffer.clear(1000);
   shadowMap.clear(1000);
 
   // 3) Build light-space transform (for shadow mapping).
@@ -386,14 +371,14 @@ const draw = () => {
   const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
   const modelLightDir = invModelMat.transformDirection(lightDir).normalize();
   const modelCamPos = invModelMat.transformPoint(camPos);
-  const modelViewDir = invModelMat.transformDirection(orthoViewDir).normalize();
+  const modelViewDir = invModelMat.transformDirection(viewDir).normalize();
 
   // 4) Build camera transform and final clip transform.
-  const isOrthographic = orthographicCb.checked;
+  const isOrtho = orthoCb.checked;
   const viewMat = Matrix4.LookTo(camPos, cameraLookDir, Vector3.Up);
-  const projMat = isOrthographic
-    ? Matrix4.Ortho(cameraOrthoSize, aspectRatio)
-    : Matrix4.Perspective(60, aspectRatio);
+  const projMat = isOrtho
+    ? Matrix4.Ortho(orthoSize, aspectRatio)
+    : Matrix4.Perspective(FOV, aspectRatio);
   const mvp = projMat.multiply(viewMat).multiply(modelMat);
 
   // 5) Select active material shader and update uniforms.
@@ -407,39 +392,36 @@ const draw = () => {
     modelMat,
     mvp,
     normalMat,
-    lightDir,
-    negLightDir,
-    envYawSin,
-    envYawCos,
+    worldLightDir: lightDir,
+    envYaw,
     modelLightDir,
     lightCol,
-    camPos,
+    worldCamPos: camPos,
     modelCamPos,
-    orthographic: isOrthographic,
-    worldViewDir: orthoViewDir,
+    orthographic: isOrtho,
+    worldViewDir: viewDir,
     modelViewDir,
-    texture,
-    normalTexture,
-    pbrMaterial,
+    material,
     iblData,
     lightSpaceMat,
     shadowMap,
     receiveShadows: renderSettings.useShadows,
   };
+  shaders.depth.uniforms = { model, clipMat: mvp };
 
-  // 6) Optional shadow pass first, then visible color pass.
-  if (activeRenderSettings.useShadows) {
-    depthShader.uniforms = { model, clipMat: lightSpaceMat };
-    renderMesh(depthShader, shadowMap, "filled", shadowBuffer);
+  // Optional shadow pass first
+  if (renderSettings.useShadows) {
+    shaders.depth.uniforms.clipMat = lightSpaceMat;
+    renderMesh(shaders.depth, shadowMap, "filled", shadowBuffer);
   }
 
-  // Depth only pass for wireframe culling
-  if (activeRenderSettings.renderMode === "depthWireframe") {
-    depthShader.uniforms = { model, clipMat: mvp };
-    renderMesh(depthShader, zBuffer, "filled");
+  // We need a depth prepass for wireframe culling
+  if (renderSettings.renderMode === "depthWireframe") {
+    renderMesh(shaders.depth, depthBuffer, "filled");
   }
 
-  renderMesh(shader, zBuffer, activeRenderSettings.renderMode);
+  // 6) Main render pass
+  renderMesh(shader, depthBuffer, renderSettings.renderMode);
   ctx.putImageData(imageData, 0, 0);
 };
 
@@ -465,21 +447,39 @@ const loop = () => {
   requestAnimationFrame(loop);
 };
 
-canvas.onmousemove = (e) => {
-  if (e.buttons === 1) {
-    modelRotation.y -= e.movementX / ROTATE_SENSITIVITY;
-    modelRotation.x -= e.movementY / ROTATE_SENSITIVITY;
+canvas.onpointerdown = (e) => {
+  mouseButtonState = e.buttons;
+};
+window.onpointerup = (e) => {
+  mouseButtonState = e.buttons;
+};
+
+let prevX = NaN;
+let prevY = NaN;
+canvas.onpointermove = (e) => {
+  const dx = isNaN(prevX) ? 0 : e.clientX - prevX;
+  const dy = isNaN(prevY) ? 0 : e.clientY - prevY;
+  prevX = e.clientX;
+  prevY = e.clientY;
+
+  const dragging = mouseButtonState === 1;
+  const panning = mouseButtonState === 2 || mouseButtonState === 4;
+
+  if (dragging) {
+    modelRotation.y -= dx / ROTATE_SENSITIVITY;
+    modelRotation.x -= dy / ROTATE_SENSITIVITY;
     pathTraceInteractive = true;
-  } else if (e.buttons === 2 || e.buttons === 4) {
-    camPos.x -= e.movementX / PAN_SENSITIVITY;
-    camPos.y += e.movementY / PAN_SENSITIVITY;
+  } else if (panning) {
+    camPos.x -= dx / PAN_SENSITIVITY;
+    camPos.y += dy / PAN_SENSITIVITY;
     pathTraceInteractive = true;
   }
 };
 
 canvas.onwheel = (e) => {
   e.preventDefault();
-  cameraOrthoSize += (e.deltaY * 0.58) / ZOOM_SENSITIVITY;
+  const scale = Math.tan((FOV * 0.5 * Math.PI) / 180);
+  orthoSize += (e.deltaY * scale) / ZOOM_SENSITIVITY;
   camPos.z -= e.deltaY / ZOOM_SENSITIVITY;
   pathTraceInteractive = true;
 };

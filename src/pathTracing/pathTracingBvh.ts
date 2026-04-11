@@ -1,6 +1,6 @@
 import { Vector3 } from "../maths";
 import { EPSILON } from "../shaders/pbrHelpers";
-import { type LoadedModel } from "../utils/mesh";
+import { Mesh } from "../utils/mesh";
 
 const LEAF_TRIANGLE_COUNT = 8;
 const RAY_EPSILON = 0.001;
@@ -26,7 +26,7 @@ export interface BvhHit {
 }
 
 export class PathTraceBvh {
-  private model?: LoadedModel;
+  private model?: Mesh;
   private root?: BvhNode;
   private triangleIndices = new Uint32Array(0);
   private centroidX = new Float32Array(0);
@@ -39,7 +39,7 @@ export class PathTraceBvh {
   private boundsMaxY = new Float32Array(0);
   private boundsMaxZ = new Float32Array(0);
 
-  ensureGeometry = (model: LoadedModel) => {
+  ensureGeometry = (model: Mesh) => {
     if (this.model === model) {
       return false;
     }
@@ -57,11 +57,7 @@ export class PathTraceBvh {
     this.boundsMaxY = new Float32Array(triangleCount);
     this.boundsMaxZ = new Float32Array(triangleCount);
 
-    for (
-      let triangleIndex = 0;
-      triangleIndex < triangleCount;
-      triangleIndex++
-    ) {
+    for (let triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++) {
       const vertexIndex = triangleIndex * 3;
       const v0 = model.vertices[vertexIndex];
       const v1 = model.vertices[vertexIndex + 1];
@@ -118,12 +114,7 @@ export class PathTraceBvh {
       if (!node.left || !node.right) {
         for (let i = node.start; i < node.end; i++) {
           const triangleIndex = this.triangleIndices[i];
-          const hit = this.intersectTriangle(
-            origin,
-            direction,
-            triangleIndex,
-            closestDistance,
-          );
+          const hit = this.intersectTriangle(origin, direction, triangleIndex, closestDistance);
           if (!hit) {
             continue;
           }
@@ -219,12 +210,7 @@ export class PathTraceBvh {
       return node;
     }
 
-    const axisValues =
-      axis === 0
-        ? this.centroidX
-        : axis === 1
-          ? this.centroidY
-          : this.centroidZ;
+    const axisValues = axis === 0 ? this.centroidX : axis === 1 ? this.centroidY : this.centroidZ;
     this.triangleIndices.subarray(start, end).sort((a, b) => {
       return axisValues[a] - axisValues[b];
     });
@@ -247,14 +233,10 @@ export class PathTraceBvh {
     invDirectionZ: number,
     maxDistance: number,
   ) => {
-    let tMin =
-      ((invDirectionX >= 0 ? node.minX : node.maxX) - origin.x) * invDirectionX;
-    let tMax =
-      ((invDirectionX >= 0 ? node.maxX : node.minX) - origin.x) * invDirectionX;
-    const tyMin =
-      ((invDirectionY >= 0 ? node.minY : node.maxY) - origin.y) * invDirectionY;
-    const tyMax =
-      ((invDirectionY >= 0 ? node.maxY : node.minY) - origin.y) * invDirectionY;
+    let tMin = ((invDirectionX >= 0 ? node.minX : node.maxX) - origin.x) * invDirectionX;
+    let tMax = ((invDirectionX >= 0 ? node.maxX : node.minX) - origin.x) * invDirectionX;
+    const tyMin = ((invDirectionY >= 0 ? node.minY : node.maxY) - origin.y) * invDirectionY;
+    const tyMax = ((invDirectionY >= 0 ? node.maxY : node.minY) - origin.y) * invDirectionY;
 
     if (tMin > tyMax || tyMin > tMax) {
       return false;
@@ -263,10 +245,8 @@ export class PathTraceBvh {
     tMin = Math.max(tMin, tyMin);
     tMax = Math.min(tMax, tyMax);
 
-    const tzMin =
-      ((invDirectionZ >= 0 ? node.minZ : node.maxZ) - origin.z) * invDirectionZ;
-    const tzMax =
-      ((invDirectionZ >= 0 ? node.maxZ : node.minZ) - origin.z) * invDirectionZ;
+    const tzMin = ((invDirectionZ >= 0 ? node.minZ : node.maxZ) - origin.z) * invDirectionZ;
+    const tzMax = ((invDirectionZ >= 0 ? node.maxZ : node.minZ) - origin.z) * invDirectionZ;
 
     if (tMin > tzMax || tzMin > tMax) {
       return false;
@@ -318,15 +298,12 @@ export class PathTraceBvh {
     const qX = tY * edge1Z - tZ * edge1Y;
     const qY = tZ * edge1X - tX * edge1Z;
     const qZ = tX * edge1Y - tY * edge1X;
-    const baryV =
-      (direction.x * qX + direction.y * qY + direction.z * qZ) *
-      inverseDeterminant;
+    const baryV = (direction.x * qX + direction.y * qY + direction.z * qZ) * inverseDeterminant;
     if (baryV < 0 || baryU + baryV > 1) {
       return undefined;
     }
 
-    const distance =
-      (edge2X * qX + edge2Y * qY + edge2Z * qZ) * inverseDeterminant;
+    const distance = (edge2X * qX + edge2Y * qY + edge2Z * qZ) * inverseDeterminant;
     if (distance <= RAY_EPSILON || distance >= maxDistance) {
       return undefined;
     }

@@ -25,9 +25,7 @@ export class PathTraceEnvironmentSampler {
     }
 
     this.sampledEnvironment = environment;
-    this.environmentCdf = new Float32Array(
-      environment.width * environment.height,
-    );
+    this.environmentCdf = new Float32Array(environment.width * environment.height);
     this.environmentWeightTotal = 0;
 
     for (let y = 0; y < environment.height; y++) {
@@ -35,8 +33,7 @@ export class PathTraceEnvironmentSampler {
       for (let x = 0; x < environment.width; x++) {
         const weight = this.getTexelLuminance(environment, x, y) * sinTheta;
         this.environmentWeightTotal += weight;
-        this.environmentCdf[x + y * environment.width] =
-          this.environmentWeightTotal;
+        this.environmentCdf[x + y * environment.width] = this.environmentWeightTotal;
       }
     }
 
@@ -45,8 +42,7 @@ export class PathTraceEnvironmentSampler {
 
   sampleLight = (
     environment: Texture,
-    envYawCos: number,
-    envYawSin: number,
+    envYaw: { angle: number; sin: number; cos: number },
     nextRandom: () => number,
   ): EnvironmentLightSample | undefined => {
     if (this.environmentWeightTotal <= 0 || this.environmentCdf.length === 0) {
@@ -63,7 +59,7 @@ export class PathTraceEnvironmentSampler {
 
     const u = (texelX + nextRandom()) / environment.width;
     const v = (texelY + nextRandom()) / environment.height;
-    const direction = environmentUvToDirection(u, v, envYawCos, envYawSin);
+    const direction = environmentUvToDirection(u, v, envYaw);
     return {
       direction,
       pdf: Math.max(
@@ -71,29 +67,22 @@ export class PathTraceEnvironmentSampler {
         (texelLuminance * environment.width * environment.height) /
           (2 * Math.PI * Math.PI * this.environmentWeightTotal),
       ),
-      radiance: sampleEnvironment(environment, envYawCos, envYawSin, direction),
+      radiance: sampleEnvironment(environment, envYaw, direction),
     };
   };
 
   directionPdf = (
     environment: Texture,
-    envYawCos: number,
-    envYawSin: number,
+    envYaw: { angle: number; sin: number; cos: number },
     direction: Vector3,
   ) => {
     if (this.environmentWeightTotal <= 0 || this.environmentCdf.length === 0) {
       return 0;
     }
 
-    const { u, v } = environmentDirectionToUv(direction, envYawCos, envYawSin);
-    const texelX = Math.min(
-      environment.width - 1,
-      Math.floor(u * environment.width),
-    );
-    const texelY = Math.min(
-      environment.height - 1,
-      Math.floor(v * environment.height),
-    );
+    const { u, v } = environmentDirectionToUv(direction, envYaw);
+    const texelX = Math.min(environment.width - 1, Math.floor(u * environment.width));
+    const texelY = Math.min(environment.height - 1, Math.floor(v * environment.height));
     const texelLuminance = this.getTexelLuminance(environment, texelX, texelY);
     if (texelLuminance <= 0) {
       return 0;

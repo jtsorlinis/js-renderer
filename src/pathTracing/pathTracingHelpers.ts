@@ -1,7 +1,7 @@
 import { Texture } from "../drawing";
 import { Matrix4, Vector2, Vector3, Vector4 } from "../maths";
 
-const CAMERA_FOV = 60;
+const CAMERA_FOV = 50;
 const INV_TAU = 1 / (Math.PI * 2);
 
 export const createCameraRay = (
@@ -26,45 +26,32 @@ export const createCameraRay = (
   const tanHalfFov = Math.tan((CAMERA_FOV * Math.PI) / 360);
   return {
     origin: position.clone(),
-    direction: new Vector3(
-      ndcX * aspectRatio * tanHalfFov,
-      ndcY * tanHalfFov,
-      1,
-    ).normalize(),
+    direction: new Vector3(ndcX * aspectRatio * tanHalfFov, ndcY * tanHalfFov, 1).normalize(),
   };
 };
 
 export const sampleTexture = (texture: Texture, uv: Vector2) => {
   const x = Math.max(0, Math.min(texture.width - 1, ~~(uv.x * texture.width)));
-  const y = Math.max(
-    0,
-    Math.min(texture.height - 1, ~~((1 - uv.y) * texture.height)),
-  );
+  const y = Math.max(0, Math.min(texture.height - 1, ~~((1 - uv.y) * texture.height)));
   const base = (x + y * texture.width) * 3;
-  return new Vector3(
-    texture.data[base],
-    texture.data[base + 1],
-    texture.data[base + 2],
-  );
+  return new Vector3(texture.data[base], texture.data[base + 1], texture.data[base + 2]);
 };
 
 export const sampleEnvironment = (
   texture: Texture,
-  envYawCos: number,
-  envYawSin: number,
+  envYaw: { angle: number; sin: number; cos: number },
   direction: Vector3,
 ) => {
-  const { u, v } = environmentDirectionToUv(direction, envYawCos, envYawSin);
+  const { u, v } = environmentDirectionToUv(direction, envYaw);
   return sampleLatLongTexture(texture, u, v);
 };
 
 export const environmentDirectionToUv = (
   direction: Vector3,
-  envYawCos: number,
-  envYawSin: number,
+  envYaw: { angle: number; sin: number; cos: number },
 ) => {
-  const rotatedX = direction.x * envYawCos - direction.z * envYawSin;
-  const rotatedZ = direction.x * envYawSin + direction.z * envYawCos;
+  const rotatedX = direction.x * envYaw.cos - direction.z * envYaw.sin;
+  const rotatedZ = direction.x * envYaw.sin + direction.z * envYaw.cos;
   return {
     u: wrapUnit(Math.atan2(rotatedX, rotatedZ) * INV_TAU + 0.5),
     v: Math.acos(Math.max(-1, Math.min(1, direction.y))) / Math.PI,
@@ -74,8 +61,7 @@ export const environmentDirectionToUv = (
 export const environmentUvToDirection = (
   u: number,
   v: number,
-  envYawCos: number,
-  envYawSin: number,
+  envYaw: { angle: number; sin: number; cos: number },
 ) => {
   const phi = (wrapUnit(u) - 0.5) * Math.PI * 2;
   const theta = Math.max(0, Math.min(1, v)) * Math.PI;
@@ -84,9 +70,9 @@ export const environmentUvToDirection = (
   const rotatedZ = Math.cos(phi) * sinTheta;
 
   return new Vector3(
-    rotatedX * envYawCos + rotatedZ * envYawSin,
+    rotatedX * envYaw.cos + rotatedZ * envYaw.sin,
     Math.cos(theta),
-    rotatedZ * envYawCos - rotatedX * envYawSin,
+    rotatedZ * envYaw.cos - rotatedX * envYaw.sin,
   ).normalize();
 };
 
@@ -111,11 +97,8 @@ export const applyNormalMap = (
       ),
     )
     .normalize();
-  const handedness =
-    tangent0.w * baryW + tangent1.w * baryU + tangent2.w * baryV < 0 ? -1 : 1;
-  const tangentOrtho = tangent
-    .subtract(worldNormal.scale(worldNormal.dot(tangent)))
-    .normalize();
+  const handedness = tangent0.w * baryW + tangent1.w * baryU + tangent2.w * baryV < 0 ? -1 : 1;
+  const tangentOrtho = tangent.subtract(worldNormal.scale(worldNormal.dot(tangent))).normalize();
   const bitangent = worldNormal.cross(tangentOrtho).scale(handedness);
   const normalTexel = sampleTexture(normalTexture, uv);
   return tangentOrtho
@@ -127,9 +110,7 @@ export const applyNormalMap = (
 
 export const buildBasis = (normal: Vector3) => {
   const tangent =
-    Math.abs(normal.y) < 0.999
-      ? new Vector3(normal.z, 0, -normal.x)
-      : new Vector3(1, 0, 0);
+    Math.abs(normal.y) < 0.999 ? new Vector3(normal.z, 0, -normal.x) : new Vector3(1, 0, 0);
   const tangentOrtho = tangent.normalize();
   return {
     tangent: tangentOrtho,
@@ -139,10 +120,7 @@ export const buildBasis = (normal: Vector3) => {
 
 const sampleLatLongTexture = (texture: Texture, u: number, v: number) => {
   const xCoord = wrapUnit(u) * texture.width - 0.5;
-  const yCoord = Math.max(
-    0,
-    Math.min(texture.height - 1, v * texture.height - 0.5),
-  );
+  const yCoord = Math.max(0, Math.min(texture.height - 1, v * texture.height - 0.5));
   const x0 = Math.floor(xCoord);
   const y0 = Math.floor(yCoord);
   const xBlend = xCoord - x0;
