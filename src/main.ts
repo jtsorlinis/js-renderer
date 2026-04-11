@@ -101,7 +101,7 @@ const fitCanvas = () => {
 };
 let imageData = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
 let frameBuffer = new Framebuffer(imageData);
-let zBuffer = new DepthTexture(CANVAS_WIDTH, CANVAS_HEIGHT);
+let depthBuffer = new DepthTexture(CANVAS_WIDTH, CANVAS_HEIGHT);
 let shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
 let shadowImageData = new ImageData(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
 let shadowBuffer = new Framebuffer(shadowImageData);
@@ -118,7 +118,7 @@ const setRenderResolution = (scale = 1) => {
   aspectRatio = width / height;
   imageData = new ImageData(width, height);
   frameBuffer = new Framebuffer(imageData);
-  zBuffer = new DepthTexture(width, height);
+  depthBuffer = new DepthTexture(width, height);
   shadowMap = new DepthTexture(shadowMapSize, shadowMapSize);
   shadowImageData = new ImageData(shadowMapSize, shadowMapSize);
   shadowBuffer = new Framebuffer(shadowImageData);
@@ -298,7 +298,7 @@ const draw = () => {
   } else {
     frameBuffer.clear();
   }
-  zBuffer.clear(1000);
+  depthBuffer.clear(1000);
   shadowMap.clear(1000);
 
   // 2) Build model-space transforms.
@@ -357,11 +357,11 @@ const draw = () => {
 
   // We need a depth prepass for wireframe culling
   if (renderSettings.renderMode === "depthWireframe") {
-    renderMesh(shaders.depth, zBuffer, "filled");
+    renderMesh(shaders.depth, depthBuffer, "filled");
   }
 
   // 6) Main render pass
-  renderMesh(shader, zBuffer, renderSettings.renderMode);
+  renderMesh(shader, depthBuffer, renderSettings.renderMode);
   ctx.putImageData(imageData, 0, 0);
 };
 

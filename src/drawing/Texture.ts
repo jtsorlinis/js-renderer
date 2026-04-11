@@ -53,7 +53,11 @@ export class Texture {
   width: number;
   height: number;
 
-  constructor(data: Float32Array, width: number, height: number) {
+  constructor(
+    data: Float32Array = new Float32Array([1, 1, 1]),
+    width: number = 1,
+    height: number = 1,
+  ) {
     this.data = data;
     this.width = width;
     this.height = height;
