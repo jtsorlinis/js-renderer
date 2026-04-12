@@ -1,5 +1,5 @@
 import { BaseShader, Verts } from "./BaseShader";
-import { Vector3, Matrix4, Vector4, Vector2 } from "../maths";
+import { Vector3, Matrix4, Vector2 } from "../maths";
 import { Material } from "../materials/Material";
 
 export interface Uniforms {
