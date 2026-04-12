@@ -1,6 +1,6 @@
 import { BaseShader, Verts } from "./BaseShader";
 import { Vector3, Matrix4 } from "../maths";
-import { rand } from "../utils/random";
+import { hash3 } from "../utils/hash";
 
 export interface Uniforms {
   model: Verts;
@@ -22,10 +22,7 @@ export class UnlitShader extends BaseShader {
 
     // Give each face a random color
     if (this.nthVert === 0) {
-      const r = rand(i, minColor, 1);
-      const g = rand(i + 1, minColor, 1);
-      const b = rand(i + 2, minColor, 1);
-      this.color = new Vector3(r, g, b);
+      this.color = hash3(i, minColor, 1);
     }
 
     // Return clip-space position.
