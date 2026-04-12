@@ -424,9 +424,7 @@ window.addEventListener("keydown", (event) => {
 });
 
 modelDd.onchange = () => {
-  setModel(modelDd.value as ModelKey).catch((error) => {
-    console.error(`Failed to switch to model "${modelDd.value}"`, error);
-  });
+  setModel(modelDd.value as ModelKey);
 };
 
 loadGlbBtn.addEventListener("click", () => {
