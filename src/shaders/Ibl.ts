@@ -49,7 +49,7 @@ export class IblShader extends BaseShader {
   vWorldTangent = this.varying<Vector4>();
   vLightSpacePos = this.varying<Vector3>();
 
-  vertex = (): Vector4 => {
+  vertex = () => {
     const model = this.uniforms.model;
     const i = this.vertexId;
     const modelPos = model.vertices[i];

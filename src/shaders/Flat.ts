@@ -19,7 +19,7 @@ export class FlatShader extends BaseShader {
   // Flat shading stores one lighting value for the whole triangle.
   lighting = new Vector3();
 
-  vertex = (): Vector4 => {
+  vertex = () => {
     const model = this.uniforms.model;
 
     // Use one shared lighting value for the whole triangle.

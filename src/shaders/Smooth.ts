@@ -26,7 +26,7 @@ export class SmoothShader extends BaseShader {
   vWorldNormal = this.varying<Vector3>();
   vWorldPos = this.varying<Vector3>();
 
-  vertex = (): Vector4 => {
+  vertex = () => {
     // Read source mesh data.
     const model = this.uniforms.model;
     const i = this.vertexId;

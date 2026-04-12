@@ -26,7 +26,7 @@ export class UnlitShader extends BaseShader {
 
   color = new Vector3();
 
-  vertex = (): Vector4 => {
+  vertex = () => {
     const model = this.uniforms.model;
     const faceId = Math.floor(this.vertexId / 3);
     const i = faceId * 3;
