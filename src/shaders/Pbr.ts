@@ -41,7 +41,7 @@ export class PbrShader extends BaseShader {
   vModelNormal = this.varying<Vector3>();
   vModelTangent = this.varying<Vector4>();
 
-  vertex = (): Vector4 => {
+  vertex = () => {
     const model = this.uniforms.model;
     const i = this.vertexId;
     const modelPos = model.vertices[i];

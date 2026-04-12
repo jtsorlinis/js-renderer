@@ -28,7 +28,7 @@ export class TexturedShader extends BaseShader {
   vWorldPos = this.varying<Vector3>();
   vUV = this.varying<Vector2>();
 
-  vertex = (): Vector4 => {
+  vertex = () => {
     // Load source vertex data.
     const model = this.uniforms.model;
     const i = this.vertexId;

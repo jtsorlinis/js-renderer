@@ -34,7 +34,7 @@ export class NormalMappedShader extends BaseShader {
   vModelTangent = this.varying<Vector4>();
   vLightSpacePos = this.varying<Vector3>();
 
-  vertex = (): Vector4 => {
+  vertex = () => {
     // Read the source vertex attributes from the active mesh.
     const model = this.uniforms.model;
     const i = this.vertexId;

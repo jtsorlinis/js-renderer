@@ -24,7 +24,7 @@ export class GouraudShader extends BaseShader {
 
   vertexColor = this.varying<Vector3>();
 
-  vertex = (): Vector4 => {
+  vertex = () => {
     const model = this.uniforms.model;
     const i = this.vertexId;
 
