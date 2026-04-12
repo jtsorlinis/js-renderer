@@ -36,6 +36,7 @@ const ROTATE_SENSITIVITY = 250;
 const PAN_SENSITIVITY = 250;
 const ZOOM_SENSITIVITY = 100;
 const FPS_UPDATE_INTERVAL_MS = 250;
+const INITIAL_MODEL: ModelKey = "dice";
 
 // UI handles
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -146,9 +147,8 @@ const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
 rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw);
 
-const initialModelKey = "dice";
-const initialModelOption = await ensureModelOption(initialModelKey);
-prefetchRemainingModels(initialModelKey);
+const initialModelOption = await ensureModelOption(INITIAL_MODEL);
+prefetchRemainingModels(INITIAL_MODEL);
 
 let model = initialModelOption.mesh;
 let material = initialModelOption.material;
