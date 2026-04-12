@@ -18,12 +18,12 @@ const srgbToLinear = (value: number) => {
   return Math.pow((value + 0.055) / 1.055, 2.4);
 };
 
+// Fast approximation but looks visually identical
 export const linearToSrgb = (value: number) => {
-  const clamped = Math.max(0, value);
-  if (clamped <= 0.0031308) {
-    return clamped * 12.92;
-  }
-  return 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
+  const S1 = Math.sqrt(value);
+  const S2 = Math.sqrt(S1);
+  const S3 = Math.sqrt(S2);
+  return 0.662002687 * S1 + 0.68412206 * S2 - 0.323583601 * S3 - 0.022541147 * value;
 };
 
 export const setHighResTextureLimit = (enabled: boolean) => {
