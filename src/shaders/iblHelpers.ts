@@ -1,5 +1,5 @@
 import { Framebuffer, Texture } from "../drawing";
-import { Vector3 } from "../maths";
+import { clamp, Vector3 } from "../maths";
 import { EPSILON, INV_PI } from "./pbrHelpers";
 
 export interface IblData {
@@ -31,10 +31,6 @@ const specularBrdfLutSize = 128;
 const specularBrdfSampleCount = 96;
 const SUN_LUMINANCE_THRESHOLD = 0.98;
 
-const clampSignedUnit = (value: number) => {
-  return Math.max(-1, Math.min(1, value));
-};
-
 export const wrapUnit = (value: number) => {
   return value - Math.floor(value);
 };
@@ -50,7 +46,7 @@ export const sampleLatLongMap = (
 ) => {
   const layerOffset = layerIndex * layerStride;
   const xCoord = wrapUnit(u) * width - 0.5;
-  const yCoord = Math.max(0, Math.min(height - 1, v * height - 0.5));
+  const yCoord = clamp(v * height - 0.5, 0, height - 1);
   const x0 = Math.floor(xCoord);
   const y0 = Math.floor(yCoord);
   const xBlend = xCoord - x0;
@@ -98,7 +94,7 @@ export const rebuildEnvironmentBackdrop = (
       const rotatedX = dirX * envYaw.cos - dirZ * envYaw.sin;
       const rotatedZ = dirX * envYaw.sin + dirZ * envYaw.cos;
       const u = (Math.atan2(rotatedX, rotatedZ) / TAU + 1.5) % 1;
-      const v = Math.acos(clampSignedUnit(dirY)) / Math.PI;
+      const v = Math.acos(clamp(dirY, -1, 1)) / Math.PI;
 
       const backgroundEnvSample = sampleLatLongMap(
         iblData.specularPrefilterMap,
@@ -117,7 +113,7 @@ export const rebuildEnvironmentBackdrop = (
 const directionToLatLongUv = (x: number, y: number, z: number) => {
   return {
     u: wrapUnit(Math.atan2(x, z) * INV_TAU + 0.5),
-    v: Math.acos(clampSignedUnit(y)) * INV_PI,
+    v: Math.acos(clamp(y, -1, 1)) * INV_PI,
   };
 };
 
@@ -163,7 +159,7 @@ const sampleLatLongData = (
   v: number,
 ) => {
   const xCoord = wrapUnit(u) * width - 0.5;
-  const yCoord = Math.max(0, Math.min(height - 1, v * height - 0.5));
+  const yCoord = clamp(v * height - 0.5, 0, height - 1);
   const x0 = Math.floor(xCoord);
   const y0 = Math.floor(yCoord);
   const xBlend = xCoord - x0;

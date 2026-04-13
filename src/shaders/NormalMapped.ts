@@ -34,7 +34,7 @@ export class NormalMappedShader extends BaseShader {
   vModelTangent = this.varying<Vector4>();
   vLightSpacePos = this.varying<Vector3>();
 
-  vertex = (): Vector4 => {
+  vertex = () => {
     // Read the source vertex attributes from the active mesh.
     const model = this.uniforms.model;
     const i = this.vertexId;
@@ -76,7 +76,7 @@ export class NormalMappedShader extends BaseShader {
     const Ty = modelTangent.y - modelNormal.y * tDotN;
     const Tz = modelTangent.z - modelNormal.z * tDotN;
     const TLengthSq = Tx * Tx + Ty * Ty + Tz * Tz;
-    const TScale = TLengthSq > 0.000001 ? 1 / Math.sqrt(TLengthSq) : 0;
+    const TScale = 1 / Math.sqrt(TLengthSq);
     const T = new Vector3(Tx * TScale, Ty * TScale, Tz * TScale);
 
     const Bx = (modelNormal.y * T.z - modelNormal.z * T.y) * handedness;
@@ -88,7 +88,7 @@ export class NormalMappedShader extends BaseShader {
     const Ny = T.y * normalTexel.x + B.y * normalTexel.y + modelNormal.y * normalTexel.z;
     const Nz = T.z * normalTexel.x + B.z * normalTexel.y + modelNormal.z * normalTexel.z;
     const NLengthSq = Nx * Nx + Ny * Ny + Nz * Nz;
-    const NScale = NLengthSq > 1e-8 ? 1 / Math.sqrt(NLengthSq) : 0;
+    const NScale = 1 / Math.sqrt(NLengthSq);
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
 
     // Shadow mapping if enabled

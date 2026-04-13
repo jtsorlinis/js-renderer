@@ -18,14 +18,6 @@ const srgbToLinear = (value: number) => {
   return Math.pow((value + 0.055) / 1.055, 2.4);
 };
 
-export const linearToSrgb = (value: number) => {
-  const clamped = Math.max(0, value);
-  if (clamped <= 0.0031308) {
-    return clamped * 12.92;
-  }
-  return 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
-};
-
 export const setHighResTextureLimit = (enabled: boolean) => {
   textureSizeLimit = enabled ? HIGH_RES_TEXTURE_SIZE_LIMIT : DEFAULT_TEXTURE_SIZE_LIMIT;
 };

@@ -38,6 +38,7 @@ const PAN_SENSITIVITY = 250;
 const ZOOM_SENSITIVITY = 100;
 const FPS_UPDATE_INTERVAL_MS = 250;
 const PATH_TRACE_FRAME_BUDGET_MS = 16;
+const INITIAL_MODEL: ModelKey = "dice";
 
 // UI handles
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -153,9 +154,9 @@ const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
 rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw);
 
-const initialModelKey = "dice";
-const initialModelOption = await ensureModelOption(initialModelKey);
-prefetchRemainingModels(initialModelKey);
+const initialModelOption = await ensureModelOption(INITIAL_MODEL);
+modelDd.value = INITIAL_MODEL;
+prefetchRemainingModels(INITIAL_MODEL);
 
 let model = initialModelOption.mesh;
 let material = initialModelOption.material;
@@ -433,7 +434,7 @@ const loop = () => {
   const actualFrameTime = performance.now() - now;
 
   if (now - lastFpsUiUpdate >= FPS_UPDATE_INTERVAL_MS) {
-    const fps = frameIntervalMs > 0 ? 1000 / frameIntervalMs : 0;
+    const fps = 1000 / actualFrameTime;
     fpsText.innerText = pathTraceStatsText
       ? `${actualFrameTime.toFixed(0)} ms | ${pathTraceStatsText}`
       : `${actualFrameTime.toFixed(0)} ms (${fps.toFixed(0)} fps)`;
@@ -490,9 +491,7 @@ window.addEventListener("keydown", (event) => {
 });
 
 modelDd.onchange = () => {
-  setModel(modelDd.value as ModelKey).catch((error) => {
-    console.error(`Failed to switch to model "${modelDd.value}"`, error);
-  });
+  setModel(modelDd.value as ModelKey);
 };
 
 loadGlbBtn.addEventListener("click", () => {

@@ -1,5 +1,5 @@
 import { BaseShader, Verts } from "./BaseShader";
-import { Vector3, Matrix4, Vector4, Vector2 } from "../maths";
+import { Vector3, Matrix4, Vector2 } from "../maths";
 import { Material } from "../materials/Material";
 
 export interface Uniforms {
@@ -28,7 +28,7 @@ export class TexturedShader extends BaseShader {
   vWorldPos = this.varying<Vector3>();
   vUV = this.varying<Vector2>();
 
-  vertex = (): Vector4 => {
+  vertex = () => {
     // Load source vertex data.
     const model = this.uniforms.model;
     const i = this.vertexId;

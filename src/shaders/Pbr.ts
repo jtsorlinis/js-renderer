@@ -1,15 +1,8 @@
 import { BaseShader, Verts } from "./BaseShader";
-import { Vector3, Matrix4, Vector4, Vector2 } from "../maths";
+import { Vector3, Matrix4, Vector4, Vector2, saturate } from "../maths";
 import { DepthTexture } from "../drawing";
 import { type Material } from "../materials/Material";
-import {
-  DIELECTRIC_F0,
-  EPSILON,
-  INV_PI,
-  distributionGGX,
-  geometrySmith,
-  saturate,
-} from "./pbrHelpers";
+import { DIELECTRIC_F0, EPSILON, INV_PI, distributionGGX, geometrySmith } from "./pbrHelpers";
 
 export interface Uniforms {
   model: Verts;
@@ -41,7 +34,7 @@ export class PbrShader extends BaseShader {
   vModelNormal = this.varying<Vector3>();
   vModelTangent = this.varying<Vector4>();
 
-  vertex = (): Vector4 => {
+  vertex = () => {
     const model = this.uniforms.model;
     const i = this.vertexId;
     const modelPos = model.vertices[i];
@@ -69,21 +62,12 @@ export class PbrShader extends BaseShader {
     const modelTangent = this.interpolateVec4(this.vModelTangent);
     const handedness = modelTangent.w < 0 ? -1 : 1;
 
-    let shadow = 1;
-    if (this.uniforms.receiveShadows) {
-      const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
-      const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-      const faceNDotL = saturate(-modelNormal.dot(this.uniforms.modelLightDir));
-      const bias = minBias + (maxBias - minBias) * (1 - faceNDotL);
-      shadow = lightSpacePos.z - bias > depth ? 0 : 1;
-    }
-
     const tDotN = modelTangent.dot3(modelNormal);
     const Tx = modelTangent.x - modelNormal.x * tDotN;
     const Ty = modelTangent.y - modelNormal.y * tDotN;
     const Tz = modelTangent.z - modelNormal.z * tDotN;
     const TLengthSq = Tx * Tx + Ty * Ty + Tz * Tz;
-    const TScale = TLengthSq > EPSILON ? 1 / Math.sqrt(TLengthSq) : 0;
+    const TScale = 1 / Math.sqrt(TLengthSq);
     const T = new Vector3(Tx * TScale, Ty * TScale, Tz * TScale);
 
     const Bx = (modelNormal.y * T.z - modelNormal.z * T.y) * handedness;
@@ -95,7 +79,7 @@ export class PbrShader extends BaseShader {
     const Ny = T.y * normalTexel.x + By * normalTexel.y + modelNormal.y * normalTexel.z;
     const Nz = T.z * normalTexel.x + Bz * normalTexel.y + modelNormal.z * normalTexel.z;
     const NLengthSq = Nx * Nx + Ny * Ny + Nz * Nz;
-    const NScale = NLengthSq > EPSILON ? 1 / Math.sqrt(NLengthSq) : 0;
+    const NScale = 1 / Math.sqrt(NLengthSq);
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
 
     const baseColor = this.sample(material.colorTexture, uv).multiplyInPlace(material.colorFactor);
@@ -116,37 +100,47 @@ export class PbrShader extends BaseShader {
     const nDotV = saturate(
       normal.x * modelViewDir.x + normal.y * modelViewDir.y + normal.z * modelViewDir.z,
     );
-    const halfDir = modelViewDir.subtract(modelLightDir);
 
     let directR = 0;
     let directG = 0;
     let directB = 0;
-    if (nDotL > 0 && nDotV > 0 && halfDir.lengthSq() > EPSILON) {
-      halfDir.normalize();
-      const nDotH = saturate(normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z);
-      const vDotH = saturate(modelViewDir.dot(halfDir));
-      const fresnelFactor = Math.pow(1 - saturate(vDotH), 5);
-      const fresnelX = f0x + (1 - f0x) * fresnelFactor;
-      const fresnelY = f0y + (1 - f0y) * fresnelFactor;
-      const fresnelZ = f0z + (1 - f0z) * fresnelFactor;
-      const distribution = distributionGGX(nDotH, roughness);
-      const geometry = geometrySmith(nDotV, nDotL, roughness);
-      const specularFactor = (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
-      const diffuseFactor = (1 - metallic) * INV_PI;
-      const lightScale = nDotL * shadow * lightIntensity;
+    if (nDotL > 0 && nDotV > 0) {
+      let shadow = 1;
+      if (this.uniforms.receiveShadows) {
+        const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
+        const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
+        const faceNDotL = saturate(-modelNormal.dot(this.uniforms.modelLightDir));
+        const bias = minBias + (maxBias - minBias) * (1 - faceNDotL);
+        shadow = lightSpacePos.z - bias > depth ? 0 : 1;
+      }
 
-      directR =
-        ((1 - fresnelX) * diffuseFactor * baseColor.x + fresnelX * specularFactor) *
-        this.uniforms.lightCol.x *
-        lightScale;
-      directG =
-        ((1 - fresnelY) * diffuseFactor * baseColor.y + fresnelY * specularFactor) *
-        this.uniforms.lightCol.y *
-        lightScale;
-      directB =
-        ((1 - fresnelZ) * diffuseFactor * baseColor.z + fresnelZ * specularFactor) *
-        this.uniforms.lightCol.z *
-        lightScale;
+      if (shadow > 0) {
+        const halfDir = modelViewDir.subtract(modelLightDir).normalize();
+        const nDotH = saturate(normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z);
+        const vDotH = saturate(modelViewDir.dot(halfDir));
+        const fresnelFactor = Math.pow(1 - saturate(vDotH), 5);
+        const fresnelX = f0x + (1 - f0x) * fresnelFactor;
+        const fresnelY = f0y + (1 - f0y) * fresnelFactor;
+        const fresnelZ = f0z + (1 - f0z) * fresnelFactor;
+        const distribution = distributionGGX(nDotH, roughness);
+        const geometry = geometrySmith(nDotV, nDotL, roughness);
+        const specularFactor = (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
+        const diffuseFactor = (1 - metallic) * INV_PI;
+        const lightScale = nDotL * lightIntensity;
+
+        directR =
+          ((1 - fresnelX) * diffuseFactor * baseColor.x + fresnelX * specularFactor) *
+          this.uniforms.lightCol.x *
+          lightScale;
+        directG =
+          ((1 - fresnelY) * diffuseFactor * baseColor.y + fresnelY * specularFactor) *
+          this.uniforms.lightCol.y *
+          lightScale;
+        directB =
+          ((1 - fresnelZ) * diffuseFactor * baseColor.z + fresnelZ * specularFactor) *
+          this.uniforms.lightCol.z *
+          lightScale;
+      }
     }
 
     // Keep the direct-light PBR step readable with a tiny material-aware fill

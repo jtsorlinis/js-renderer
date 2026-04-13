@@ -1,5 +1,5 @@
 import { BaseShader, Verts } from "./BaseShader";
-import { Vector3, Matrix4, Vector4 } from "../maths";
+import { Vector3, Matrix4 } from "../maths";
 
 export interface Uniforms {
   model: Verts;
@@ -24,7 +24,7 @@ export class GouraudShader extends BaseShader {
 
   vertexColor = this.varying<Vector3>();
 
-  vertex = (): Vector4 => {
+  vertex = () => {
     const model = this.uniforms.model;
     const i = this.vertexId;
 

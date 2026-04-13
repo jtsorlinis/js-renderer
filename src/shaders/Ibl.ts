@@ -1,5 +1,5 @@
 import { BaseShader, Verts } from "./BaseShader";
-import { Vector3, Matrix4, Vector4, Vector2 } from "../maths";
+import { Vector3, Matrix4, Vector4, Vector2, saturate, clamp } from "../maths";
 import { DepthTexture } from "../drawing";
 import { type Material } from "../materials/Material";
 import {
@@ -9,7 +9,6 @@ import {
   INV_PI,
   distributionGGX,
   geometrySmith,
-  saturate,
 } from "./pbrHelpers";
 import { type IblData, wrapUnit, INV_TAU, sampleLatLongMap } from "./iblHelpers";
 
@@ -44,24 +43,21 @@ export class IblShader extends BaseShader {
   uniforms!: Uniforms;
 
   vUV = this.varying<Vector2>();
-  vWorldViewDir = this.varying<Vector3>();
+  vWorldPos = this.varying<Vector3>();
   vWorldNormal = this.varying<Vector3>();
   vWorldTangent = this.varying<Vector4>();
   vLightSpacePos = this.varying<Vector3>();
 
-  vertex = (): Vector4 => {
+  vertex = () => {
     const model = this.uniforms.model;
     const i = this.vertexId;
     const modelPos = model.vertices[i];
     const worldPos = this.uniforms.modelMat.transformPoint(modelPos);
     const worldNormal = this.uniforms.normalMat.transformDirection(model.normals[i]).normalize();
     const worldTangent = this.uniforms.modelMat.transformDirection4(model.tangents[i]).normalize3();
-    const worldViewDir = this.uniforms.orthographic
-      ? this.uniforms.worldViewDir
-      : this.uniforms.worldCamPos.subtract(worldPos).normalize();
 
     this.v2f(this.vUV, model.uvs[i]);
-    this.v2f(this.vWorldViewDir, worldViewDir);
+    this.v2f(this.vWorldPos, worldPos);
     this.v2f(this.vWorldNormal, worldNormal);
     this.v2f(this.vWorldTangent, worldTangent);
 
@@ -79,7 +75,10 @@ export class IblShader extends BaseShader {
     const material = this.uniforms.material;
     const ibl = this.uniforms.iblData;
     const uv = this.interpolateVec2(this.vUV);
-    const worldViewDir = this.interpolateVec3(this.vWorldViewDir).normalize();
+    const worldPos = this.interpolateVec3(this.vWorldPos);
+    const worldViewDir = this.uniforms.orthographic
+      ? this.uniforms.worldViewDir
+      : this.uniforms.worldCamPos.subtract(worldPos).normalize();
     const worldNormal = this.interpolateVec3(this.vWorldNormal).normalize();
     const worldTangent = this.interpolateVec4(this.vWorldTangent);
     const handedness = worldTangent.w < 0 ? -1 : 1;
@@ -89,7 +88,7 @@ export class IblShader extends BaseShader {
     const Ty = worldTangent.y - worldNormal.y * tDotN;
     const Tz = worldTangent.z - worldNormal.z * tDotN;
     const TLengthSq = Tx * Tx + Ty * Ty + Tz * Tz;
-    const TScale = TLengthSq > EPSILON ? 1 / Math.sqrt(TLengthSq) : 0;
+    const TScale = 1 / Math.sqrt(TLengthSq);
     const T = new Vector3(Tx * TScale, Ty * TScale, Tz * TScale);
 
     const Bx = (worldNormal.y * T.z - worldNormal.z * T.y) * handedness;
@@ -101,7 +100,7 @@ export class IblShader extends BaseShader {
     const Ny = T.y * normalTexel.x + By * normalTexel.y + worldNormal.y * normalTexel.z;
     const Nz = T.z * normalTexel.x + Bz * normalTexel.y + worldNormal.z * normalTexel.z;
     const NLengthSq = Nx * Nx + Ny * Ny + Nz * Nz;
-    const NScale = NLengthSq > EPSILON ? 1 / Math.sqrt(NLengthSq) : 0;
+    const NScale = 1 / Math.sqrt(NLengthSq);
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
 
     const baseColor = this.sample(material.colorTexture, uv).multiplyInPlace(material.colorFactor);
@@ -119,12 +118,11 @@ export class IblShader extends BaseShader {
     const rawNDotV =
       normal.x * worldViewDir.x + normal.y * worldViewDir.y + normal.z * worldViewDir.z;
     const nDotV = saturate(rawNDotV);
-    const halfDir = worldViewDir.subtract(worldLightDir);
 
     let directR = 0;
     let directG = 0;
     let directB = 0;
-    if (nDotL > 0 && nDotV > 0 && halfDir.lengthSq() > EPSILON) {
+    if (nDotL > 0 && nDotV > 0) {
       let shadow = 1;
       if (this.uniforms.receiveShadows) {
         const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
@@ -134,33 +132,35 @@ export class IblShader extends BaseShader {
         shadow = lightSpacePos.z - bias > depth ? 0 : 1;
       }
 
-      halfDir.normalize();
-      const nDotH = saturate(normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z);
-      const vDotH = saturate(worldViewDir.dot(halfDir));
-      const fresnelBase = 1 - vDotH;
-      const fresnelBaseSq = fresnelBase * fresnelBase;
-      const fresnelFactor = fresnelBaseSq * fresnelBaseSq * fresnelBase;
-      const fresnelX = f0x + (1 - f0x) * fresnelFactor;
-      const fresnelY = f0y + (1 - f0y) * fresnelFactor;
-      const fresnelZ = f0z + (1 - f0z) * fresnelFactor;
-      const distribution = distributionGGX(nDotH, roughness);
-      const geometry = geometrySmith(nDotV, nDotL, roughness);
-      const specularFactor = (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
-      const diffuseFactor = (1 - metallic) * INV_PI;
-      const lightScale = nDotL * shadow * lightIntensity;
+      if (shadow > 0) {
+        const halfDir = worldViewDir.subtract(worldLightDir).normalize();
+        const nDotH = saturate(normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z);
+        const vDotH = saturate(worldViewDir.dot(halfDir));
+        const fresnelBase = 1 - vDotH;
+        const fresnelBaseSq = fresnelBase * fresnelBase;
+        const fresnelFactor = fresnelBaseSq * fresnelBaseSq * fresnelBase;
+        const fresnelX = f0x + (1 - f0x) * fresnelFactor;
+        const fresnelY = f0y + (1 - f0y) * fresnelFactor;
+        const fresnelZ = f0z + (1 - f0z) * fresnelFactor;
+        const distribution = distributionGGX(nDotH, roughness);
+        const geometry = geometrySmith(nDotV, nDotL, roughness);
+        const specularFactor = (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
+        const diffuseFactor = (1 - metallic) * INV_PI;
+        const lightScale = nDotL * lightIntensity;
 
-      directR =
-        ((1 - fresnelX) * diffuseFactor * baseColor.x + fresnelX * specularFactor) *
-        this.uniforms.lightCol.x *
-        lightScale;
-      directG =
-        ((1 - fresnelY) * diffuseFactor * baseColor.y + fresnelY * specularFactor) *
-        this.uniforms.lightCol.y *
-        lightScale;
-      directB =
-        ((1 - fresnelZ) * diffuseFactor * baseColor.z + fresnelZ * specularFactor) *
-        this.uniforms.lightCol.z *
-        lightScale;
+        directR =
+          ((1 - fresnelX) * diffuseFactor * baseColor.x + fresnelX * specularFactor) *
+          this.uniforms.lightCol.x *
+          lightScale;
+        directG =
+          ((1 - fresnelY) * diffuseFactor * baseColor.y + fresnelY * specularFactor) *
+          this.uniforms.lightCol.y *
+          lightScale;
+        directB =
+          ((1 - fresnelZ) * diffuseFactor * baseColor.z + fresnelZ * specularFactor) *
+          this.uniforms.lightCol.z *
+          lightScale;
+      }
     }
 
     // Ambient uses directional irradiance plus split-sum style specular from
@@ -170,7 +170,7 @@ export class IblShader extends BaseShader {
     const diffuseDirX = normal.x * envYaw.cos - normal.z * envYaw.sin;
     const diffuseDirZ = normal.x * envYaw.sin + normal.z * envYaw.cos;
     const diffuseU = wrapUnit(Math.atan2(diffuseDirX, diffuseDirZ) * INV_TAU + 0.5);
-    const diffuseV = Math.acos(Math.max(-1, Math.min(1, normal.y))) * INV_PI;
+    const diffuseV = Math.acos(clamp(normal.y, -1, 1)) * INV_PI;
     const diffuseEnv = sampleLatLongMap(
       ibl.diffuseIrradianceMap,
       ibl.diffuseIrradianceMapWidth,
@@ -188,7 +188,7 @@ export class IblShader extends BaseShader {
     const reflectionU = wrapUnit(
       Math.atan2(rotatedReflectionX, rotatedReflectionZ) * INV_TAU + 0.5,
     );
-    const reflectionV = Math.acos(Math.max(-1, Math.min(1, reflectionY))) * INV_PI;
+    const reflectionV = Math.acos(clamp(reflectionY, -1, 1)) * INV_PI;
     const specularRoughnessIndex = Math.min(
       ibl.specularPrefilterRoughnessMaxIndex,
       Math.round(roughness * ibl.specularPrefilterRoughnessMaxIndex),

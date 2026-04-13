@@ -1,5 +1,5 @@
 import { BaseShader, Verts } from "./BaseShader";
-import { Vector3, Matrix4, Vector4 } from "../maths";
+import { Vector3, Matrix4 } from "../maths";
 
 export interface Uniforms {
   model: Verts;
@@ -19,7 +19,7 @@ export class FlatShader extends BaseShader {
   // Flat shading stores one lighting value for the whole triangle.
   lighting = new Vector3();
 
-  vertex = (): Vector4 => {
+  vertex = () => {
     const model = this.uniforms.model;
 
     // Use one shared lighting value for the whole triangle.

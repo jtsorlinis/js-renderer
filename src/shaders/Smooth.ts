@@ -1,5 +1,5 @@
 import { BaseShader, Verts } from "./BaseShader";
-import { Vector3, Matrix4, Vector4 } from "../maths";
+import { Vector3, Matrix4 } from "../maths";
 
 export interface Uniforms {
   model: Verts;
@@ -26,7 +26,7 @@ export class SmoothShader extends BaseShader {
   vWorldNormal = this.varying<Vector3>();
   vWorldPos = this.varying<Vector3>();
 
-  vertex = (): Vector4 => {
+  vertex = () => {
     // Read source mesh data.
     const model = this.uniforms.model;
     const i = this.vertexId;
