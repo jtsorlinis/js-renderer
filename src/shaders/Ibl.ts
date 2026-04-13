@@ -1,5 +1,5 @@
 import { BaseShader, Verts } from "./BaseShader";
-import { Vector3, Matrix4, Vector4, Vector2 } from "../maths";
+import { Vector3, Matrix4, Vector4, Vector2, saturate } from "../maths";
 import { DepthTexture } from "../drawing";
 import { type Material } from "../materials/Material";
 import {
@@ -9,7 +9,6 @@ import {
   INV_PI,
   distributionGGX,
   geometrySmith,
-  saturate,
 } from "./pbrHelpers";
 import { type IblData, wrapUnit, INV_TAU, sampleLatLongMap } from "./iblHelpers";
 
