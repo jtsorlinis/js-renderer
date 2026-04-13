@@ -1,13 +1,6 @@
-import { Vector3 } from "../maths";
+import { saturate, Vector3 } from "../maths";
 import { type IblData } from "../shaders/iblHelpers";
-import {
-  EPSILON,
-  INV_21,
-  INV_PI,
-  distributionGGX,
-  fresnelSchlick,
-  saturate,
-} from "../shaders/pbrHelpers";
+import { EPSILON, INV_21, INV_PI, distributionGGX, fresnelSchlick } from "../shaders/pbrHelpers";
 
 export interface PathTraceLightingHit {
   baseColor: Vector3;

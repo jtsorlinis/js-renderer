@@ -16,7 +16,7 @@ for (let i = 0; i < SRGB8_LUT_SIZE; i += 1) {
   srgb8Lut[i] = Math.round(linearToSrgb(i / SRGB8_LUT_MAX_INDEX) * 255);
 }
 
-const linearToSrgb8 = (value: number) => {
+export const linearToSrgb8 = (value: number) => {
   const clamped = saturate(value);
   const index = Math.round(clamped * SRGB8_LUT_MAX_INDEX);
   return srgb8Lut[index];

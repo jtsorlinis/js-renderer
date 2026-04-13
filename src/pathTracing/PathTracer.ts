@@ -1,6 +1,6 @@
 import { Framebuffer, Texture } from "../drawing";
-import { linearToSrgb } from "../drawing/Texture";
-import { Matrix4, Vector2, Vector3 } from "../maths";
+import { linearToSrgb8 } from "../drawing/Framebuffer";
+import { Matrix4, saturate, Vector2, Vector3 } from "../maths";
 import { PathTraceBvh } from "./pathTracingBvh";
 import { PathTraceEnvironmentSampler } from "./pathTracingEnvironment";
 import {
@@ -10,7 +10,7 @@ import {
   sampleEnvironment,
   sampleTexture,
 } from "./pathTracingHelpers";
-import { DIELECTRIC_F0, EPSILON, saturate } from "../shaders/pbrHelpers";
+import { DIELECTRIC_F0, EPSILON } from "../shaders/pbrHelpers";
 import { type IblData } from "../shaders/iblHelpers";
 import {
   evaluateBsdf,
@@ -489,11 +489,11 @@ export class PathTracer {
       const targetIndex = pixelIndex * 4;
       const sampleScale =
         this.pixelSampleCounts[pixelIndex] > 0 ? 1 / this.pixelSampleCounts[pixelIndex] : 0;
-      targetData[targetIndex] = linearToSrgb(this.accumulation[sourceIndex] * sampleScale) * 255;
+      targetData[targetIndex] = linearToSrgb8(this.accumulation[sourceIndex] * sampleScale) * 255;
       targetData[targetIndex + 1] =
-        linearToSrgb(this.accumulation[sourceIndex + 1] * sampleScale) * 255;
+        linearToSrgb8(this.accumulation[sourceIndex + 1] * sampleScale) * 255;
       targetData[targetIndex + 2] =
-        linearToSrgb(this.accumulation[sourceIndex + 2] * sampleScale) * 255;
+        linearToSrgb8(this.accumulation[sourceIndex + 2] * sampleScale) * 255;
       targetData[targetIndex + 3] = 255;
     }
   };
