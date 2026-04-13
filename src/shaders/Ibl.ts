@@ -119,7 +119,6 @@ export class IblShader extends BaseShader {
     const rawNDotV =
       normal.x * worldViewDir.x + normal.y * worldViewDir.y + normal.z * worldViewDir.z;
     const nDotV = saturate(rawNDotV);
-    const halfDir = worldViewDir.subtract(worldLightDir);
 
     let directR = 0;
     let directG = 0;
@@ -134,33 +133,35 @@ export class IblShader extends BaseShader {
         shadow = lightSpacePos.z - bias > depth ? 0 : 1;
       }
 
-      halfDir.normalize();
-      const nDotH = saturate(normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z);
-      const vDotH = saturate(worldViewDir.dot(halfDir));
-      const fresnelBase = 1 - vDotH;
-      const fresnelBaseSq = fresnelBase * fresnelBase;
-      const fresnelFactor = fresnelBaseSq * fresnelBaseSq * fresnelBase;
-      const fresnelX = f0x + (1 - f0x) * fresnelFactor;
-      const fresnelY = f0y + (1 - f0y) * fresnelFactor;
-      const fresnelZ = f0z + (1 - f0z) * fresnelFactor;
-      const distribution = distributionGGX(nDotH, roughness);
-      const geometry = geometrySmith(nDotV, nDotL, roughness);
-      const specularFactor = (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
-      const diffuseFactor = (1 - metallic) * INV_PI;
-      const lightScale = nDotL * shadow * lightIntensity;
+      if (shadow > 0) {
+        const halfDir = worldViewDir.subtract(worldLightDir).normalize();
+        const nDotH = saturate(normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z);
+        const vDotH = saturate(worldViewDir.dot(halfDir));
+        const fresnelBase = 1 - vDotH;
+        const fresnelBaseSq = fresnelBase * fresnelBase;
+        const fresnelFactor = fresnelBaseSq * fresnelBaseSq * fresnelBase;
+        const fresnelX = f0x + (1 - f0x) * fresnelFactor;
+        const fresnelY = f0y + (1 - f0y) * fresnelFactor;
+        const fresnelZ = f0z + (1 - f0z) * fresnelFactor;
+        const distribution = distributionGGX(nDotH, roughness);
+        const geometry = geometrySmith(nDotV, nDotL, roughness);
+        const specularFactor = (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
+        const diffuseFactor = (1 - metallic) * INV_PI;
+        const lightScale = nDotL * lightIntensity;
 
-      directR =
-        ((1 - fresnelX) * diffuseFactor * baseColor.x + fresnelX * specularFactor) *
-        this.uniforms.lightCol.x *
-        lightScale;
-      directG =
-        ((1 - fresnelY) * diffuseFactor * baseColor.y + fresnelY * specularFactor) *
-        this.uniforms.lightCol.y *
-        lightScale;
-      directB =
-        ((1 - fresnelZ) * diffuseFactor * baseColor.z + fresnelZ * specularFactor) *
-        this.uniforms.lightCol.z *
-        lightScale;
+        directR =
+          ((1 - fresnelX) * diffuseFactor * baseColor.x + fresnelX * specularFactor) *
+          this.uniforms.lightCol.x *
+          lightScale;
+        directG =
+          ((1 - fresnelY) * diffuseFactor * baseColor.y + fresnelY * specularFactor) *
+          this.uniforms.lightCol.y *
+          lightScale;
+        directB =
+          ((1 - fresnelZ) * diffuseFactor * baseColor.z + fresnelZ * specularFactor) *
+          this.uniforms.lightCol.z *
+          lightScale;
+      }
     }
 
     // Ambient uses directional irradiance plus split-sum style specular from

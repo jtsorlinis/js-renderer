@@ -148,6 +148,7 @@ const iblData = buildEnvironmentIbl(hdrEnvironment);
 rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw);
 
 const initialModelOption = await ensureModelOption(INITIAL_MODEL);
+modelDd.value = INITIAL_MODEL;
 prefetchRemainingModels(INITIAL_MODEL);
 
 let model = initialModelOption.mesh;
