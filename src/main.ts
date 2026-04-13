@@ -1,31 +1,32 @@
 import "./style.css";
-import { Matrix4, Vector3, Vector4 } from "./maths";
-import { DepthTexture, Framebuffer, edgeFunction, line, triangle } from "./drawing";
-import { getModelRadius } from "./utils/mesh";
+import { Vector3 } from "./maths";
+import { DepthTexture, Framebuffer } from "./drawing";
 import {
-  ensureModelOption,
-  loadCustomGlb,
-  prefetchRemainingModels,
-  setHighResTextureLimits,
-  type ModelKey,
-  type ModelOption,
-} from "./utils/modelLoader";
-import { SmoothShader } from "./shaders/Smooth";
-import { TexturedShader } from "./shaders/Textured";
-import { FlatShader } from "./shaders/Flat";
-import { UnlitShader } from "./shaders/Unlit";
-import { BaseShader } from "./shaders/BaseShader";
-import { DepthShader } from "./shaders/Depth";
-import { NormalMappedShader } from "./shaders/NormalMapped";
-import { PbrShader } from "./shaders/Pbr";
-import { IblShader } from "./shaders/Ibl";
+  buildTileTriangleBins,
+  createShaders,
+  drawScene,
+  renderShadowPass,
+  type FrameRenderState,
+  type RenderSettings,
+  type StaticRenderScene,
+} from "./renderer/renderCore";
+import { RenderSelection, resolveShadingSelection } from "./renderSettings";
 import {
   buildEnvironmentIbl,
   estimateEnvironmentYaw,
   rebuildEnvironmentBackdrop,
 } from "./shaders/iblHelpers";
-import { RenderSelection, resolveShadingSelection, type RenderMode } from "./renderSettings";
 import { loadHdrTexture } from "./utils/hdrLoader";
+import {
+  type ModelKey,
+  type ModelOption,
+  ensureModelOption,
+  loadCustomGlb,
+  prefetchRemainingModels,
+  setHighResTextureLimits,
+} from "./utils/modelLoader";
+import { getModelRadius } from "./utils/mesh";
+import { TiledWorkerRenderer } from "./workers/TiledWorkerRenderer";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
@@ -37,6 +38,12 @@ const PAN_SENSITIVITY = 250;
 const ZOOM_SENSITIVITY = 100;
 const FPS_UPDATE_INTERVAL_MS = 250;
 const INITIAL_MODEL: ModelKey = "dice";
+const MAX_RENDER_WORKERS = 4;
+
+const WORKER_COUNT = (() => {
+  const cores = navigator.hardwareConcurrency ?? MAX_RENDER_WORKERS;
+  return cores > 1 ? Math.min(MAX_RENDER_WORKERS, cores) : 1;
+})();
 
 // UI handles
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -51,7 +58,15 @@ const modelDd = document.getElementById("modelDd") as HTMLSelectElement;
 const loadGlbBtn = document.getElementById("loadGlbBtn") as HTMLButtonElement;
 const glbInput = document.getElementById("glbInput") as HTMLInputElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+const localShaders = createShaders();
+const workerRenderer = WORKER_COUNT > 1 ? new TiledWorkerRenderer(WORKER_COUNT) : null;
+
 let mouseButtonState = 0;
+let workersDisabled = false;
+let workerSyncPending = false;
+let workerSyncQueue = Promise.resolve();
+let workerFramePromise: Promise<void> | null = null;
+let lastRenderedFrameMs = 0;
 
 const getShadingButton = () => {
   return shadingList.querySelector<HTMLButtonElement>(
@@ -100,12 +115,12 @@ const fitCanvas = () => {
   canvas.style.width = `${Math.floor(w)}px`;
   canvas.style.height = `${Math.floor(h)}px`;
 };
+
 let imageData = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
 let frameBuffer = new Framebuffer(imageData);
 let depthBuffer = new DepthTexture(CANVAS_WIDTH, CANVAS_HEIGHT);
 let shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-let shadowImageData = new ImageData(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-let shadowBuffer = new Framebuffer(shadowImageData);
+let shadowBuffer = new Framebuffer({ width: SHADOW_MAP_SIZE, height: SHADOW_MAP_SIZE });
 let bgImageData = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
 let bgBuffer = new Framebuffer(bgImageData);
 
@@ -121,8 +136,7 @@ const setRenderResolution = (scale = 1) => {
   frameBuffer = new Framebuffer(imageData);
   depthBuffer = new DepthTexture(width, height);
   shadowMap = new DepthTexture(shadowMapSize, shadowMapSize);
-  shadowImageData = new ImageData(shadowMapSize, shadowMapSize);
-  shadowBuffer = new Framebuffer(shadowImageData);
+  shadowBuffer = new Framebuffer({ width: shadowMapSize, height: shadowMapSize });
   bgImageData = new ImageData(width, height);
   bgBuffer = new Framebuffer(bgImageData);
   fitCanvas();
@@ -141,8 +155,7 @@ const camPos = new Vector3(0, 0, -3);
 let orthoSize = -camPos.z * Math.tan((FOV * Math.PI) / 180 / 2);
 
 // Derived scene data
-const cameraLookDir = Vector3.Forward;
-const viewDir = cameraLookDir.scale(-1);
+const viewDir = Vector3.Forward.scale(-1);
 const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
 rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw);
@@ -159,21 +172,9 @@ let modelPos = new Vector3(0, 0, 0);
 let modelRotation = new Vector3(0, Math.PI / 2, 0);
 let modelScale = new Vector3(1, 1, 1);
 let customGlbFile: File | null = null;
+let activeModelRequest = 0;
 
-const shaders = {
-  ibl: new IblShader(),
-  pbr: new PbrShader(),
-  normalMapped: new NormalMappedShader(),
-  textured: new TexturedShader(),
-  smooth: new SmoothShader(),
-  flat: new FlatShader(),
-  unlit: new UnlitShader(),
-  depth: new DepthShader(),
-};
-
-type RenderSettings = Omit<RenderSelection, "normalizedValue">;
-
-const triVerts: Vector4[] = [];
+type UiRenderSettings = Omit<RenderSelection, "normalizedValue">;
 
 const updateModelStats = () => {
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
@@ -189,7 +190,148 @@ const resetModelTransform = () => {
   orthoSize = -camPos.z * Math.tan((FOV * Math.PI) / 180 / 2);
 };
 
-let activeModelRequest = 0;
+const getRenderSettings = (): UiRenderSettings => {
+  const shadingValue = getShadingButton()?.dataset.shadingValue || "wireframe";
+  const selection = resolveShadingSelection(shadingValue);
+  if (selection.normalizedValue !== shadingValue) {
+    setShadingValue(selection.normalizedValue);
+  }
+  return {
+    material: selection.material,
+    renderMode: selection.renderMode,
+    useShadows: selection.useShadows,
+    showEnvironmentBackground: selection.showEnvironmentBackground,
+  };
+};
+
+const buildStaticScene = (): StaticRenderScene => {
+  return {
+    model,
+    material,
+    iblData,
+    lightDir,
+    lightCol,
+    envYaw,
+    shadowOrthoSize,
+  };
+};
+
+const buildFrameState = (renderSettings: RenderSettings): FrameRenderState => {
+  return {
+    modelPos,
+    modelRotation,
+    modelScale,
+    camPos,
+    viewDir,
+    aspectRatio,
+    orthoSize,
+    isOrtho: orthoCb.checked,
+    renderSettings,
+  };
+};
+
+const renderLocally = (renderSettings: RenderSettings) => {
+  drawScene(
+    buildStaticScene(),
+    buildFrameState(renderSettings),
+    {
+      frameBuffer,
+      depthBuffer,
+      shadowMap,
+      shadowBuffer,
+      backgroundBuffer: bgBuffer,
+    },
+    localShaders,
+    FOV,
+  );
+  ctx.putImageData(imageData, 0, 0);
+};
+
+const disableWorkers = (reason: string, error: unknown) => {
+  workersDisabled = true;
+  workerFramePromise = null;
+  workerSyncPending = false;
+  workerRenderer?.dispose();
+  console.error(reason, error);
+};
+
+const syncWorkersScene = () => {
+  if (!workerRenderer || workersDisabled) {
+    return Promise.resolve();
+  }
+
+  workerSyncPending = true;
+  const queuedSync = workerSyncQueue
+    .catch(() => undefined)
+    .then(async () => {
+      await workerRenderer.configure(
+        buildStaticScene(),
+        imageData,
+        shadowMap.width,
+        FOV,
+        bgBuffer.data,
+      );
+    })
+    .catch((error) => {
+      disableWorkers("Failed to configure render workers", error);
+    })
+    .finally(() => {
+      if (workerSyncQueue === queuedSync) {
+        workerSyncPending = false;
+      }
+    });
+
+  workerSyncQueue = queuedSync;
+  return queuedSync;
+};
+
+const renderWithWorkers = (renderSettings: RenderSettings) => {
+  if (!workerRenderer || workersDisabled || workerSyncPending || !workerRenderer.isConfigured) {
+    return false;
+  }
+
+  if (workerFramePromise) {
+    return true;
+  }
+
+  const scene = buildStaticScene();
+  const frame = buildFrameState(renderSettings);
+  const tileTriangleVertexIndices = buildTileTriangleBins(
+    scene,
+    frame,
+    FOV,
+    imageData.width,
+    imageData.height,
+    workerRenderer.tiles,
+  );
+  const sharedShadowMapData = renderSettings.useShadows ? shadowMap.data : undefined;
+  if (renderSettings.useShadows) {
+    renderShadowPass(scene, frame, shadowMap, shadowBuffer, localShaders, FOV);
+  }
+  const targetImage = imageData;
+  workerFramePromise = workerRenderer
+    .render(frame, targetImage, tileTriangleVertexIndices, sharedShadowMapData)
+    .then((elapsedMs) => {
+      if (targetImage !== imageData) {
+        return;
+      }
+      lastRenderedFrameMs = elapsedMs;
+      ctx.putImageData(targetImage, 0, 0);
+    })
+    .catch((error) => {
+      disableWorkers("Render workers failed during frame rendering", error);
+      if (targetImage === imageData) {
+        const localStart = performance.now();
+        renderLocally(renderSettings);
+        lastRenderedFrameMs = performance.now() - localStart;
+      }
+    })
+    .finally(() => {
+      workerFramePromise = null;
+    });
+
+  return true;
+};
 
 const applyModelOption = (selectedModel: ModelOption) => {
   model = selectedModel.mesh;
@@ -210,6 +352,8 @@ const setModel = async (modelKey: ModelKey, resetTransform = true) => {
   if (resetTransform) {
     resetModelTransform();
   }
+
+  await syncWorkersScene();
 };
 
 const loadSelectedGlb = async (file: File, resetTransform = true) => {
@@ -224,141 +368,26 @@ const loadSelectedGlb = async (file: File, resetTransform = true) => {
   if (resetTransform) {
     resetModelTransform();
   }
+
+  await syncWorkersScene();
 };
 
 highResCb.addEventListener("change", () => {
   setRenderResolution(highResCb.checked ? 2 : 1);
   rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw);
+  void syncWorkersScene();
   if (!setHighResTextureLimits(highResCb.checked)) return;
   if (customGlbFile) {
-    loadSelectedGlb(customGlbFile, false);
+    void loadSelectedGlb(customGlbFile, false);
     return;
   }
-  setModel(modelDd.value as ModelKey, false);
+  void setModel(modelDd.value as ModelKey, false);
 });
-
-const getRenderSettings = (): RenderSettings => {
-  const shadingValue = getShadingButton()?.dataset.shadingValue || "wireframe";
-  const selection = resolveShadingSelection(shadingValue);
-  if (selection.normalizedValue !== shadingValue) {
-    setShadingValue(selection.normalizedValue);
-  }
-  return {
-    material: selection.material,
-    renderMode: selection.renderMode,
-    useShadows: selection.useShadows,
-    showEnvironmentBackground: selection.showEnvironmentBackground,
-  };
-};
-
-const renderMesh = (
-  activeShader: BaseShader,
-  depthBuffer: DepthTexture,
-  renderMode: RenderMode = "filled",
-  targetBuffer: Framebuffer = frameBuffer,
-) => {
-  for (let i = 0; i < model.vertices.length; i += 3) {
-    // Vertex stage for one triangle.
-    for (let j = 0; j < 3; j++) {
-      activeShader.vertexId = i + j;
-      activeShader.nthVert = j;
-      triVerts[j] = activeShader.vertex().perspectiveDivide();
-    }
-
-    if (renderMode !== "filled") {
-      const isDepthWireframe = renderMode === "depthWireframe";
-      const area = edgeFunction(triVerts[0], triVerts[1], triVerts[2]);
-      if (isDepthWireframe && area <= 0) continue;
-
-      line(triVerts[0], triVerts[1], targetBuffer, depthBuffer);
-      line(triVerts[1], triVerts[2], targetBuffer, depthBuffer);
-      line(triVerts[2], triVerts[0], targetBuffer, depthBuffer);
-      continue;
-    }
-
-    // Rasterization + fragment stage.
-    triangle(triVerts, activeShader, targetBuffer, depthBuffer);
-  }
-};
 
 const update = (dt: number) => {
   if (mouseButtonState !== 1) {
     modelRotation.y -= dt * ROTATION_SPEED;
   }
-};
-
-const draw = () => {
-  const renderSettings = getRenderSettings();
-
-  // 1) Clear all render targets for a new frame.
-  if (renderSettings.showEnvironmentBackground) {
-    frameBuffer.copyFrom(bgBuffer);
-  } else {
-    frameBuffer.clear();
-  }
-  depthBuffer.clear(1000);
-  shadowMap.clear(1000);
-
-  // 2) Build model-space transforms.
-  const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
-  const invModelMat = modelMat.invert();
-  const normalMat = invModelMat.transpose();
-
-  // 3) Build light-space transform (for shadow mapping).
-  const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), Vector3.Zero);
-  const lightProjMat = Matrix4.Ortho(shadowOrthoSize, 1, 1, 10);
-  const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
-  const modelLightDir = invModelMat.transformDirection(lightDir).normalize();
-  const modelCamPos = invModelMat.transformPoint(camPos);
-  const modelViewDir = invModelMat.transformDirection(viewDir).normalize();
-
-  // 4) Build camera transform and final clip transform.
-  const isOrtho = orthoCb.checked;
-  const viewMat = Matrix4.LookTo(camPos, cameraLookDir, Vector3.Up);
-  const projMat = isOrtho
-    ? Matrix4.Ortho(orthoSize, aspectRatio)
-    : Matrix4.Perspective(FOV, aspectRatio);
-  const mvp = projMat.multiply(viewMat).multiply(modelMat);
-
-  // 5) Select active material shader and update uniforms.
-  const shader = shaders[renderSettings.material];
-
-  shader.uniforms = {
-    model,
-    modelMat,
-    mvp,
-    normalMat,
-    worldLightDir: lightDir,
-    envYaw,
-    modelLightDir,
-    lightCol,
-    worldCamPos: camPos,
-    modelCamPos,
-    orthographic: isOrtho,
-    worldViewDir: viewDir,
-    modelViewDir,
-    material,
-    iblData,
-    lightSpaceMat,
-    shadowMap,
-    receiveShadows: renderSettings.useShadows,
-  };
-  shaders.depth.uniforms = { model, clipMat: mvp };
-
-  // Optional shadow pass first
-  if (renderSettings.useShadows) {
-    shaders.depth.uniforms.clipMat = lightSpaceMat;
-    renderMesh(shaders.depth, shadowMap, "filled", shadowBuffer);
-  }
-
-  // We need a depth prepass for wireframe culling
-  if (renderSettings.renderMode === "depthWireframe") {
-    renderMesh(shaders.depth, depthBuffer, "filled");
-  }
-
-  // 6) Main render pass
-  renderMesh(shader, depthBuffer, renderSettings.renderMode);
-  ctx.putImageData(imageData, 0, 0);
 };
 
 let prevTime = performance.now();
@@ -368,13 +397,19 @@ const loop = () => {
   const frameIntervalMs = now - prevTime;
   const deltaTime = frameIntervalMs / 1000;
   prevTime = now;
+
   update(deltaTime);
-  draw();
-  const actualFrameTime = performance.now() - now;
+  const renderSettings = getRenderSettings();
+
+  if (!renderWithWorkers(renderSettings)) {
+    const localStart = performance.now();
+    renderLocally(renderSettings);
+    lastRenderedFrameMs = performance.now() - localStart;
+  }
 
   if (now - lastFpsUiUpdate >= FPS_UPDATE_INTERVAL_MS) {
-    const fps = frameIntervalMs > 0 ? 1000 / frameIntervalMs : 0;
-    fpsText.innerText = `${actualFrameTime.toFixed(0)} ms (${fps.toFixed(0)} fps)`;
+    const fps = 1000 / lastRenderedFrameMs;
+    fpsText.innerText = `${lastRenderedFrameMs.toFixed(0)} ms (${fps.toFixed(0)} fps)`;
     lastFpsUiUpdate = now;
   }
 
@@ -425,7 +460,7 @@ window.addEventListener("keydown", (event) => {
 });
 
 modelDd.onchange = () => {
-  setModel(modelDd.value as ModelKey);
+  void setModel(modelDd.value as ModelKey);
 };
 
 loadGlbBtn.addEventListener("click", () => {
@@ -439,10 +474,15 @@ glbInput.addEventListener("change", () => {
     return;
   }
 
-  loadSelectedGlb(file).catch((error) => {
+  void loadSelectedGlb(file).catch((error) => {
     console.error(`Failed to load GLB file "${file.name}"`, error);
   });
 });
 
+window.addEventListener("pagehide", () => {
+  workerRenderer?.dispose();
+});
+
 updateModelStats();
+await syncWorkersScene();
 loop();

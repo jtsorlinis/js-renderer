@@ -49,18 +49,24 @@ export const triangle = (
 
   // Reject triangles that are fully outside the viewport
   if (
-    (p0x < 0 && p1x < 0 && p2x < 0) ||
-    (p0x > buffer.width && p1x > buffer.width && p2x > buffer.width) ||
-    (p0y < 0 && p1y < 0 && p2y < 0) ||
-    (p0y > buffer.height && p1y > buffer.height && p2y > buffer.height)
+    (p0x < buffer.clipMinX && p1x < buffer.clipMinX && p2x < buffer.clipMinX) ||
+    (p0x > buffer.clipMaxX && p1x > buffer.clipMaxX && p2x > buffer.clipMaxX) ||
+    (p0y < buffer.clipMinY && p1y < buffer.clipMinY && p2y < buffer.clipMinY) ||
+    (p0y > buffer.clipMaxY && p1y > buffer.clipMaxY && p2y > buffer.clipMaxY)
   )
     return;
 
   // Calculate bounding box
-  const minX = ~~Math.max(0, Math.min(p0x, p1x, p2x));
-  const minY = ~~Math.max(0, Math.min(p0y, p1y, p2y));
-  const maxX = ~~Math.min(buffer.width - 1, Math.max(p0x, p1x, p2x));
-  const maxY = ~~Math.min(buffer.height - 1, Math.max(p0y, p1y, p2y));
+  const clipMinX = Math.max(buffer.clipMinX, depthBuffer.clipMinX);
+  const clipMinY = Math.max(buffer.clipMinY, depthBuffer.clipMinY);
+  const clipMaxX = Math.min(buffer.clipMaxX, depthBuffer.clipMaxX);
+  const clipMaxY = Math.min(buffer.clipMaxY, depthBuffer.clipMaxY);
+  const minX = ~~Math.max(clipMinX, Math.min(p0x, p1x, p2x));
+  const minY = ~~Math.max(clipMinY, Math.min(p0y, p1y, p2y));
+  const maxX = ~~Math.min(clipMaxX, Math.max(p0x, p1x, p2x));
+  const maxY = ~~Math.min(clipMaxY, Math.max(p0y, p1y, p2y));
+
+  if (minX > maxX || minY > maxY) return;
 
   // Calculate barycentric coordinates for first pixel
   const invArea = 1 / area;
@@ -86,7 +92,7 @@ export const triangle = (
     let u = uRow;
     let v = vRow;
     let w = wRow;
-    let index = minX + y * buffer.width;
+    let index = depthBuffer.rowOffset(y) + (minX - depthBuffer.clipMinX);
 
     for (let x = minX; x <= maxX; x++) {
       // Check if pixel is inside triangle

@@ -1,3 +1,5 @@
+import type { BufferRegion } from "../drawing/Framebuffer";
+
 const DEFAULT_TEXTURE_SIZE_LIMIT = 1024;
 const HIGH_RES_TEXTURE_SIZE_LIMIT = 2048;
 let textureSizeLimit = DEFAULT_TEXTURE_SIZE_LIMIT;
@@ -26,15 +28,53 @@ export class DepthTexture {
   data: Float32Array;
   width: number;
   height: number;
+  clipMinX: number;
+  clipMinY: number;
+  clipMaxX: number;
+  clipMaxY: number;
+  regionWidth: number;
+  regionHeight: number;
 
-  constructor(width: number, height: number) {
-    this.data = new Float32Array(width * height);
+  constructor(
+    width: number,
+    height: number,
+    options?: {
+      data?: Float32Array;
+      region?: BufferRegion;
+    },
+  ) {
+    const region = options?.region ?? {
+      x: 0,
+      y: 0,
+      width,
+      height,
+    };
+
     this.width = width;
     this.height = height;
+    this.regionWidth = region.width;
+    this.regionHeight = region.height;
+    this.clipMinX = region.x;
+    this.clipMinY = region.y;
+    this.clipMaxX = region.x + region.width - 1;
+    this.clipMaxY = region.y + region.height - 1;
+    this.data = options?.data ?? new Float32Array(region.width * region.height);
   }
 
   clear(val: number) {
     this.data.fill(val);
+  }
+
+  contains(x: number, y: number) {
+    return x >= this.clipMinX && x <= this.clipMaxX && y >= this.clipMinY && y <= this.clipMaxY;
+  }
+
+  indexAt(x: number, y: number) {
+    return x - this.clipMinX + (y - this.clipMinY) * this.regionWidth;
+  }
+
+  rowOffset(y: number) {
+    return (y - this.clipMinY) * this.regionWidth;
   }
 }
 
