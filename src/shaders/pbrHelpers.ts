@@ -5,9 +5,7 @@ export const DIELECTRIC_F0 = new Vector3(0.04, 0.04, 0.04);
 export const INV_PI = 1 / Math.PI;
 export const INV_21 = 1 / 21;
 
-export const saturate = (value: number) => {
-  return Math.max(0, Math.min(1, value));
-};
+export const saturate = (value: number) => Math.max(0, Math.min(1, value));
 
 export const fresnelSchlick = (cosTheta: number, f0: Vector3) => {
   const factor = Math.pow(1 - saturate(cosTheta), 5);
