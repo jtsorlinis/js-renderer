@@ -23,8 +23,8 @@ import { Mesh } from "../utils/mesh";
 
 const RAY_EPSILON = 0.001;
 
-const lightIntensity = 1.88;
-const environmentIntensity = 0.6;
+const lightIntensity = 0;
+const environmentIntensity = 1;
 const maxBounces = 4;
 const rouletteBounces = 3;
 
