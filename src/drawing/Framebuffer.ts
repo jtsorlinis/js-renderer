@@ -1,4 +1,4 @@
-import { Vector3, Vector4 } from "../maths";
+import { saturate, Vector3, Vector4 } from "../maths";
 
 const linearToSrgb = (value: number) => {
   const clamped = Math.max(0, value);
@@ -17,7 +17,7 @@ for (let i = 0; i < SRGB8_LUT_SIZE; i += 1) {
 }
 
 const linearToSrgb8 = (value: number) => {
-  const clamped = Math.min(1, Math.max(0, value));
+  const clamped = saturate(value);
   const index = Math.round(clamped * SRGB8_LUT_MAX_INDEX);
   return srgb8Lut[index];
 };
