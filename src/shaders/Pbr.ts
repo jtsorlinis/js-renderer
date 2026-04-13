@@ -1,15 +1,8 @@
 import { BaseShader, Verts } from "./BaseShader";
-import { Vector3, Matrix4, Vector4, Vector2 } from "../maths";
+import { Vector3, Matrix4, Vector4, Vector2, saturate } from "../maths";
 import { DepthTexture } from "../drawing";
 import { type Material } from "../materials/Material";
-import {
-  DIELECTRIC_F0,
-  EPSILON,
-  INV_PI,
-  distributionGGX,
-  geometrySmith,
-  saturate,
-} from "./pbrHelpers";
+import { DIELECTRIC_F0, EPSILON, INV_PI, distributionGGX, geometrySmith } from "./pbrHelpers";
 
 export interface Uniforms {
   model: Verts;
