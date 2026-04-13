@@ -1,5 +1,5 @@
 import { BaseShader, Verts } from "./BaseShader";
-import { Vector3, Matrix4, Vector4, Vector2, saturate } from "../maths";
+import { Vector3, Matrix4, Vector4, Vector2, saturate, clamp } from "../maths";
 import { DepthTexture } from "../drawing";
 import { type Material } from "../materials/Material";
 import {
@@ -170,7 +170,7 @@ export class IblShader extends BaseShader {
     const diffuseDirX = normal.x * envYaw.cos - normal.z * envYaw.sin;
     const diffuseDirZ = normal.x * envYaw.sin + normal.z * envYaw.cos;
     const diffuseU = wrapUnit(Math.atan2(diffuseDirX, diffuseDirZ) * INV_TAU + 0.5);
-    const diffuseV = Math.acos(Math.max(-1, Math.min(1, normal.y))) * INV_PI;
+    const diffuseV = Math.acos(clamp(normal.y, -1, 1)) * INV_PI;
     const diffuseEnv = sampleLatLongMap(
       ibl.diffuseIrradianceMap,
       ibl.diffuseIrradianceMapWidth,
@@ -188,7 +188,7 @@ export class IblShader extends BaseShader {
     const reflectionU = wrapUnit(
       Math.atan2(rotatedReflectionX, rotatedReflectionZ) * INV_TAU + 0.5,
     );
-    const reflectionV = Math.acos(Math.max(-1, Math.min(1, reflectionY))) * INV_PI;
+    const reflectionV = Math.acos(clamp(reflectionY, -1, 1)) * INV_PI;
     const specularRoughnessIndex = Math.min(
       ibl.specularPrefilterRoughnessMaxIndex,
       Math.round(roughness * ibl.specularPrefilterRoughnessMaxIndex),
