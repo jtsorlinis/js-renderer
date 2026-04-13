@@ -69,15 +69,6 @@ export class PbrShader extends BaseShader {
     const modelTangent = this.interpolateVec4(this.vModelTangent);
     const handedness = modelTangent.w < 0 ? -1 : 1;
 
-    let shadow = 1;
-    if (this.uniforms.receiveShadows) {
-      const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
-      const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-      const faceNDotL = saturate(-modelNormal.dot(this.uniforms.modelLightDir));
-      const bias = minBias + (maxBias - minBias) * (1 - faceNDotL);
-      shadow = lightSpacePos.z - bias > depth ? 0 : 1;
-    }
-
     const tDotN = modelTangent.dot3(modelNormal);
     const Tx = modelTangent.x - modelNormal.x * tDotN;
     const Ty = modelTangent.y - modelNormal.y * tDotN;
@@ -116,37 +107,47 @@ export class PbrShader extends BaseShader {
     const nDotV = saturate(
       normal.x * modelViewDir.x + normal.y * modelViewDir.y + normal.z * modelViewDir.z,
     );
-    const halfDir = modelViewDir.subtract(modelLightDir);
 
     let directR = 0;
     let directG = 0;
     let directB = 0;
     if (nDotL > 0 && nDotV > 0) {
-      halfDir.normalize();
-      const nDotH = saturate(normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z);
-      const vDotH = saturate(modelViewDir.dot(halfDir));
-      const fresnelFactor = Math.pow(1 - saturate(vDotH), 5);
-      const fresnelX = f0x + (1 - f0x) * fresnelFactor;
-      const fresnelY = f0y + (1 - f0y) * fresnelFactor;
-      const fresnelZ = f0z + (1 - f0z) * fresnelFactor;
-      const distribution = distributionGGX(nDotH, roughness);
-      const geometry = geometrySmith(nDotV, nDotL, roughness);
-      const specularFactor = (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
-      const diffuseFactor = (1 - metallic) * INV_PI;
-      const lightScale = nDotL * shadow * lightIntensity;
+      let shadow = 1;
+      if (this.uniforms.receiveShadows) {
+        const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
+        const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
+        const faceNDotL = saturate(-modelNormal.dot(this.uniforms.modelLightDir));
+        const bias = minBias + (maxBias - minBias) * (1 - faceNDotL);
+        shadow = lightSpacePos.z - bias > depth ? 0 : 1;
+      }
 
-      directR =
-        ((1 - fresnelX) * diffuseFactor * baseColor.x + fresnelX * specularFactor) *
-        this.uniforms.lightCol.x *
-        lightScale;
-      directG =
-        ((1 - fresnelY) * diffuseFactor * baseColor.y + fresnelY * specularFactor) *
-        this.uniforms.lightCol.y *
-        lightScale;
-      directB =
-        ((1 - fresnelZ) * diffuseFactor * baseColor.z + fresnelZ * specularFactor) *
-        this.uniforms.lightCol.z *
-        lightScale;
+      if (shadow > 0) {
+        const halfDir = modelViewDir.subtract(modelLightDir).normalize();
+        const nDotH = saturate(normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z);
+        const vDotH = saturate(modelViewDir.dot(halfDir));
+        const fresnelFactor = Math.pow(1 - saturate(vDotH), 5);
+        const fresnelX = f0x + (1 - f0x) * fresnelFactor;
+        const fresnelY = f0y + (1 - f0y) * fresnelFactor;
+        const fresnelZ = f0z + (1 - f0z) * fresnelFactor;
+        const distribution = distributionGGX(nDotH, roughness);
+        const geometry = geometrySmith(nDotV, nDotL, roughness);
+        const specularFactor = (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
+        const diffuseFactor = (1 - metallic) * INV_PI;
+        const lightScale = nDotL * lightIntensity;
+
+        directR =
+          ((1 - fresnelX) * diffuseFactor * baseColor.x + fresnelX * specularFactor) *
+          this.uniforms.lightCol.x *
+          lightScale;
+        directG =
+          ((1 - fresnelY) * diffuseFactor * baseColor.y + fresnelY * specularFactor) *
+          this.uniforms.lightCol.y *
+          lightScale;
+        directB =
+          ((1 - fresnelZ) * diffuseFactor * baseColor.z + fresnelZ * specularFactor) *
+          this.uniforms.lightCol.z *
+          lightScale;
+      }
     }
 
     // Keep the direct-light PBR step readable with a tiny material-aware fill
