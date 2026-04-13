@@ -373,7 +373,7 @@ const loop = () => {
   const actualFrameTime = performance.now() - now;
 
   if (now - lastFpsUiUpdate >= FPS_UPDATE_INTERVAL_MS) {
-    const fps = frameIntervalMs > 0 ? 1000 / frameIntervalMs : 0;
+    const fps = 1000 / actualFrameTime;
     fpsText.innerText = `${actualFrameTime.toFixed(0)} ms (${fps.toFixed(0)} fps)`;
     lastFpsUiUpdate = now;
   }
