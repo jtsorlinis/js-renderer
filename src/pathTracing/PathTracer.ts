@@ -489,11 +489,9 @@ export class PathTracer {
       const targetIndex = pixelIndex * 4;
       const sampleScale =
         this.pixelSampleCounts[pixelIndex] > 0 ? 1 / this.pixelSampleCounts[pixelIndex] : 0;
-      targetData[targetIndex] = linearToSrgb8(this.accumulation[sourceIndex] * sampleScale) * 255;
-      targetData[targetIndex + 1] =
-        linearToSrgb8(this.accumulation[sourceIndex + 1] * sampleScale) * 255;
-      targetData[targetIndex + 2] =
-        linearToSrgb8(this.accumulation[sourceIndex + 2] * sampleScale) * 255;
+      targetData[targetIndex] = linearToSrgb8(this.accumulation[sourceIndex] * sampleScale);
+      targetData[targetIndex + 1] = linearToSrgb8(this.accumulation[sourceIndex + 1] * sampleScale);
+      targetData[targetIndex + 2] = linearToSrgb8(this.accumulation[sourceIndex + 2] * sampleScale);
       targetData[targetIndex + 3] = 255;
     }
   };
