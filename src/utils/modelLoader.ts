@@ -1,4 +1,3 @@
-import { setHighResTextureLimit } from "../drawing";
 import type { Material } from "../materials/Material";
 import { loadGlbAsset } from "./glbLoader";
 import { type Mesh } from "./mesh";
@@ -62,26 +61,6 @@ const prefetchAsset = async (url: string) => {
     throw new Error(`Failed to prefetch asset: ${url} (${response.status} ${response.statusText})`);
   }
   await response.blob();
-};
-
-let highResTextureLimitsEnabled = false;
-
-const clearLoadedModels = () => {
-  for (const modelAsset of Object.values(modelAssets)) {
-    delete modelAsset.loaded;
-    delete modelAsset.pending;
-  }
-};
-
-export const setHighResTextureLimits = (enabled: boolean) => {
-  if (enabled === highResTextureLimitsEnabled) {
-    return false;
-  }
-
-  highResTextureLimitsEnabled = enabled;
-  setHighResTextureLimit(enabled);
-  clearLoadedModels();
-  return true;
 };
 
 const prefetchModelAssets = (modelKey: ModelKey) => {
