@@ -29,14 +29,16 @@ import { loadHdrTexture } from "./utils/hdrLoader";
 
 const FOV = 50;
 const SHADOW_MAP_SIZE = 512;
-const ROTATION_SPEED = 0.2;
+const ROTATION_SPEED = 0.001;
 const ROTATE_SENSITIVITY = 250;
 const PAN_SENSITIVITY = 250;
 const ZOOM_SENSITIVITY = 100;
 const FPS_UPDATE_INTERVAL_MS = 250;
-const DEFAULT_SHADING_VALUE = SHADING_PRESETS[0]?.value ?? "wireframe";
+const RENDER_ASPECT_RATIO = 4 / 3;
+const DEFAULT_SHADING_VALUE = "ps5";
 const DEFAULT_RENDER_SELECTION = resolveShadingSelection(DEFAULT_SHADING_VALUE);
-const DEFAULT_RESOLUTION = DEFAULT_RENDER_SELECTION.resolution ?? ([800, 600] as [number, number]);
+const DEFAULT_RESOLUTION_HEIGHT = DEFAULT_RENDER_SELECTION.resolution ?? 600;
+const DEFAULT_RESOLUTION_WIDTH = Math.round(DEFAULT_RESOLUTION_HEIGHT * RENDER_ASPECT_RATIO);
 const DEFAULT_MODEL_URL = DEFAULT_RENDER_SELECTION.model;
 
 if (!DEFAULT_MODEL_URL) {
@@ -57,17 +59,18 @@ const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 let mouseButtonState = 0;
 
 const renderShadingOptions = () => {
+  const maxShadingIndex = Math.max(0, SHADING_PRESETS.length - 1);
   shadingList.replaceChildren();
   shadingList.style.setProperty("--shading-count", String(SHADING_PRESETS.length));
   shadingSlider.min = "0";
-  shadingSlider.max = String(Math.max(0, SHADING_PRESETS.length - 1));
+  shadingSlider.max = String(maxShadingIndex);
 
   for (const [index, preset] of SHADING_PRESETS.entries()) {
     const item = document.createElement("li");
     const button = document.createElement("button");
     button.type = "button";
     button.className = "shading-option";
-    button.dataset.shadingIndex = String(index);
+    button.dataset.shadingIndex = String(maxShadingIndex - index);
     button.dataset.shadingValue = preset.value;
     button.setAttribute("aria-pressed", "false");
     button.textContent = preset.label;
@@ -78,6 +81,11 @@ const renderShadingOptions = () => {
 
 renderShadingOptions();
 
+const getPresetIndex = () => {
+  const maxShadingIndex = Math.max(0, SHADING_PRESETS.length - 1);
+  return maxShadingIndex - Number(shadingSlider.value);
+};
+
 const getShadingButton = () => {
   return shadingList.querySelector<HTMLButtonElement>(
     `[data-shading-index="${shadingSlider.value}"]`,
@@ -85,13 +93,14 @@ const getShadingButton = () => {
 };
 
 const getShadingValue = () => {
-  const index = Number(shadingSlider.value);
-  return SHADING_PRESETS[index]?.value ?? "wireframe";
+  const presetIndex = getPresetIndex();
+  return SHADING_PRESETS[presetIndex]?.value ?? "wireframe";
 };
 
 const setShadingValue = (value: string) => {
+  const maxShadingIndex = Math.max(0, SHADING_PRESETS.length - 1);
   const index = SHADING_PRESETS.findIndex((preset) => preset.value === value);
-  shadingSlider.value = String(index >= 0 ? index : 0);
+  shadingSlider.value = String(index >= 0 ? maxShadingIndex - index : maxShadingIndex);
   syncShadingButtons();
 };
 
@@ -108,38 +117,34 @@ setShadingValue(DEFAULT_SHADING_VALUE);
 
 type ActiveModelSource = { kind: "preset"; url: string } | { kind: "custom"; file: File };
 
-let aspectRatio = DEFAULT_RESOLUTION[0] / DEFAULT_RESOLUTION[1];
-
 const viewport = canvas.parentElement!;
 const fitCanvas = () => {
   const vw = viewport.clientWidth;
   const vh = viewport.clientHeight;
   let w = vw;
-  let h = w / aspectRatio;
+  let h = w / RENDER_ASPECT_RATIO;
   if (h > vh) {
     h = vh;
-    w = h * aspectRatio;
+    w = h * RENDER_ASPECT_RATIO;
   }
   canvas.style.width = `${Math.floor(w)}px`;
   canvas.style.height = `${Math.floor(h)}px`;
 };
-let imageData = new ImageData(DEFAULT_RESOLUTION[0], DEFAULT_RESOLUTION[1]);
+let imageData = new ImageData(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
 let frameBuffer = new Framebuffer(imageData);
-let depthBuffer = new DepthTexture(DEFAULT_RESOLUTION[0], DEFAULT_RESOLUTION[1]);
+let depthBuffer = new DepthTexture(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
 let shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
 let shadowImageData = new ImageData(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
 let shadowBuffer = new Framebuffer(shadowImageData);
-let bgImageData = new ImageData(DEFAULT_RESOLUTION[0], DEFAULT_RESOLUTION[1]);
+let bgImageData = new ImageData(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
 let bgBuffer = new Framebuffer(bgImageData);
 
-const setRenderResolution = (resolution: [number, number]) => {
-  const [baseWidth, baseHeight] = resolution;
-  const width = Math.max(1, Math.floor(baseWidth));
-  const height = Math.max(1, Math.floor(baseHeight));
+const setRenderResolution = (resolutionHeight: number) => {
+  const height = resolutionHeight;
+  const width = Math.round(height * RENDER_ASPECT_RATIO);
 
   canvas.width = width;
   canvas.height = height;
-  aspectRatio = width / height;
   imageData = new ImageData(width, height);
   frameBuffer = new Framebuffer(imageData);
   depthBuffer = new DepthTexture(width, height);
@@ -151,8 +156,8 @@ const setRenderResolution = (resolution: [number, number]) => {
   fitCanvas();
 };
 
-const applyRenderResolution = (resolution?: [number, number]) => {
-  setRenderResolution(resolution ?? DEFAULT_RESOLUTION);
+const applyRenderResolution = (resolution?: number) => {
+  setRenderResolution(resolution ?? DEFAULT_RESOLUTION_HEIGHT);
 };
 
 applyRenderResolution(DEFAULT_RENDER_SELECTION.resolution);
@@ -171,7 +176,7 @@ const cameraLookDir = Vector3.Forward;
 const viewDir = cameraLookDir.scale(-1);
 const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
-rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw);
+rebuildEnvironmentBackdrop(bgBuffer, iblData, RENDER_ASPECT_RATIO, FOV, envYaw);
 
 const initialModelOption = await ensureModelUrlOption(DEFAULT_MODEL_URL);
 
@@ -201,7 +206,7 @@ let activeRenderSettings = DEFAULT_RENDER_SELECTION;
 
 const updateModelStats = () => {
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
-  resolutionText.innerText = `${activeRenderSettings.resolution?.[0]} x ${activeRenderSettings.resolution?.[1]}`;
+  resolutionText.innerText = `${activeRenderSettings.resolution}p`;
 };
 
 let activeModelRequest = 0;
@@ -233,7 +238,7 @@ const loadSelectedGlb = (file: File) => {
 const applyRenderSettings = async (selection: RenderSelection) => {
   activeRenderSettings = selection;
   applyRenderResolution(selection.resolution);
-  rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw);
+  rebuildEnvironmentBackdrop(bgBuffer, iblData, RENDER_ASPECT_RATIO, FOV, envYaw);
 
   const shadingValue = getShadingValue();
   if (selection.normalizedValue !== shadingValue) {
@@ -306,9 +311,10 @@ const renderMesh = (
   }
 };
 
-const update = (dt: number) => {
+const update = () => {
   if (mouseButtonState !== 1) {
-    modelRotation.y -= dt * ROTATION_SPEED;
+    modelRotation.y = Math.sin(performance.now() * ROTATION_SPEED) * 0.5;
+    modelRotation.x = 0;
   }
 };
 
@@ -341,8 +347,8 @@ const draw = () => {
   const isOrtho = orthoCb.checked;
   const viewMat = Matrix4.LookTo(camPos, cameraLookDir, Vector3.Up);
   const projMat = isOrtho
-    ? Matrix4.Ortho(orthoSize, aspectRatio)
-    : Matrix4.Perspective(FOV, aspectRatio);
+    ? Matrix4.Ortho(orthoSize, RENDER_ASPECT_RATIO)
+    : Matrix4.Perspective(FOV, RENDER_ASPECT_RATIO);
   const mvp = projMat.multiply(viewMat).multiply(modelMat);
 
   // 5) Select active material shader and update uniforms.
@@ -390,10 +396,8 @@ let prevTime = performance.now();
 let lastFpsUiUpdate = prevTime;
 const loop = () => {
   const now = performance.now();
-  const frameIntervalMs = now - prevTime;
-  const deltaTime = frameIntervalMs / 1000;
   prevTime = now;
-  update(deltaTime);
+  update();
   draw();
   const actualFrameTime = performance.now() - now;
 

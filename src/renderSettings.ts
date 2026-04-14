@@ -15,7 +15,7 @@ export type RenderMode = "filled" | "depthWireframe" | "wireframe";
 export type RenderSelection = {
   material: MaterialMode;
   normalizedValue: string;
-  resolution?: [number, number];
+  resolution?: number;
   model?: string;
   renderMode?: RenderMode;
   useShadows?: boolean;
@@ -34,7 +34,7 @@ export const SHADING_PRESETS = [
     value: "ps5",
     label: "PS5",
     material: "ibl",
-    resolution: [800, 600],
+    resolution: 720,
     model: assetPath("head_50k.glb"),
     useShadows: true,
     showEnvironmentBackground: true,
@@ -43,7 +43,7 @@ export const SHADING_PRESETS = [
     value: "ps4",
     label: "PS4",
     material: "pbr",
-    resolution: [800, 600],
+    resolution: 720,
     model: assetPath("head_30k.glb"),
     useShadows: true,
   },
@@ -51,7 +51,7 @@ export const SHADING_PRESETS = [
     value: "ps3-2",
     label: "PS3 Normal Map",
     material: "normalMapped",
-    resolution: [800, 600],
+    resolution: 720,
     model: assetPath("head_5k.glb"),
     useShadows: true,
   },
@@ -59,7 +59,7 @@ export const SHADING_PRESETS = [
     value: "ps3",
     label: "PS3",
     material: "textured",
-    resolution: [800, 600],
+    resolution: 720,
     model: assetPath("head_5k.glb"),
     useShadows: true,
   },
@@ -67,7 +67,7 @@ export const SHADING_PRESETS = [
     value: "ps2-2",
     label: "PS2 Shadows",
     material: "textured",
-    resolution: [640, 480],
+    resolution: 480,
     model: assetPath("head_1k.glb"),
     useShadows: true,
   },
@@ -75,49 +75,49 @@ export const SHADING_PRESETS = [
     value: "ps2-1",
     label: "PS2 Fragment",
     material: "textured",
-    resolution: [640, 480],
+    resolution: 480,
     model: assetPath("head_1k.glb"),
   },
   {
     value: "ps2",
     label: "PS2",
     material: "gouraudTextured",
-    resolution: [640, 480],
+    resolution: 480,
     model: assetPath("head_1k.glb"),
   },
   {
     value: "ps1-4",
     label: "PS1 Textures",
     material: "gouraudTextured",
-    resolution: [320, 240],
+    resolution: 240,
     model: assetPath("head_100.glb"),
   },
   {
     value: "ps1-3",
     label: "PS1 Smooth",
     material: "gouraud",
-    resolution: [320, 240],
+    resolution: 240,
     model: assetPath("head_100.glb"),
   },
   {
     value: "ps1",
     label: "PS1",
     material: "flat",
-    resolution: [320, 240],
+    resolution: 240,
     model: assetPath("head_100.glb"),
   },
   {
     value: "snes-2",
     label: "SNES Lighting",
     material: "flat",
-    resolution: [256, 192],
+    resolution: 192,
     model: assetPath("head_50.glb"),
   },
   {
     value: "snes-3",
     label: "SNES",
     material: "unlit",
-    resolution: [256, 192],
+    resolution: 192,
     model: assetPath("head_50.glb"),
   },
   {
@@ -126,7 +126,7 @@ export const SHADING_PRESETS = [
     material: "depth",
     renderMode: "wireframe",
     model: assetPath("head_50.glb"),
-    resolution: [256, 192],
+    resolution: 192,
   },
 ] satisfies ShadingPreset[];
 
