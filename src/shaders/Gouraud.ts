@@ -7,7 +7,6 @@ export interface Uniforms {
   mvp: Matrix4;
   normalMat: Matrix4;
   worldLightDir: Vector3;
-  lightCol: Vector3;
   worldCamPos: Vector3;
   orthographic: boolean;
   worldViewDir: Vector3;
@@ -38,8 +37,8 @@ export class GouraudShader extends BaseShader {
     let spec = Math.pow(Math.max(worldNormal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;
     const diffuse = Math.max(-worldNormal.dot(this.uniforms.worldLightDir), 0);
-    const lighting = this.uniforms.lightCol.scale(diffuse + spec + ambient);
-    const vertColor = baseColor.multiply(lighting);
+    const lighting = diffuse + spec + ambient;
+    const vertColor = baseColor.scale(lighting);
     this.v2f(this.vertexColor, vertColor);
 
     // Return clip-space position.

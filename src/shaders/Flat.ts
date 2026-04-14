@@ -6,7 +6,6 @@ export interface Uniforms {
   mvp: Matrix4;
   normalMat: Matrix4;
   worldLightDir: Vector3;
-  lightCol: Vector3;
 }
 
 const ambient = 0.1;
@@ -28,8 +27,8 @@ export class FlatShader extends BaseShader {
         .transformDirection(model.faceNormals[this.vertexId])
         .normalize();
       const diffuse = Math.max(-worldNormal.dot(this.uniforms.worldLightDir), 0);
-      const lighting = this.uniforms.lightCol.scale(diffuse + ambient);
-      this.lighting = baseColor.multiply(lighting);
+      const lighting = diffuse + ambient;
+      this.lighting = baseColor.scale(lighting);
     }
 
     // Return clip-space position.

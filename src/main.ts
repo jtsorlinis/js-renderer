@@ -133,7 +133,6 @@ const hdrEnvironment = await loadHdrTexture(`${import.meta.env.BASE_URL}environm
 
 // Scene and camera
 const lightDir = new Vector3(1, -1, 1).normalize();
-const lightCol = new Vector3(1, 1, 1);
 const camPos = new Vector3(0, 0, -3);
 let orthoSize = -camPos.z * Math.tan((FOV * Math.PI) / 180 / 2);
 
@@ -311,7 +310,6 @@ const draw = () => {
     worldLightDir: lightDir,
     envYaw,
     modelLightDir,
-    lightCol,
     worldCamPos: camPos,
     modelCamPos,
     orthographic: isOrtho,

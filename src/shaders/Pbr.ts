@@ -7,7 +7,6 @@ import { DIELECTRIC_F0, EPSILON, INV_PI, distributionGGX, geometrySmith } from "
 export interface Uniforms {
   model: Verts;
   mvp: Matrix4;
-  lightCol: Vector3;
   modelLightDir: Vector3;
   modelCamPos: Vector3;
   orthographic: boolean;
@@ -129,17 +128,11 @@ export class PbrShader extends BaseShader {
         const lightScale = nDotL * lightIntensity;
 
         directR =
-          ((1 - fresnelX) * diffuseFactor * baseColor.x + fresnelX * specularFactor) *
-          this.uniforms.lightCol.x *
-          lightScale;
+          ((1 - fresnelX) * diffuseFactor * baseColor.x + fresnelX * specularFactor) * lightScale;
         directG =
-          ((1 - fresnelY) * diffuseFactor * baseColor.y + fresnelY * specularFactor) *
-          this.uniforms.lightCol.y *
-          lightScale;
+          ((1 - fresnelY) * diffuseFactor * baseColor.y + fresnelY * specularFactor) * lightScale;
         directB =
-          ((1 - fresnelZ) * diffuseFactor * baseColor.z + fresnelZ * specularFactor) *
-          this.uniforms.lightCol.z *
-          lightScale;
+          ((1 - fresnelZ) * diffuseFactor * baseColor.z + fresnelZ * specularFactor) * lightScale;
       }
     }
 
