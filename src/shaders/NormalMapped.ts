@@ -6,7 +6,6 @@ import { Material } from "../materials/Material";
 export interface Uniforms {
   model: Verts;
   mvp: Matrix4;
-  lightCol: Vector3;
   modelCamPos: Vector3;
   orthographic: boolean;
   modelViewDir: Vector3;
@@ -110,9 +109,9 @@ export class NormalMappedShader extends BaseShader {
     let spec = Math.pow(Math.max(normal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;
     const diffuse = Math.max(-normal.dot(modelLightDir), 0);
-    const lighting = this.uniforms.lightCol.scale((diffuse + spec) * shadow + ambient);
+    const lighting = (diffuse + spec) * shadow + ambient;
 
     // Final lit color.
-    return color.multiplyInPlace(lighting);
+    return color.scaleInPlace(lighting);
   };
 }
