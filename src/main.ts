@@ -2,7 +2,7 @@ import "./style.css";
 import { Matrix4, Vector3, Vector4 } from "./maths";
 import { DepthTexture, Framebuffer, edgeFunction, line, triangle } from "./drawing";
 import { getModelRadius } from "./utils/mesh";
-import { ensureModelUrlOption, loadCustomGlb, type ModelOption } from "./utils/modelLoader";
+import { ensureModelUrlOption, type ModelOption } from "./utils/modelLoader";
 import { SmoothShader } from "./shaders/Smooth";
 import { TexturedShader } from "./shaders/Textured";
 import { GouraudTexturedShader } from "./shaders/GouraudTextured";
@@ -52,8 +52,6 @@ const trisText = document.getElementById("tris") as HTMLSpanElement;
 const resolutionText = document.getElementById("resolution") as HTMLSpanElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
 const shadingSlider = document.getElementById("shadingSlider") as HTMLInputElement;
-const loadGlbBtn = document.getElementById("loadGlbBtn") as HTMLButtonElement;
-const glbInput = document.getElementById("glbInput") as HTMLInputElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 let mouseButtonState = 0;
 
@@ -113,8 +111,6 @@ const syncShadingButtons = () => {
 };
 
 setShadingValue(DEFAULT_SHADING_VALUE);
-
-type ActiveModelSource = { kind: "preset"; url: string } | { kind: "custom"; file: File };
 
 const viewport = canvas.parentElement!;
 const fitCanvas = () => {
@@ -214,22 +210,15 @@ const applyModelOption = (selectedModel: ModelOption) => {
   updateModelStats();
 };
 
-const setModelSource = async (modelSource: ActiveModelSource) => {
+const setModelSource = async (modelUrl: string) => {
   const requestId = ++activeModelRequest;
-  const selectedModel =
-    modelSource.kind === "preset"
-      ? await ensureModelUrlOption(modelSource.url)
-      : await loadCustomGlb(modelSource.file);
+  const selectedModel = await ensureModelUrlOption(modelUrl);
   if (requestId !== activeModelRequest) {
     return false;
   }
 
   applyModelOption(selectedModel);
   return true;
-};
-
-const loadSelectedGlb = (file: File) => {
-  return setModelSource({ kind: "custom", file });
 };
 
 const applyRenderSettings = async (selection: RenderSelection) => {
@@ -239,11 +228,7 @@ const applyRenderSettings = async (selection: RenderSelection) => {
   }
 
   if (selection.model) {
-    const presetModelSource: ActiveModelSource = {
-      kind: "preset",
-      url: selection.model,
-    };
-    const didApplyModel = await setModelSource(presetModelSource);
+    const didApplyModel = await setModelSource(selection.model);
     if (!didApplyModel) {
       return;
     }
@@ -449,22 +434,6 @@ canvas.onwheel = (e) => {
 };
 
 canvas.oncontextmenu = (e) => e.preventDefault();
-
-loadGlbBtn.addEventListener("click", () => {
-  glbInput.click();
-});
-
-glbInput.addEventListener("change", () => {
-  const [file] = glbInput.files ?? [];
-  glbInput.value = "";
-  if (!file) {
-    return;
-  }
-
-  loadSelectedGlb(file).catch((error) => {
-    console.error(`Failed to load GLB file "${file.name}"`, error);
-  });
-});
 
 updateModelStats();
 loop();

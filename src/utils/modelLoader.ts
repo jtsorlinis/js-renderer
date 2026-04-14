@@ -46,13 +46,3 @@ export const ensureModelUrlOption = (glbUrl: string, normalize = true, scale = 1
 
   return ensureLoadedModelOption(modelAsset);
 };
-
-export const loadCustomGlb = async (file: File, normalize = true, scale = 1) => {
-  const objectUrl = URL.createObjectURL(file);
-
-  try {
-    return await loadGlbAsset(objectUrl, normalize, scale);
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-};
