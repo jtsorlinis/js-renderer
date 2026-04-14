@@ -26,7 +26,7 @@ export class FlatShader extends BaseShader {
       const worldNormal = this.uniforms.normalMat
         .transformDirection(model.faceNormals[this.vertexId])
         .normalize();
-      const diffuse = Math.max(-worldNormal.dot(this.uniforms.worldLightDir), 0);
+      const diffuse = Math.max(worldNormal.dot(this.uniforms.worldLightDir), 0);
       const lighting = diffuse + ambient;
       this.lighting = baseColor.scale(lighting);
     }

@@ -112,7 +112,7 @@ export class IblShader extends BaseShader {
 
     const worldLightDir = this.uniforms.worldLightDir;
     const nDotL = saturate(
-      -(normal.x * worldLightDir.x + normal.y * worldLightDir.y + normal.z * worldLightDir.z),
+      normal.x * worldLightDir.x + normal.y * worldLightDir.y + normal.z * worldLightDir.z,
     );
     const rawNDotV =
       normal.x * worldViewDir.x + normal.y * worldViewDir.y + normal.z * worldViewDir.z;
@@ -126,13 +126,13 @@ export class IblShader extends BaseShader {
       if (this.uniforms.receiveShadows) {
         const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
         const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-        const faceNDotL = saturate(-worldNormal.dot(this.uniforms.worldLightDir));
+        const faceNDotL = saturate(worldNormal.dot(this.uniforms.worldLightDir));
         const bias = minBias + (maxBias - minBias) * (1 - faceNDotL);
         shadow = lightSpacePos.z - bias > depth ? 0 : 1;
       }
 
       if (shadow > 0) {
-        const halfDir = worldViewDir.subtract(worldLightDir).normalize();
+        const halfDir = worldViewDir.add(worldLightDir).normalize();
         const nDotH = saturate(normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z);
         const vDotH = saturate(worldViewDir.dot(halfDir));
         const fresnelBase = 1 - vDotH;

@@ -49,10 +49,10 @@ export class SmoothShader extends BaseShader {
     const worldViewDir = this.uniforms.orthographic
       ? this.uniforms.worldViewDir
       : this.uniforms.worldCamPos.subtract(worldPos).normalize();
-    const halfwayDir = worldViewDir.subtract(this.uniforms.worldLightDir).normalize();
+    const halfwayDir = worldViewDir.add(this.uniforms.worldLightDir).normalize();
     let spec = Math.pow(Math.max(worldNormal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;
-    const diffuse = Math.max(-worldNormal.dot(this.uniforms.worldLightDir), 0);
+    const diffuse = Math.max(worldNormal.dot(this.uniforms.worldLightDir), 0);
     const lighting = diffuse + spec + ambient;
 
     return baseColor.scale(lighting);

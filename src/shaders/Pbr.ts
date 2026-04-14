@@ -94,7 +94,7 @@ export class PbrShader extends BaseShader {
       ? this.uniforms.modelViewDir
       : this.uniforms.modelCamPos.subtract(modelPos).normalize();
     const nDotL = saturate(
-      normal.x * -modelLightDir.x + normal.y * -modelLightDir.y + normal.z * -modelLightDir.z,
+      normal.x * modelLightDir.x + normal.y * modelLightDir.y + normal.z * modelLightDir.z,
     );
     const nDotV = saturate(
       normal.x * modelViewDir.x + normal.y * modelViewDir.y + normal.z * modelViewDir.z,
@@ -108,13 +108,13 @@ export class PbrShader extends BaseShader {
       if (this.uniforms.receiveShadows) {
         const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
         const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-        const faceNDotL = saturate(-modelNormal.dot(this.uniforms.modelLightDir));
+        const faceNDotL = saturate(modelNormal.dot(this.uniforms.modelLightDir));
         const bias = minBias + (maxBias - minBias) * (1 - faceNDotL);
         shadow = lightSpacePos.z - bias > depth ? 0 : 1;
       }
 
       if (shadow > 0) {
-        const halfDir = modelViewDir.subtract(modelLightDir).normalize();
+        const halfDir = modelViewDir.add(modelLightDir).normalize();
         const nDotH = saturate(normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z);
         const vDotH = saturate(modelViewDir.dot(halfDir));
         const fresnelFactor = Math.pow(1 - saturate(vDotH), 5);
