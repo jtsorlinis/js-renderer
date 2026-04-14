@@ -35,7 +35,7 @@ const PAN_SENSITIVITY = 250;
 const ZOOM_SENSITIVITY = 100;
 const FPS_UPDATE_INTERVAL_MS = 250;
 const RENDER_ASPECT_RATIO = 4 / 3;
-const DEFAULT_SHADING_VALUE = "ps5";
+const DEFAULT_SHADING_VALUE = "wireframe";
 const DEFAULT_RENDER_SELECTION = resolveShadingSelection(DEFAULT_SHADING_VALUE);
 const DEFAULT_RESOLUTION_HEIGHT = DEFAULT_RENDER_SELECTION.resolution ?? 600;
 const DEFAULT_RESOLUTION_WIDTH = Math.round(DEFAULT_RESOLUTION_HEIGHT * RENDER_ASPECT_RATIO);
@@ -225,10 +225,11 @@ const setModelSource = async (modelSource: ActiveModelSource) => {
       ? await ensureModelUrlOption(modelSource.url)
       : await loadCustomGlb(modelSource.file);
   if (requestId !== activeModelRequest) {
-    return;
+    return false;
   }
 
   applyModelOption(selectedModel);
+  return true;
 };
 
 const loadSelectedGlb = (file: File) => {
@@ -236,24 +237,26 @@ const loadSelectedGlb = (file: File) => {
 };
 
 const applyRenderSettings = async (selection: RenderSelection) => {
-  activeRenderSettings = selection;
-  applyRenderResolution(selection.resolution);
-  rebuildEnvironmentBackdrop(bgBuffer, iblData, RENDER_ASPECT_RATIO, FOV, envYaw);
-
   const shadingValue = getShadingValue();
   if (selection.normalizedValue !== shadingValue) {
     setShadingValue(selection.normalizedValue);
   }
 
-  if (!selection.model) {
-    return;
+  if (selection.model) {
+    const presetModelSource: ActiveModelSource = {
+      kind: "preset",
+      url: selection.model,
+    };
+    const didApplyModel = await setModelSource(presetModelSource);
+    if (!didApplyModel) {
+      return;
+    }
   }
 
-  const presetModelSource: ActiveModelSource = {
-    kind: "preset",
-    url: selection.model,
-  };
-  await setModelSource(presetModelSource);
+  activeRenderSettings = selection;
+  applyRenderResolution(selection.resolution);
+  rebuildEnvironmentBackdrop(bgBuffer, iblData, RENDER_ASPECT_RATIO, FOV, envYaw);
+  updateModelStats();
 };
 
 const applyCurrentShadingSelection = () => {
