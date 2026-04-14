@@ -23,7 +23,6 @@ import {
   ensureModelOption,
   loadCustomGlb,
   prefetchRemainingModels,
-  setHighResTextureLimits,
 } from "./utils/modelLoader";
 import { getModelRadius } from "./utils/mesh";
 import { TiledWorkerRenderer } from "./workers/TiledWorkerRenderer";
@@ -50,8 +49,7 @@ const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
 const orthoCb = document.getElementById("orthoCb") as HTMLInputElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
-const textureSizeText = document.getElementById("textureSize") as HTMLSpanElement;
-const highResCb = document.getElementById("highResCb") as HTMLInputElement;
+const resolutionText = document.getElementById("resolution") as HTMLSpanElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
 const shadingSlider = document.getElementById("shadingSlider") as HTMLInputElement;
 const modelDd = document.getElementById("modelDd") as HTMLSelectElement;
@@ -144,7 +142,6 @@ const setRenderResolution = (scale = 1) => {
 
 setRenderResolution();
 window.addEventListener("resize", fitCanvas);
-setHighResTextureLimits(highResCb.checked);
 
 const hdrEnvironment = await loadHdrTexture(`${import.meta.env.BASE_URL}environments/sunny.hdr`);
 
@@ -171,17 +168,13 @@ let shadowOrthoSize = getModelRadius(model);
 let modelPos = new Vector3(0, 0, 0);
 let modelRotation = new Vector3(0, Math.PI / 2, 0);
 let modelScale = new Vector3(1, 1, 1);
-let customGlbFile: File | null = null;
 let activeModelRequest = 0;
 
 type UiRenderSettings = Omit<RenderSelection, "normalizedValue">;
 
 const updateModelStats = () => {
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
-  textureSizeText.innerText = `${Math.max(
-    material.colorTexture.width,
-    material.colorTexture.height,
-  )}`;
+  resolutionText.innerText = `${CANVAS_WIDTH} x ${CANVAS_HEIGHT}`;
 };
 
 const resetModelTransform = () => {
@@ -347,7 +340,6 @@ const setModel = async (modelKey: ModelKey, resetTransform = true) => {
     return;
   }
 
-  customGlbFile = null;
   applyModelOption(selectedModel);
   if (resetTransform) {
     resetModelTransform();
@@ -363,7 +355,6 @@ const loadSelectedGlb = async (file: File, resetTransform = true) => {
     return;
   }
 
-  customGlbFile = file;
   applyModelOption(selectedModel);
   if (resetTransform) {
     resetModelTransform();
@@ -371,18 +362,6 @@ const loadSelectedGlb = async (file: File, resetTransform = true) => {
 
   await syncWorkersScene();
 };
-
-highResCb.addEventListener("change", () => {
-  setRenderResolution(highResCb.checked ? 2 : 1);
-  rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw);
-  void syncWorkersScene();
-  if (!setHighResTextureLimits(highResCb.checked)) return;
-  if (customGlbFile) {
-    void loadSelectedGlb(customGlbFile, false);
-    return;
-  }
-  void setModel(modelDd.value as ModelKey, false);
-});
 
 const update = (dt: number) => {
   if (mouseButtonState !== 1) {
