@@ -54,6 +54,7 @@ const shadingList = document.getElementById("shadingList") as HTMLUListElement;
 const shadingSlider = document.getElementById("shadingSlider") as HTMLInputElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 let mouseButtonState = 0;
+let hasDragged = false;
 
 const renderShadingOptions = () => {
   const maxShadingIndex = Math.max(0, SHADING_PRESETS.length - 1);
@@ -208,6 +209,7 @@ const applyModelOption = (selectedModel: ModelOption) => {
   material = selectedModel.material;
   shadowOrthoSize = getModelRadius(model);
   updateModelStats();
+  hasDragged = false;
 };
 
 const setModelSource = async (modelUrl: string) => {
@@ -292,18 +294,12 @@ const renderMesh = (
     }
 
     // Rasterization + fragment stage.
-    triangle(
-      triVerts,
-      activeShader,
-      targetBuffer,
-      depthBuffer,
-      perspectiveCorrectInterpolation,
-    );
+    triangle(triVerts, activeShader, targetBuffer, depthBuffer, perspectiveCorrectInterpolation);
   }
 };
 
 const update = () => {
-  if (mouseButtonState !== 1) {
+  if (!hasDragged) {
     modelRotation.y = Math.sin(performance.now() * ROTATION_SPEED) * 0.5;
     modelRotation.x = 0;
   }
@@ -422,6 +418,7 @@ canvas.onpointermove = (e) => {
   if (dragging) {
     modelRotation.y -= dx / ROTATE_SENSITIVITY;
     modelRotation.x -= dy / ROTATE_SENSITIVITY;
+    hasDragged = true;
   } else if (panning) {
     camPos.x -= dx / PAN_SENSITIVITY;
     camPos.y += dy / PAN_SENSITIVITY;
