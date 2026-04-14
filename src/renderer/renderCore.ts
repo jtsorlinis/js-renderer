@@ -1,6 +1,6 @@
 import { Matrix4, Vector3, Vector4 } from "../maths";
 import { DepthTexture, Framebuffer, edgeFunction, line, triangle } from "../drawing";
-import type { BufferRegion } from "../drawing/BufferRegion";
+import type { BufferRegion } from "../drawing/Framebuffer";
 import { BaseShader } from "../shaders/BaseShader";
 import { DepthShader } from "../shaders/Depth";
 import { FlatShader } from "../shaders/Flat";
@@ -138,7 +138,9 @@ const renderMesh = (
   triangleVertexIndices?: Uint32Array,
 ) => {
   const triVerts: Vector4[] = [];
-  const triangleCount = triangleVertexIndices ? triangleVertexIndices.length : model.vertices.length / 3;
+  const triangleCount = triangleVertexIndices
+    ? triangleVertexIndices.length
+    : model.vertices.length / 3;
 
   for (let triangleIndex = 0; triangleIndex < triangleCount; triangleIndex += 1) {
     const i = triangleVertexIndices ? triangleVertexIndices[triangleIndex] : triangleIndex * 3;

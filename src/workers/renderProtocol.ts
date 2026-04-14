@@ -4,7 +4,7 @@ import type { Material } from "../materials/Material";
 import type { IblData } from "../shaders/iblHelpers";
 import type { FrameRenderState, RenderSettings, StaticRenderScene } from "../renderer/renderCore";
 import type { Mesh } from "../utils/mesh";
-import type { BufferRegion } from "../drawing/BufferRegion";
+import type { BufferRegion } from "../drawing/Framebuffer";
 
 type Vec3Tuple = [number, number, number];
 
@@ -201,7 +201,11 @@ export const serializeStaticScene = (
       colorTexture: serializeTexture(scene.material.colorTexture),
       normalTexture: serializeTexture(scene.material.normalTexture),
       metallicRoughnessTexture: serializeTexture(scene.material.metallicRoughnessTexture),
-      colorFactor: [scene.material.colorFactor.x, scene.material.colorFactor.y, scene.material.colorFactor.z],
+      colorFactor: [
+        scene.material.colorFactor.x,
+        scene.material.colorFactor.y,
+        scene.material.colorFactor.z,
+      ],
       metallicFactor: scene.material.metallicFactor,
       roughnessFactor: scene.material.roughnessFactor,
     },

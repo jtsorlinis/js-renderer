@@ -1,4 +1,4 @@
-import type { BufferRegion } from "../drawing/BufferRegion";
+import type { BufferRegion } from "../drawing/Framebuffer";
 import type { FrameRenderState, StaticRenderScene } from "../renderer/renderCore";
 import {
   blitRegionRgba,
@@ -50,25 +50,21 @@ export class TiledWorkerRenderer {
   private sceneVersion = 0;
   private nextFrameId = 0;
   private configured = false;
-  private pendingConfigure:
-    | {
-        sceneVersion: number;
-        remaining: number;
-        resolve: () => void;
-        reject: (error: Error) => void;
-      }
-    | null = null;
-  private pendingFrame:
-    | {
-        frameId: number;
-        sceneVersion: number;
-        remaining: number;
-        startedAt: number;
-        target: ImageData;
-        resolve: (elapsedMs: number) => void;
-        reject: (error: Error) => void;
-      }
-    | null = null;
+  private pendingConfigure: {
+    sceneVersion: number;
+    remaining: number;
+    resolve: () => void;
+    reject: (error: Error) => void;
+  } | null = null;
+  private pendingFrame: {
+    frameId: number;
+    sceneVersion: number;
+    remaining: number;
+    startedAt: number;
+    target: ImageData;
+    resolve: (elapsedMs: number) => void;
+    reject: (error: Error) => void;
+  } | null = null;
 
   constructor(private readonly workerCount: number) {}
 
