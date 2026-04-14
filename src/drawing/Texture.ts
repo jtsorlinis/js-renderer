@@ -1,4 +1,4 @@
-const TEXTURE_SIZE_LIMIT = 2048;
+const TEXTURE_SIZE_LIMIT = 1024;
 
 export type TextureType = "color" | "normal";
 export type TextureColorSpace = "linear" | "srgb";
