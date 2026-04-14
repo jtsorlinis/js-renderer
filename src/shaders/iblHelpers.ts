@@ -263,11 +263,8 @@ export const estimateEnvironmentSunDirection = (texture: Texture) => {
 
 export const estimateEnvironmentYaw = (texture: Texture, lightDir: Vector3) => {
   const sunDirection = estimateEnvironmentSunDirection(texture);
-  const lightDirectionToSource = lightDir.scale(-1);
   const sunLengthSq = sunDirection.x * sunDirection.x + sunDirection.z * sunDirection.z;
-  const lightLengthSq =
-    lightDirectionToSource.x * lightDirectionToSource.x +
-    lightDirectionToSource.z * lightDirectionToSource.z;
+  const lightLengthSq = lightDir.x * lightDir.x + lightDir.z * lightDir.z;
 
   if (sunLengthSq <= Number.EPSILON || lightLengthSq <= Number.EPSILON) {
     return {
@@ -277,7 +274,7 @@ export const estimateEnvironmentYaw = (texture: Texture, lightDir: Vector3) => {
     };
   }
 
-  const angle = wrapAngle(directionToYaw(lightDirectionToSource) - directionToYaw(sunDirection));
+  const angle = wrapAngle(directionToYaw(lightDir) - directionToYaw(sunDirection));
   return {
     angle,
     sin: Math.sin(angle),

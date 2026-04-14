@@ -27,7 +27,6 @@ export interface StaticRenderScene {
   material: Material;
   iblData: IblData;
   lightDir: Vector3;
-  lightCol: Vector3;
   envYaw: { sin: number; cos: number };
   shadowOrthoSize: number;
 }
@@ -105,7 +104,7 @@ const buildFrameTransforms = (scene: StaticRenderScene, frame: FrameRenderState,
   const invModelMat = modelMat.invert();
   const normalMat = invModelMat.transpose();
 
-  const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), Vector3.Zero);
+  const lightViewMat = Matrix4.LookAt(lightDir.scale(5), Vector3.Zero);
   const lightProjMat = Matrix4.Ortho(shadowOrthoSize, 1, 1, 10);
   const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
   const modelLightDir = invModelMat.transformDirection(lightDir).normalize();
@@ -260,7 +259,7 @@ export const drawScene = (
   options: DrawSceneOptions = {},
 ) => {
   const { frameBuffer, depthBuffer, shadowMap, shadowBuffer, backgroundBuffer } = targets;
-  const { model, material, iblData, lightDir, lightCol, envYaw } = scene;
+  const { model, material, iblData, lightDir, envYaw } = scene;
   const renderSettings = frame.renderSettings;
   const { triangleVertexIndices, skipShadowPass } = options;
 
@@ -287,7 +286,6 @@ export const drawScene = (
     worldLightDir: lightDir,
     envYaw,
     modelLightDir,
-    lightCol,
     worldCamPos: frame.camPos,
     modelCamPos,
     orthographic: frame.isOrtho,

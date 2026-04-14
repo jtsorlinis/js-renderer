@@ -8,7 +8,6 @@ export interface Uniforms {
   mvp: Matrix4;
   normalMat: Matrix4;
   worldLightDir: Vector3;
-  lightCol: Vector3;
   worldCamPos: Vector3;
   orthographic: boolean;
   worldViewDir: Vector3;
@@ -57,12 +56,12 @@ export class TexturedShader extends BaseShader {
     const worldViewDir = this.uniforms.orthographic
       ? this.uniforms.worldViewDir
       : this.uniforms.worldCamPos.subtract(worldPos).normalize();
-    const halfwayDir = worldViewDir.subtract(this.uniforms.worldLightDir).normalize();
+    const halfwayDir = worldViewDir.add(this.uniforms.worldLightDir).normalize();
     let spec = Math.pow(Math.max(worldNormal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;
-    const diffuse = Math.max(-worldNormal.dot(this.uniforms.worldLightDir), 0);
-    const lighting = this.uniforms.lightCol.scale(diffuse + spec + ambient);
+    const diffuse = Math.max(worldNormal.dot(this.uniforms.worldLightDir), 0);
+    const lighting = diffuse + spec + ambient;
 
-    return baseColor.multiplyInPlace(lighting);
+    return baseColor.scaleInPlace(lighting);
   };
 }

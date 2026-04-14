@@ -42,7 +42,6 @@ export interface SerializedSceneBase {
   material: SerializedMaterial;
   iblData: SerializedIblData;
   lightDir: Vec3Tuple;
-  lightCol: Vec3Tuple;
   envYaw: { sin: number; cos: number };
   shadowOrthoSize: number;
 }
@@ -224,7 +223,6 @@ export const serializeStaticScene = (
       specularBrdfLutMaxIndex: scene.iblData.specularBrdfLutMaxIndex,
     },
     lightDir: [scene.lightDir.x, scene.lightDir.y, scene.lightDir.z],
-    lightCol: [scene.lightCol.x, scene.lightCol.y, scene.lightCol.z],
     envYaw: scene.envYaw,
     shadowOrthoSize: scene.shadowOrthoSize,
   };
@@ -253,7 +251,6 @@ export const deserializeStaticScene = (scene: SerializedSceneBase): StaticRender
     material,
     iblData: scene.iblData,
     lightDir: new Vector3(...scene.lightDir),
-    lightCol: new Vector3(...scene.lightCol),
     envYaw: scene.envYaw,
     shadowOrthoSize: scene.shadowOrthoSize,
   };

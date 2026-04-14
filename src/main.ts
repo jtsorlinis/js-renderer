@@ -146,8 +146,7 @@ window.addEventListener("resize", fitCanvas);
 const hdrEnvironment = await loadHdrTexture(`${import.meta.env.BASE_URL}environments/sunny.hdr`);
 
 // Scene and camera
-const lightDir = new Vector3(1, -1, 1).normalize();
-const lightCol = new Vector3(1, 1, 1);
+const lightDir = new Vector3(1, -1, 1).scale(-1).normalize();
 const camPos = new Vector3(0, 0, -3);
 let orthoSize = -camPos.z * Math.tan((FOV * Math.PI) / 180 / 2);
 
@@ -203,7 +202,6 @@ const buildStaticScene = (): StaticRenderScene => {
     material,
     iblData,
     lightDir,
-    lightCol,
     envYaw,
     shadowOrthoSize,
   };

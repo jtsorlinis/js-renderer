@@ -17,7 +17,6 @@ export interface Uniforms {
   mvp: Matrix4;
   modelMat: Matrix4;
   normalMat: Matrix4;
-  lightCol: Vector3;
   worldLightDir: Vector3;
   envYaw: { sin: number; cos: number };
   worldCamPos: Vector3;
@@ -113,7 +112,7 @@ export class IblShader extends BaseShader {
 
     const worldLightDir = this.uniforms.worldLightDir;
     const nDotL = saturate(
-      -(normal.x * worldLightDir.x + normal.y * worldLightDir.y + normal.z * worldLightDir.z),
+      normal.x * worldLightDir.x + normal.y * worldLightDir.y + normal.z * worldLightDir.z,
     );
     const rawNDotV =
       normal.x * worldViewDir.x + normal.y * worldViewDir.y + normal.z * worldViewDir.z;
@@ -127,13 +126,13 @@ export class IblShader extends BaseShader {
       if (this.uniforms.receiveShadows) {
         const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
         const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-        const faceNDotL = saturate(-worldNormal.dot(this.uniforms.worldLightDir));
+        const faceNDotL = saturate(worldNormal.dot(this.uniforms.worldLightDir));
         const bias = minBias + (maxBias - minBias) * (1 - faceNDotL);
         shadow = lightSpacePos.z - bias > depth ? 0 : 1;
       }
 
       if (shadow > 0) {
-        const halfDir = worldViewDir.subtract(worldLightDir).normalize();
+        const halfDir = worldViewDir.add(worldLightDir).normalize();
         const nDotH = saturate(normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z);
         const vDotH = saturate(worldViewDir.dot(halfDir));
         const fresnelBase = 1 - vDotH;
@@ -149,17 +148,11 @@ export class IblShader extends BaseShader {
         const lightScale = nDotL * lightIntensity;
 
         directR =
-          ((1 - fresnelX) * diffuseFactor * baseColor.x + fresnelX * specularFactor) *
-          this.uniforms.lightCol.x *
-          lightScale;
+          ((1 - fresnelX) * diffuseFactor * baseColor.x + fresnelX * specularFactor) * lightScale;
         directG =
-          ((1 - fresnelY) * diffuseFactor * baseColor.y + fresnelY * specularFactor) *
-          this.uniforms.lightCol.y *
-          lightScale;
+          ((1 - fresnelY) * diffuseFactor * baseColor.y + fresnelY * specularFactor) * lightScale;
         directB =
-          ((1 - fresnelZ) * diffuseFactor * baseColor.z + fresnelZ * specularFactor) *
-          this.uniforms.lightCol.z *
-          lightScale;
+          ((1 - fresnelZ) * diffuseFactor * baseColor.z + fresnelZ * specularFactor) * lightScale;
       }
     }
 
