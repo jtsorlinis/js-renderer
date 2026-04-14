@@ -48,7 +48,7 @@ const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
 const orthoCb = document.getElementById("orthoCb") as HTMLInputElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
-const textureSizeText = document.getElementById("textureSize") as HTMLSpanElement;
+const resolutionText = document.getElementById("resolution") as HTMLSpanElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
 const shadingSlider = document.getElementById("shadingSlider") as HTMLInputElement;
 const loadGlbBtn = document.getElementById("loadGlbBtn") as HTMLButtonElement;
@@ -201,10 +201,7 @@ let activeRenderSettings = DEFAULT_RENDER_SELECTION;
 
 const updateModelStats = () => {
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
-  textureSizeText.innerText = `${Math.max(
-    material.colorTexture.width,
-    material.colorTexture.height,
-  )}`;
+  resolutionText.innerText = `${activeRenderSettings.resolution?.[0]} x ${activeRenderSettings.resolution?.[1]}`;
 };
 
 let activeModelRequest = 0;
