@@ -89,32 +89,6 @@ body {
   gap: 8px;
 }
 
-.section select {
-  appearance: none;
-  background: var(--surface-alt);
-  color: var(--text);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius);
-  padding: 7px 28px 7px 10px;
-  font-size: 13px;
-  width: 100%;
-  cursor: pointer;
-  outline: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238892a4'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  transition: border-color 0.15s;
-}
-
-.section select:hover {
-  border-color: var(--accent);
-}
-
-.section select:focus-visible {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.25);
-}
-
 .shading-picker {
   display: flex;
   align-items: stretch;
@@ -129,7 +103,7 @@ body {
   flex: 1;
   flex-direction: column;
   gap: 6px;
-  counter-reset: shading-step 10;
+  counter-reset: shading-step var(--shading-count, 10);
 }
 
 .shading-list li {
@@ -290,6 +264,7 @@ canvas {
   transform: translate(-50%, -50%);
   cursor: grab;
   touch-action: none;
+  image-rendering: pixelated;
 }
 
 /* JS sets the actual CSS size; these are fallbacks */
@@ -325,8 +300,4 @@ canvas:active {
     transform: none;
   }
 
-  .section.options {
-    flex-direction: row;
-    justify-content: space-between;
-  }
 }
