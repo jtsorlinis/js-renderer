@@ -6,7 +6,7 @@ export default defineConfig(({ command }) => {
       build: {
         target: "esnext",
       },
-      base: "/js-renderer/",
+      base: process.env.PAGES_BASE ?? "/js-renderer/",
     };
   }
 
