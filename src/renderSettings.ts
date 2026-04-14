@@ -92,7 +92,7 @@ export const SHADING_PRESETS = [
     label: "PS1 Textures",
     material: "gouraudTextured",
     resolution: 240,
-    model: assetPath("head_100.glb"),
+    model: assetPath("head_200.glb"),
     interpolationMode: "affine",
   },
   {
@@ -100,7 +100,7 @@ export const SHADING_PRESETS = [
     label: "PS1 Smooth",
     material: "gouraud",
     resolution: 240,
-    model: assetPath("head_100.glb"),
+    model: assetPath("head_200.glb"),
     interpolationMode: "affine",
   },
   {
@@ -108,7 +108,7 @@ export const SHADING_PRESETS = [
     label: "PS1",
     material: "flat",
     resolution: 240,
-    model: assetPath("head_100.glb"),
+    model: assetPath("head_200.glb"),
     interpolationMode: "affine",
   },
   {
