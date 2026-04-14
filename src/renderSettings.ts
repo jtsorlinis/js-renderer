@@ -66,7 +66,7 @@ export const SHADING_PRESETS = [
     useShadows: true,
   },
   {
-    value: "ps2-2",
+    value: "ps2-3",
     label: "PS2 Shadows",
     material: "textured",
     resolution: 480,
@@ -74,7 +74,7 @@ export const SHADING_PRESETS = [
     useShadows: true,
   },
   {
-    value: "ps2-1",
+    value: "ps2-2",
     label: "PS2 Fragment",
     material: "textured",
     resolution: 480,
@@ -88,7 +88,7 @@ export const SHADING_PRESETS = [
     model: assetPath("head_1k.glb"),
   },
   {
-    value: "ps1-4",
+    value: "ps1-3",
     label: "PS1 Textures",
     material: "gouraudTextured",
     resolution: 240,
@@ -96,11 +96,12 @@ export const SHADING_PRESETS = [
     interpolationMode: "affine",
   },
   {
-    value: "ps1-3",
+    value: "ps1-2",
     label: "PS1 Smooth",
     material: "gouraud",
     resolution: 240,
     model: assetPath("head_100.glb"),
+    interpolationMode: "affine",
   },
   {
     value: "ps1",
@@ -108,6 +109,7 @@ export const SHADING_PRESETS = [
     material: "flat",
     resolution: 240,
     model: assetPath("head_100.glb"),
+    interpolationMode: "affine",
   },
   {
     value: "snes-2",
@@ -117,7 +119,7 @@ export const SHADING_PRESETS = [
     model: assetPath("head_50.glb"),
   },
   {
-    value: "snes-3",
+    value: "snes",
     label: "SNES",
     material: "unlit",
     resolution: 224,
@@ -125,7 +127,7 @@ export const SHADING_PRESETS = [
   },
   {
     value: "wireframe",
-    label: "Wireframe",
+    label: "Vector",
     material: "depth",
     renderMode: "wireframe",
     model: assetPath("head_50.glb"),

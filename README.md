@@ -25,7 +25,7 @@ Then open the local Vite URL, usually `http://localhost:5173`.
 
 - CPU-only software rasterizer written in TypeScript
 - Wireframe rendering
-- Perspective and Orthographic projection
+- Perspective projection
 - Basic frustum and backface culling
 - Vertex attribute interpolation
 - Texture and Normal mapping (Excludes filtering to prioritize speed)
@@ -33,5 +33,4 @@ Then open the local Vite URL, usually `http://localhost:5173`.
 - Physically based rendering (PBR)
 - Image based lighting (IBL)
 - Multiple built-in demo models
-- Custom `.glb` loading
 - Interactive rotate, pan, and zoom controls

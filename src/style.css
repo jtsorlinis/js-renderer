@@ -57,10 +57,6 @@ body {
   margin-bottom: 16px;
 }
 
-.section.load-glb {
-  margin-top: auto;
-}
-
 .section label,
 .section-heading {
   font-size: 12px;
