@@ -27,10 +27,6 @@ const modelAssets: Record<string, ModelAssetSource> = {
     glbUrl: assetPath("dragon.glb"),
     scale: 1.3,
   },
-  spartan: {
-    glbUrl: assetPath("spartan.glb"),
-    scale: 1.25,
-  },
   // Secret nyxy model
   nyxy: {
     glbUrl: assetPath("nyxy.glb"),
