@@ -11,6 +11,7 @@ export type MaterialMode =
   | "depth";
 
 export type RenderMode = "filled" | "depthWireframe" | "wireframe";
+export type InterpolationMode = "perspectiveCorrect" | "affine";
 
 export type RenderSelection = {
   material: MaterialMode;
@@ -18,6 +19,7 @@ export type RenderSelection = {
   resolution?: number;
   model?: string;
   renderMode?: RenderMode;
+  interpolationMode?: InterpolationMode;
   useShadows?: boolean;
   showEnvironmentBackground?: boolean;
 };
@@ -91,6 +93,7 @@ export const SHADING_PRESETS = [
     material: "gouraudTextured",
     resolution: 240,
     model: assetPath("head_100.glb"),
+    interpolationMode: "affine",
   },
   {
     value: "ps1-3",
@@ -110,14 +113,14 @@ export const SHADING_PRESETS = [
     value: "snes-2",
     label: "SNES Lighting",
     material: "flat",
-    resolution: 192,
+    resolution: 224,
     model: assetPath("head_50.glb"),
   },
   {
     value: "snes-3",
     label: "SNES",
     material: "unlit",
-    resolution: 192,
+    resolution: 224,
     model: assetPath("head_50.glb"),
   },
   {
@@ -126,7 +129,7 @@ export const SHADING_PRESETS = [
     material: "depth",
     renderMode: "wireframe",
     model: assetPath("head_50.glb"),
-    resolution: 192,
+    resolution: 224,
   },
 ] satisfies ShadingPreset[];
 

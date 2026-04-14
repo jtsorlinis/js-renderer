@@ -8,8 +8,6 @@ export interface Uniforms {
   mvp: Matrix4;
   lightCol: Vector3;
   modelCamPos: Vector3;
-  orthographic: boolean;
-  modelViewDir: Vector3;
   modelLightDir: Vector3;
   lightSpaceMat: Matrix4;
   material: Material;
@@ -103,9 +101,7 @@ export class NormalMappedShader extends BaseShader {
 
     // Blinn-Phong shading
     const modelLightDir = this.uniforms.modelLightDir;
-    const viewDir = this.uniforms.orthographic
-      ? this.uniforms.modelViewDir
-      : this.uniforms.modelCamPos.subtract(modelPos).normalize();
+    const viewDir = this.uniforms.modelCamPos.subtract(modelPos).normalize();
     const halfwayDir = viewDir.subtract(modelLightDir).normalize();
     let spec = Math.pow(Math.max(normal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;

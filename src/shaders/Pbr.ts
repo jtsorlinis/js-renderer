@@ -10,8 +10,6 @@ export interface Uniforms {
   lightCol: Vector3;
   modelLightDir: Vector3;
   modelCamPos: Vector3;
-  orthographic: boolean;
-  modelViewDir: Vector3;
   material: Material;
   lightSpaceMat: Matrix4;
   shadowMap: DepthTexture;
@@ -91,9 +89,7 @@ export class PbrShader extends BaseShader {
     const f0z = DIELECTRIC_F0.z + (baseColor.z - DIELECTRIC_F0.z) * metallic;
 
     const modelLightDir = this.uniforms.modelLightDir;
-    const modelViewDir = this.uniforms.orthographic
-      ? this.uniforms.modelViewDir
-      : this.uniforms.modelCamPos.subtract(modelPos).normalize();
+    const modelViewDir = this.uniforms.modelCamPos.subtract(modelPos).normalize();
     const nDotL = saturate(
       normal.x * -modelLightDir.x + normal.y * -modelLightDir.y + normal.z * -modelLightDir.z,
     );
