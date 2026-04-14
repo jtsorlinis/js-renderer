@@ -181,7 +181,6 @@ export const evaluateDirectSunLighting = (
   hit: PathTraceLightingHit,
   viewDir: Vector3,
   lightDir: Vector3,
-  lightColor: Vector3,
   lightIntensity: number,
   iblData: IblData,
 ) => {
@@ -192,9 +191,9 @@ export const evaluateDirectSunLighting = (
   const lightScale = brdf.nDotL * lightIntensity;
 
   return new Vector3(
-    brdf.value.x * lightColor.x * lightScale,
-    brdf.value.y * lightColor.y * lightScale,
-    brdf.value.z * lightColor.z * lightScale,
+    brdf.value.x * lightScale,
+    brdf.value.y * lightScale,
+    brdf.value.z * lightScale,
   );
 };
 

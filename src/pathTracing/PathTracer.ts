@@ -41,7 +41,6 @@ export interface PathTraceScene {
   environment: Texture;
   envYaw: { angle: number; sin: number; cos: number };
   iblData: IblData;
-  lightColor: Vector3;
   worldLightDir: Vector3;
   model: Mesh;
   modelMat: Matrix4;
@@ -289,12 +288,11 @@ export class PathTracer {
   };
 
   private evaluateDirectSun = (hit: HitRecord, viewDir: Vector3, scene: PathTraceScene) => {
-    const lightDir = scene.worldLightDir.scale(-1);
+    const lightDir = scene.worldLightDir;
     const contribution = evaluateDirectSunLighting(
       hit,
       viewDir,
       lightDir,
-      scene.lightColor,
       lightIntensity,
       scene.iblData,
     );

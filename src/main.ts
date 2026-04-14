@@ -316,7 +316,6 @@ const draw = () => {
         environment: hdrEnvironment,
         envYaw,
         iblData,
-        lightColor: lightCol,
         worldLightDir: lightDir,
         model,
         modelMat,
