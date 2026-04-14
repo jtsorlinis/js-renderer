@@ -17,20 +17,6 @@
       <span class="title hideMobile">Software Renderer</span>
 
       <div class="section">
-        <span class="section-heading">Model (Faces)</span>
-        <select id="modelDd">
-          <option value="dice">Dice (20)</option>
-          <option value="rock">Rock (500)</option>
-          <option value="hydrant">Hydrant (3k)</option>
-          <option value="treasure">Treasure (10k)</option>
-          <option value="head">Head (50k)</option>
-          <option value="dragon">Dragon (100k)</option>
-          <option value="spartan">Spartan (300k)</option>
-          <option value="nyxy" hidden>Nyxy (10k)</option>
-        </select>
-      </div>
-
-      <div class="section">
         <span class="section-heading">Frame</span>
         <span class="stat-value" id="fps">0 (0.0 ms)</span>
       </div>
@@ -39,118 +25,7 @@
         <span class="section-heading">Shading</span>
 
         <div class="shading-picker">
-          <ul class="shading-list" id="shadingList">
-            <li>
-              <button
-                type="button"
-                class="shading-option is-active"
-                data-shading-index="9"
-                data-shading-value="ibl"
-                aria-pressed="true"
-              >
-                Environment
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                class="shading-option"
-                data-shading-index="8"
-                data-shading-value="pbr"
-                aria-pressed="false"
-              >
-                Materials
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                class="shading-option"
-                data-shading-index="7"
-                data-shading-value="normalMapped-shadows"
-                aria-pressed="false"
-              >
-                Shadows
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                class="shading-option"
-                data-shading-index="6"
-                data-shading-value="normalMapped"
-                aria-pressed="false"
-              >
-                Normals
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                class="shading-option"
-                data-shading-index="5"
-                data-shading-value="textured"
-                aria-pressed="false"
-              >
-                Textures
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                class="shading-option"
-                data-shading-index="4"
-                data-shading-value="smooth"
-                aria-pressed="false"
-              >
-                Smoothing
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                class="shading-option"
-                data-shading-index="3"
-                data-shading-value="flat"
-                aria-pressed="false"
-              >
-                Lighting
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                class="shading-option"
-                data-shading-index="2"
-                data-shading-value="unlit"
-                aria-pressed="false"
-              >
-                Fill
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                class="shading-option"
-                data-shading-index="1"
-                data-shading-value="depthWireframe"
-                aria-pressed="false"
-              >
-                Depth
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                class="shading-option"
-                data-shading-index="0"
-                data-shading-value="wireframe"
-                aria-pressed="false"
-              >
-                Wireframe
-              </button>
-            </li>
-          </ul>
+          <ul class="shading-list" id="shadingList"></ul>
 
           <input
             id="shadingSlider"
@@ -165,9 +40,8 @@
         </div>
       </div>
 
-      <div class="section options">
+      <div class="section">
         <label><input type="checkbox" id="orthoCb" /> Orthographic</label>
-        <label class="hideMobile"><input type="checkbox" id="highResCb" /> High Res (2x)</label>
       </div>
 
       <div class="stats">
