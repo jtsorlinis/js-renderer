@@ -8,7 +8,6 @@ export interface Uniforms {
   mvp: Matrix4;
   normalMat: Matrix4;
   worldLightDir: Vector3;
-  lightCol: Vector3;
   worldCamPos: Vector3;
   material: Material;
 }
@@ -21,7 +20,7 @@ export class GouraudTexturedShader extends BaseShader {
   // Uniforms are set once per draw call.
   uniforms!: Uniforms;
 
-  vLighting = this.varying<Vector3>();
+  vLighting = this.varying<number>();
   vUv = this.varying<Vector2>();
 
   vertex = () => {
@@ -32,11 +31,11 @@ export class GouraudTexturedShader extends BaseShader {
     const worldNormal = this.uniforms.normalMat.transformDirection(model.normals[i]).normalize();
 
     const worldViewDir = this.uniforms.worldCamPos.subtract(worldPos).normalize();
-    const halfwayDir = worldViewDir.subtract(this.uniforms.worldLightDir).normalize();
+    const halfwayDir = worldViewDir.add(this.uniforms.worldLightDir).normalize();
     let spec = Math.pow(Math.max(worldNormal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;
-    const diffuse = Math.max(-worldNormal.dot(this.uniforms.worldLightDir), 0);
-    const lighting = this.uniforms.lightCol.scale(diffuse + spec + ambient);
+    const diffuse = Math.max(worldNormal.dot(this.uniforms.worldLightDir), 0);
+    const lighting = diffuse + spec + ambient;
 
     this.v2f(this.vLighting, lighting);
     this.v2f(this.vUv, model.uvs[i]);
@@ -48,7 +47,7 @@ export class GouraudTexturedShader extends BaseShader {
   fragment = () => {
     const uv = this.interpolateVec2(this.vUv);
     const baseColor = this.sample(this.uniforms.material.colorTexture, uv);
-    const lighting = this.interpolateVec3(this.vLighting);
-    return baseColor.multiply(lighting);
+    const lighting = this.interpolateFloat(this.vLighting);
+    return baseColor.scale(lighting);
   };
 }

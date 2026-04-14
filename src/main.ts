@@ -162,8 +162,7 @@ window.addEventListener("resize", fitCanvas);
 const hdrEnvironment = await loadHdrTexture(`${import.meta.env.BASE_URL}environments/sunny.hdr`);
 
 // Scene and camera
-const lightDir = new Vector3(1, -1, 1).normalize();
-const lightCol = new Vector3(1, 1, 1);
+const lightDir = new Vector3(1, -1, 1).scale(-1).normalize();
 const camPos = new Vector3(0, 0, -3);
 
 // Derived scene data
@@ -324,7 +323,7 @@ const draw = () => {
   const normalMat = invModelMat.transpose();
 
   // 3) Build light-space transform (for shadow mapping).
-  const lightViewMat = Matrix4.LookAt(lightDir.scale(-5), Vector3.Zero);
+  const lightViewMat = Matrix4.LookAt(lightDir.scale(5), Vector3.Zero);
   const lightProjMat = Matrix4.Ortho(shadowOrthoSize, 1, 1, 10);
   const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
   const modelLightDir = invModelMat.transformDirection(lightDir).normalize();
@@ -346,7 +345,6 @@ const draw = () => {
     worldLightDir: lightDir,
     envYaw,
     modelLightDir,
-    lightCol,
     worldCamPos: camPos,
     modelCamPos,
     material,

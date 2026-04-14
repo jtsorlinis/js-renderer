@@ -27,6 +27,10 @@ export abstract class BaseShader {
     return a * this.bc.u + b * this.bc.v + c * this.bc.w;
   };
 
+  interpolateFloat = (vals: number[]) => {
+    return vals[0] * this.bc.u + vals[1] * this.bc.v + vals[2] * this.bc.w;
+  };
+
   interpolateVec2 = (vals: Vector2[]) => {
     const x = this.interpolate(vals[0].x, vals[1].x, vals[2].x);
     const y = this.interpolate(vals[0].y, vals[1].y, vals[2].y);
