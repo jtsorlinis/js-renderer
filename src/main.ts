@@ -48,7 +48,6 @@ if (!DEFAULT_MODEL_URL) {
 // UI handles
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
-const orthoCb = document.getElementById("orthoCb") as HTMLInputElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
 const resolutionText = document.getElementById("resolution") as HTMLSpanElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
@@ -169,11 +168,9 @@ const hdrEnvironment = await loadHdrTexture(`${import.meta.env.BASE_URL}environm
 const lightDir = new Vector3(1, -1, 1).normalize();
 const lightCol = new Vector3(1, 1, 1);
 const camPos = new Vector3(0, 0, -3);
-let orthoSize = -camPos.z * Math.tan((FOV * Math.PI) / 180 / 2);
 
 // Derived scene data
 const cameraLookDir = Vector3.Forward;
-const viewDir = cameraLookDir.scale(-1);
 const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
 rebuildEnvironmentBackdrop(bgBuffer, iblData, RENDER_ASPECT_RATIO, FOV, envYaw);
@@ -183,7 +180,6 @@ const initialModelOption = await ensureModelUrlOption(DEFAULT_MODEL_URL);
 let model = initialModelOption.mesh;
 let material = initialModelOption.material;
 let shadowOrthoSize = getModelRadius(model);
-
 let modelPos = new Vector3(0, 0, 0);
 let modelRotation = new Vector3(0, Math.PI / 2, 0);
 let modelScale = new Vector3(1, 1, 1);
@@ -289,6 +285,7 @@ const renderMesh = (
   depthBuffer: DepthTexture,
   renderMode: RenderMode = "filled",
   targetBuffer: Framebuffer = frameBuffer,
+  perspectiveCorrectInterpolation: boolean = true,
 ) => {
   for (let i = 0; i < model.vertices.length; i += 3) {
     // Vertex stage for one triangle.
@@ -310,7 +307,13 @@ const renderMesh = (
     }
 
     // Rasterization + fragment stage.
-    triangle(triVerts, activeShader, targetBuffer, depthBuffer);
+    triangle(
+      triVerts,
+      activeShader,
+      targetBuffer,
+      depthBuffer,
+      perspectiveCorrectInterpolation,
+    );
   }
 };
 
@@ -323,6 +326,7 @@ const update = () => {
 
 const draw = () => {
   const renderSettings = activeRenderSettings;
+  const perspectiveCorrectInterpolation = renderSettings.interpolationMode !== "affine";
 
   // 1) Clear all render targets for a new frame.
   if (renderSettings.showEnvironmentBackground) {
@@ -344,14 +348,10 @@ const draw = () => {
   const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
   const modelLightDir = invModelMat.transformDirection(lightDir).normalize();
   const modelCamPos = invModelMat.transformPoint(camPos);
-  const modelViewDir = invModelMat.transformDirection(viewDir).normalize();
 
   // 4) Build camera transform and final clip transform.
-  const isOrtho = orthoCb.checked;
   const viewMat = Matrix4.LookTo(camPos, cameraLookDir, Vector3.Up);
-  const projMat = isOrtho
-    ? Matrix4.Ortho(orthoSize, RENDER_ASPECT_RATIO)
-    : Matrix4.Perspective(FOV, RENDER_ASPECT_RATIO);
+  const projMat = Matrix4.Perspective(FOV, RENDER_ASPECT_RATIO);
   const mvp = projMat.multiply(viewMat).multiply(modelMat);
 
   // 5) Select active material shader and update uniforms.
@@ -368,9 +368,6 @@ const draw = () => {
     lightCol,
     worldCamPos: camPos,
     modelCamPos,
-    orthographic: isOrtho,
-    worldViewDir: viewDir,
-    modelViewDir,
     material,
     iblData,
     lightSpaceMat,
@@ -391,7 +388,13 @@ const draw = () => {
   }
 
   // 6) Main render pass
-  renderMesh(shader, depthBuffer, renderSettings.renderMode);
+  renderMesh(
+    shader,
+    depthBuffer,
+    renderSettings.renderMode,
+    frameBuffer,
+    perspectiveCorrectInterpolation,
+  );
   ctx.putImageData(imageData, 0, 0);
 };
 
@@ -442,8 +445,6 @@ canvas.onpointermove = (e) => {
 
 canvas.onwheel = (e) => {
   e.preventDefault();
-  const scale = Math.tan((FOV * 0.5 * Math.PI) / 180);
-  orthoSize += (e.deltaY * scale) / ZOOM_SENSITIVITY;
   camPos.z -= e.deltaY / ZOOM_SENSITIVITY;
 };
 

@@ -24,6 +24,7 @@ export const triangle = (
   shader: BaseShader,
   buffer: Framebuffer,
   depthBuffer: DepthTexture,
+  perspectiveCorrectInterpolation: boolean = true,
 ) => {
   const v0 = verts[0];
   const v1 = verts[1];
@@ -101,11 +102,15 @@ export const triangle = (
 
           // Skip if no fragment shader is defined (e.g. depth pass)
           if (fragment) {
-            // Get perspective-correct barycentric coordinates
-            const invW = 1 / (v0.w * u + v1.w * v + v2.w * w);
-            bcClip.u = u * invW * v0.w;
-            bcClip.v = v * invW * v1.w;
-            bcClip.w = w * invW * v2.w;
+            bcClip.u = u;
+            bcClip.v = v;
+            bcClip.w = w;
+            if (perspectiveCorrectInterpolation) {
+              const invW = 1 / (v0.w * u + v1.w * v + v2.w * w);
+              bcClip.u = u * invW * v0.w;
+              bcClip.v = v * invW * v1.w;
+              bcClip.w = w * invW * v2.w;
+            }
 
             // Pass fragment screen position to fragment shader
             fragPos.x = x;

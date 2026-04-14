@@ -21,8 +21,6 @@ export interface Uniforms {
   worldLightDir: Vector3;
   envYaw: { sin: number; cos: number };
   worldCamPos: Vector3;
-  orthographic: boolean;
-  worldViewDir: Vector3;
   material: Material;
   iblData: IblData;
   lightSpaceMat: Matrix4;
@@ -76,9 +74,7 @@ export class IblShader extends BaseShader {
     const ibl = this.uniforms.iblData;
     const uv = this.interpolateVec2(this.vUV);
     const worldPos = this.interpolateVec3(this.vWorldPos);
-    const worldViewDir = this.uniforms.orthographic
-      ? this.uniforms.worldViewDir
-      : this.uniforms.worldCamPos.subtract(worldPos).normalize();
+    const worldViewDir = this.uniforms.worldCamPos.subtract(worldPos).normalize();
     const worldNormal = this.interpolateVec3(this.vWorldNormal).normalize();
     const worldTangent = this.interpolateVec4(this.vWorldTangent);
     const handedness = worldTangent.w < 0 ? -1 : 1;

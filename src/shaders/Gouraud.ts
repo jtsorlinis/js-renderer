@@ -9,8 +9,6 @@ export interface Uniforms {
   worldLightDir: Vector3;
   lightCol: Vector3;
   worldCamPos: Vector3;
-  orthographic: boolean;
-  worldViewDir: Vector3;
 }
 
 const specularStrength = 0.5;
@@ -31,9 +29,7 @@ export class GouraudShader extends BaseShader {
     const worldPos = this.uniforms.modelMat.transformPoint(model.vertices[i]);
     const worldNormal = this.uniforms.normalMat.transformDirection(model.normals[i]).normalize();
 
-    const worldViewDir = this.uniforms.orthographic
-      ? this.uniforms.worldViewDir
-      : this.uniforms.worldCamPos.subtract(worldPos).normalize();
+    const worldViewDir = this.uniforms.worldCamPos.subtract(worldPos).normalize();
     const halfwayDir = worldViewDir.subtract(this.uniforms.worldLightDir).normalize();
     let spec = Math.pow(Math.max(worldNormal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;
