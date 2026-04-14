@@ -49,13 +49,21 @@ export const SHADING_PRESETS = [
     model: assetPath("head_30k.glb"),
     useShadows: true,
   },
+
+  {
+    value: "ps3-3",
+    label: "PS3 Shadows",
+    material: "normalMapped",
+    resolution: 720,
+    model: assetPath("head_5k.glb"),
+    useShadows: true,
+  },
   {
     value: "ps3-2",
     label: "PS3 Normal Map",
     material: "normalMapped",
     resolution: 720,
     model: assetPath("head_5k.glb"),
-    useShadows: true,
   },
   {
     value: "ps3",
@@ -63,15 +71,6 @@ export const SHADING_PRESETS = [
     material: "textured",
     resolution: 720,
     model: assetPath("head_5k.glb"),
-    useShadows: true,
-  },
-  {
-    value: "ps2-3",
-    label: "PS2 Shadows",
-    material: "textured",
-    resolution: 480,
-    model: assetPath("head_1k.glb"),
-    useShadows: true,
   },
   {
     value: "ps2-2",
