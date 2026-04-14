@@ -6,7 +6,6 @@ import { Material } from "../materials/Material";
 export interface Uniforms {
   model: Verts;
   mvp: Matrix4;
-  lightCol: Vector3;
   modelCamPos: Vector3;
   modelLightDir: Vector3;
   lightSpaceMat: Matrix4;
@@ -94,7 +93,7 @@ export class NormalMappedShader extends BaseShader {
     if (this.uniforms.receiveShadows) {
       const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
       const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-      const nDotL = Math.max(-modelNormal.dot(this.uniforms.modelLightDir), 0.0);
+      const nDotL = Math.max(modelNormal.dot(this.uniforms.modelLightDir), 0.0);
       const bias = minBias + (maxBias - minBias) * (1 - nDotL);
       shadow = lightSpacePos.z - bias > depth ? 0 : 1;
     }
@@ -102,13 +101,13 @@ export class NormalMappedShader extends BaseShader {
     // Blinn-Phong shading
     const modelLightDir = this.uniforms.modelLightDir;
     const viewDir = this.uniforms.modelCamPos.subtract(modelPos).normalize();
-    const halfwayDir = viewDir.subtract(modelLightDir).normalize();
+    const halfwayDir = viewDir.add(modelLightDir).normalize();
     let spec = Math.pow(Math.max(normal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;
-    const diffuse = Math.max(-normal.dot(modelLightDir), 0);
-    const lighting = this.uniforms.lightCol.scale((diffuse + spec) * shadow + ambient);
+    const diffuse = Math.max(normal.dot(modelLightDir), 0);
+    const lighting = (diffuse + spec) * shadow + ambient;
 
     // Final lit color.
-    return color.multiplyInPlace(lighting);
+    return color.scaleInPlace(lighting);
   };
 }
