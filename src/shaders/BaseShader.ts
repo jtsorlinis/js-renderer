@@ -1,11 +1,8 @@
 import { DepthTexture, Texture } from "../drawing";
 import { Vector2, Vector3, Vector4 } from "../maths";
 
-export interface Verts {
-  [key: string]: any;
-}
-export abstract class BaseShader {
-  abstract uniforms?: { [key: string]: any };
+export abstract class BaseShader<TUniforms = unknown> {
+  declare uniforms: TUniforms;
 
   abstract vertex: () => Vector4;
   abstract fragment: (() => Vector3 | undefined) | undefined;
