@@ -22,7 +22,12 @@ export type RenderSelection = {
   disableTexture?: boolean;
   useSpecular?: boolean;
   snapVertices?: boolean;
-  setPixelFn?: "setPixelAces" | "setPixelQuantize5" | "setPixelQuantize4";
+  setPixelFn?:
+    | "setPixelAces"
+    | "setPixelQuantize5"
+    | "setPixelQuantize5Dither"
+    | "setPixelQuantize4"
+    | "setPixelQuantize4Dither";
   useShadows?: boolean;
   showEnvironmentBackground?: boolean;
 };
@@ -100,7 +105,7 @@ export const SHADING_PRESETS = [
     model: assetPath("head_200.glb"),
     perspectiveCorrect: false,
     snapVertices: true,
-    setPixelFn: "setPixelQuantize5",
+    setPixelFn: "setPixelQuantize5Dither",
   },
   {
     value: "ps1",
@@ -110,7 +115,7 @@ export const SHADING_PRESETS = [
     model: assetPath("head_200.glb"),
     perspectiveCorrect: false,
     snapVertices: true,
-    setPixelFn: "setPixelQuantize5",
+    setPixelFn: "setPixelQuantize5Dither",
   },
   {
     value: "snes-2",
@@ -118,7 +123,7 @@ export const SHADING_PRESETS = [
     material: "flat",
     resolution: 224,
     model: assetPath("head_50.glb"),
-    setPixelFn: "setPixelQuantize4",
+    setPixelFn: "setPixelQuantize4Dither",
   },
   {
     value: "snes",
@@ -126,7 +131,7 @@ export const SHADING_PRESETS = [
     material: "unlit",
     resolution: 224,
     model: assetPath("head_50.glb"),
-    setPixelFn: "setPixelQuantize4",
+    setPixelFn: "setPixelQuantize4Dither",
   },
   {
     value: "wireframe",
