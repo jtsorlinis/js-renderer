@@ -1,8 +1,9 @@
-import { BaseShader, Verts } from "./BaseShader";
 import { Vector3, Matrix4 } from "../maths";
+import type { Mesh } from "../utils/mesh";
+import { BaseShader } from "./BaseShader";
 
 export interface Uniforms {
-  model: Verts;
+  model: Mesh;
   modelMat: Matrix4;
   mvp: Matrix4;
   normalMat: Matrix4;
@@ -15,10 +16,7 @@ const shininess = 32;
 const ambient = 0.1;
 const baseColor = new Vector3(0.5, 0.5, 0.5);
 
-export class SmoothShader extends BaseShader {
-  // Uniforms are set per draw call.
-  uniforms!: Uniforms;
-
+export class SmoothShader extends BaseShader<Uniforms> {
   // Per-vertex values that will be interpolated in fragment().
   vWorldNormal = this.varying<Vector3>();
   vWorldPos = this.varying<Vector3>();

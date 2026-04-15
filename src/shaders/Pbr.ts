@@ -1,11 +1,12 @@
-import { BaseShader, Verts } from "./BaseShader";
 import { Vector3, Matrix4, Vector4, Vector2, saturate } from "../maths";
 import { DepthTexture } from "../drawing";
 import { type Material } from "../materials/Material";
+import type { Mesh } from "../utils/mesh";
+import { BaseShader } from "./BaseShader";
 import { DIELECTRIC_F0, EPSILON, INV_PI, distributionGGX, geometrySmith } from "./pbrHelpers";
 
 export interface Uniforms {
-  model: Verts;
+  model: Mesh;
   mvp: Matrix4;
   modelLightDir: Vector3;
   modelCamPos: Vector3;
@@ -22,9 +23,7 @@ const lightIntensity = 3.14;
 const ambientIntensity = 0.1;
 
 // Direct-light PBR stage shown before the renderer adds image-based lighting.
-export class PbrShader extends BaseShader {
-  uniforms!: Uniforms;
-
+export class PbrShader extends BaseShader<Uniforms> {
   vUV = this.varying<Vector2>();
   vLightSpacePos = this.varying<Vector3>();
   vModelPos = this.varying<Vector3>();
