@@ -38,6 +38,7 @@ type GltfImage = {
 };
 
 type GltfMaterial = {
+  occlusionTexture?: GltfOcclusionTextureInfo;
   normalTexture?: GltfTextureInfo;
   pbrMetallicRoughness?: {
     baseColorFactor?: number[];
@@ -86,6 +87,10 @@ type GltfTextureInfo = {
   texCoord?: number;
 };
 
+type GltfOcclusionTextureInfo = GltfTextureInfo & {
+  strength?: number;
+};
+
 type PrimitiveInstance = {
   primitive: GltfPrimitive;
   worldMatrix: Matrix4;
@@ -104,6 +109,8 @@ type ConvertedGlb = {
     baseColorFactor: Vector3;
     metallicFactor: number;
     metallicRoughnessTextureIndex?: number;
+    occlusionStrength: number;
+    occlusionTextureIndex?: number;
     roughnessFactor: number;
   };
 };
@@ -417,6 +424,8 @@ const convertGlbGeometry = (
   let baseColorFactor: Vector3 | undefined;
   let metallicFactor: number | undefined;
   let metallicRoughnessTextureIndex: number | undefined;
+  let occlusionStrength: number | undefined;
+  let occlusionTextureIndex: number | undefined;
   let roughnessFactor: number | undefined;
 
   for (const { primitive, worldMatrix } of primitiveInstances) {
@@ -430,12 +439,15 @@ const convertGlbGeometry = (
     const pbrMaterial = material?.pbrMetallicRoughness;
     const baseColorTexture = pbrMaterial?.baseColorTexture;
     const metallicRoughnessTexture = pbrMaterial?.metallicRoughnessTexture;
+    const occlusionTexture = material?.occlusionTexture;
     const normalTexture = material?.normalTexture;
     assertSupportedTexCoord(baseColorTexture, "base color texture");
     assertSupportedTexCoord(normalTexture, "normal texture");
     assertSupportedTexCoord(metallicRoughnessTexture, "metallic-roughness texture");
+    assertSupportedTexCoord(occlusionTexture, "occlusion texture");
 
-    const hasTexturedMaterial = !!baseColorTexture || !!normalTexture || !!metallicRoughnessTexture;
+    const hasTexturedMaterial =
+      !!baseColorTexture || !!normalTexture || !!metallicRoughnessTexture || !!occlusionTexture;
     if (hasTexturedMaterial && primitive.attributes.TEXCOORD_0 === undefined) {
       throw new Error("Unsupported GLB asset: textured materials must provide TEXCOORD_0");
     }
@@ -463,6 +475,7 @@ const convertGlbGeometry = (
     baseColorTextureIndex ??= baseColorTexture?.index;
     normalTextureIndex ??= normalTexture?.index;
     metallicRoughnessTextureIndex ??= metallicRoughnessTexture?.index;
+    occlusionTextureIndex ??= occlusionTexture?.index;
     baseColorFactor ??=
       pbrMaterial?.baseColorFactor && pbrMaterial.baseColorFactor.length >= 3
         ? new Vector3(
@@ -472,6 +485,7 @@ const convertGlbGeometry = (
           )
         : Vector3.One;
     metallicFactor ??= pbrMaterial?.metallicFactor ?? 1;
+    occlusionStrength ??= occlusionTexture?.strength ?? 1;
     roughnessFactor ??= pbrMaterial?.roughnessFactor ?? 1;
 
     const normalMatrix = worldMatrix.invert().transpose();
@@ -537,6 +551,8 @@ const convertGlbGeometry = (
       baseColorFactor: baseColorFactor ?? Vector3.One,
       metallicFactor: metallicFactor ?? 1,
       metallicRoughnessTextureIndex,
+      occlusionStrength: occlusionStrength ?? 1,
+      occlusionTextureIndex,
       roughnessFactor: roughnessFactor ?? 1,
     },
   };
@@ -575,6 +591,30 @@ const loadTextureFromImage = async (
   throw new Error(`Image ${imageIndex} does not contain data`);
 };
 
+const getTextureSourceIndex = (gltf: Gltf, textureIndex: number | undefined) => {
+  if (textureIndex === undefined) {
+    return undefined;
+  }
+
+  const texture = requireValue(gltf.textures?.[textureIndex], `Missing texture ${textureIndex}`);
+  return texture.source;
+};
+
+const loadTextureFromSource = async (
+  gltf: Gltf,
+  binaryChunk: ArrayBuffer,
+  imageIndex: number | undefined,
+  assetUrl: string,
+  fallback: Texture,
+  descriptor: TextureDescriptor,
+) => {
+  if (imageIndex === undefined) {
+    return fallback;
+  }
+
+  return loadTextureFromImage(gltf, binaryChunk, imageIndex, assetUrl, descriptor);
+};
+
 const loadTextureFromSlot = async (
   gltf: Gltf,
   binaryChunk: ArrayBuffer,
@@ -583,23 +623,83 @@ const loadTextureFromSlot = async (
   fallback: Texture,
   descriptor: TextureDescriptor,
 ) => {
-  if (textureIndex === undefined) {
-    return fallback;
+  return loadTextureFromSource(
+    gltf,
+    binaryChunk,
+    getTextureSourceIndex(gltf, textureIndex),
+    assetUrl,
+    fallback,
+    descriptor,
+  );
+};
+
+const sampleTextureChannel = (
+  texture: Texture,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  channel: 0 | 1 | 2,
+) => {
+  const sourceX = Math.min(texture.width - 1, Math.floor(((x + 0.5) / width) * texture.width));
+  const sourceY = Math.min(texture.height - 1, Math.floor(((y + 0.5) / height) * texture.height));
+  return texture.data[(sourceX + sourceY * texture.width) * 3 + channel];
+};
+
+const packOrmTexture = (occlusionTexture: Texture, metallicRoughnessTexture: Texture) => {
+  const width = Math.max(occlusionTexture.width, metallicRoughnessTexture.width);
+  const height = Math.max(occlusionTexture.height, metallicRoughnessTexture.height);
+  const data = new Float32Array(width * height * 3);
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const index = (x + y * width) * 3;
+      data[index] = sampleTextureChannel(occlusionTexture, x, y, width, height, 0);
+      data[index + 1] = sampleTextureChannel(metallicRoughnessTexture, x, y, width, height, 1);
+      data[index + 2] = sampleTextureChannel(metallicRoughnessTexture, x, y, width, height, 2);
+    }
   }
 
-  const texture = requireValue(gltf.textures?.[textureIndex], `Missing texture ${textureIndex}`);
-  if (texture.source === undefined) {
-    return fallback;
-  }
-
-  return loadTextureFromImage(gltf, binaryChunk, texture.source, assetUrl, descriptor);
+  return new Texture(data, width, height);
 };
 
 export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => {
   const { json, binaryChunk } = await readGlb(url);
   const converted = convertGlbGeometry(json, binaryChunk, normalize, scale);
 
-  const [colorTexture, normalTexture, metallicRoughnessTexture] = await Promise.all([
+  const metallicRoughnessSourceIndex = getTextureSourceIndex(
+    json,
+    converted.pbrMaterial.metallicRoughnessTextureIndex,
+  );
+  const occlusionSourceIndex = getTextureSourceIndex(
+    json,
+    converted.pbrMaterial.occlusionTextureIndex,
+  );
+  const ormTexturePromise =
+    metallicRoughnessSourceIndex !== undefined &&
+    metallicRoughnessSourceIndex === occlusionSourceIndex
+      ? loadTextureFromSource(json, binaryChunk, metallicRoughnessSourceIndex, url, Texture.White, {
+          type: "color",
+          colorSpace: "linear",
+        })
+      : Promise.all([
+          loadTextureFromSource(json, binaryChunk, occlusionSourceIndex, url, Texture.White, {
+            type: "color",
+            colorSpace: "linear",
+          }),
+          loadTextureFromSource(
+            json,
+            binaryChunk,
+            metallicRoughnessSourceIndex,
+            url,
+            Texture.White,
+            { type: "color", colorSpace: "linear" },
+          ),
+        ]).then(([occlusionTexture, metallicRoughnessTexture]) =>
+          packOrmTexture(occlusionTexture, metallicRoughnessTexture),
+        );
+
+  const [colorTexture, normalTexture, ormTexture] = await Promise.all([
     loadTextureFromSlot(json, binaryChunk, converted.baseColorTextureIndex, url, Texture.White, {
       type: "color",
       colorSpace: "srgb",
@@ -608,14 +708,7 @@ export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => 
       type: "normal",
       colorSpace: "linear",
     }),
-    loadTextureFromSlot(
-      json,
-      binaryChunk,
-      converted.pbrMaterial.metallicRoughnessTextureIndex,
-      url,
-      Texture.White,
-      { type: "color", colorSpace: "linear" },
-    ),
+    ormTexturePromise,
   ]);
 
   return {
@@ -625,7 +718,8 @@ export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => 
       normalTexture,
       colorFactor: converted.pbrMaterial.baseColorFactor,
       metallicFactor: converted.pbrMaterial.metallicFactor,
-      metallicRoughnessTexture,
+      occlusionStrength: converted.pbrMaterial.occlusionStrength,
+      ormTexture,
       roughnessFactor: converted.pbrMaterial.roughnessFactor,
     },
   };
