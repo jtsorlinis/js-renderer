@@ -18,12 +18,11 @@ export type RenderSelection = {
   resolution?: number;
   model?: string;
   renderMode?: RenderMode;
-  paletteMode?: "snes";
   perspectiveCorrect?: boolean;
   disableTexture?: boolean;
   useSpecular?: boolean;
   snapVertices?: boolean;
-  tonemap?: boolean;
+  setPixelFn?: "setPixelAces" | "setPixelQuantize5" | "setPixelQuantize4";
   useShadows?: boolean;
   showEnvironmentBackground?: boolean;
 };
@@ -44,7 +43,7 @@ export const SHADING_PRESETS = [
     model: assetPath("head_50k.glb"),
     useShadows: true,
     showEnvironmentBackground: true,
-    tonemap: true,
+    setPixelFn: "setPixelAces",
   },
   {
     value: "ps4",
@@ -53,7 +52,7 @@ export const SHADING_PRESETS = [
     resolution: 720,
     model: assetPath("head_30k.glb"),
     useShadows: true,
-    tonemap: true,
+    setPixelFn: "setPixelAces",
   },
 
   {
@@ -101,6 +100,7 @@ export const SHADING_PRESETS = [
     model: assetPath("head_200.glb"),
     perspectiveCorrect: false,
     snapVertices: true,
+    setPixelFn: "setPixelQuantize5",
   },
   {
     value: "ps1",
@@ -110,14 +110,15 @@ export const SHADING_PRESETS = [
     model: assetPath("head_200.glb"),
     perspectiveCorrect: false,
     snapVertices: true,
+    setPixelFn: "setPixelQuantize5",
   },
   {
     value: "snes-2",
     label: "SNES Lighting",
     material: "flat",
-    paletteMode: "snes",
     resolution: 224,
     model: assetPath("head_50.glb"),
+    setPixelFn: "setPixelQuantize4",
   },
   {
     value: "snes",
@@ -125,6 +126,7 @@ export const SHADING_PRESETS = [
     material: "unlit",
     resolution: 224,
     model: assetPath("head_50.glb"),
+    setPixelFn: "setPixelQuantize4",
   },
   {
     value: "wireframe",

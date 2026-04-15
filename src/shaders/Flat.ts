@@ -7,13 +7,10 @@ export interface Uniforms {
   mvp: Matrix4;
   normalMat: Matrix4;
   worldLightDir: Vector3;
-  paletteMode?: "snes";
 }
 
 const ambient = 0.1;
 const baseColor = Vector3.One.scale(0.5);
-const snesSteps = 6;
-const quantizeSnesLighting = (lighting: number) => Math.round(lighting * snesSteps) / snesSteps;
 
 export class FlatShader extends BaseShader<Uniforms> {
   // Flat shading stores one lighting value for the whole triangle.
@@ -28,14 +25,8 @@ export class FlatShader extends BaseShader<Uniforms> {
         .transformDirection(model.faceNormals[this.vertexId])
         .normalize();
       const diffuse = Math.max(worldNormal.dot(this.uniforms.worldLightDir), 0);
-      const lighting =
-        this.uniforms.paletteMode === "snes"
-          ? quantizeSnesLighting(diffuse + ambient)
-          : diffuse + ambient;
-      this.lighting =
-        this.uniforms.paletteMode === "snes"
-          ? baseColor.scale(lighting)
-          : baseColor.scale(lighting);
+      const lighting = diffuse + ambient;
+      this.lighting = baseColor.scale(lighting);
     }
 
     // Return clip-space position.
