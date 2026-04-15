@@ -1,18 +1,16 @@
-import { BaseShader, Verts } from "./BaseShader";
 import { Vector3, Matrix4 } from "../maths";
 import { hash3 } from "../utils/hash";
+import type { Mesh } from "../utils/mesh";
+import { BaseShader } from "./BaseShader";
 
 export interface Uniforms {
-  model: Verts;
+  model: Mesh;
   mvp: Matrix4;
 }
 
 const minColor = 0.25;
 
-export class UnlitShader extends BaseShader {
-  // Uniforms are set once per draw call.
-  uniforms!: Uniforms;
-
+export class UnlitShader extends BaseShader<Uniforms> {
   color = new Vector3();
 
   vertex = () => {

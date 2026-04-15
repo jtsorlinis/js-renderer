@@ -1,10 +1,11 @@
-import { BaseShader, Verts } from "./BaseShader";
 import { Vector3, Matrix4, Vector4, Vector2 } from "../maths";
 import { DepthTexture } from "../drawing";
 import { Material } from "../materials/Material";
+import type { Mesh } from "../utils/mesh";
+import { BaseShader } from "./BaseShader";
 
 export interface Uniforms {
-  model: Verts;
+  model: Mesh;
   mvp: Matrix4;
   modelCamPos: Vector3;
   orthographic: boolean;
@@ -22,10 +23,7 @@ const ambient = 0.1;
 const minBias = 0.001;
 const maxBias = 0.005;
 
-export class NormalMappedShader extends BaseShader {
-  // Uniforms are set per draw call from `main.ts`.
-  uniforms!: Uniforms;
-
+export class NormalMappedShader extends BaseShader<Uniforms> {
   // Per-vertex data passed from vertex -> fragment.
   vUV = this.varying<Vector2>();
   vModelPos = this.varying<Vector3>();
