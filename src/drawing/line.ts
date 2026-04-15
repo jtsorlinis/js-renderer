@@ -2,7 +2,7 @@ import { Framebuffer } from "./Framebuffer";
 import { DepthTexture } from "./Texture";
 import { Vector3, Vector4 } from "../maths";
 
-const WHITE = new Vector3(1, 1, 1);
+const GREEN = new Vector3(0, 1, 0);
 const depthEpsilon = 0.001;
 
 // Bresenham's line algorithm
@@ -44,7 +44,7 @@ export const line = (
     if (s.x >= 0 && s.x < buffer.width && s.y >= 0 && s.y < buffer.height) {
       const index = s.x + s.y * buffer.width;
       if (!depthBuffer || z <= depthBuffer.data[index] + depthEpsilon) {
-        buffer.setPixel(s.x, s.y, WHITE);
+        buffer.setPixel(s.x, s.y, GREEN);
       }
     }
 

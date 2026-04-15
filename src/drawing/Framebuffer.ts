@@ -35,6 +35,17 @@ export class Framebuffer {
     this.data = imageData.data;
   }
 
+  tonemapAces = (val: number) =>
+    saturate((val * (2.51 * val + 0.03)) / (val * (2.43 * val + 0.59) + 0.14));
+
+  setPixelAces = (x: number, y: number, color: Vector3) => {
+    const index = (x + y * this.width) * 4;
+    this.data[index + 0] = linearToSrgb8(this.tonemapAces(color.x));
+    this.data[index + 1] = linearToSrgb8(this.tonemapAces(color.y));
+    this.data[index + 2] = linearToSrgb8(this.tonemapAces(color.z));
+    this.data[index + 3] = 255;
+  };
+
   setPixel = (x: number, y: number, color: Vector3) => {
     const index = (x + y * this.width) * 4;
     this.data[index + 0] = linearToSrgb8(color.x);

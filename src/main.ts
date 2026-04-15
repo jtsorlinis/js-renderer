@@ -5,7 +5,6 @@ import { getModelRadius } from "./utils/mesh";
 import { ensureModelUrlOption, type ModelOption } from "./utils/modelLoader";
 import { SmoothShader } from "./shaders/Smooth";
 import { TexturedShader } from "./shaders/Textured";
-import { GouraudTexturedShader } from "./shaders/GouraudTextured";
 import { GouraudShader } from "./shaders/Gouraud";
 import { FlatShader } from "./shaders/Flat";
 import { UnlitShader } from "./shaders/Unlit";
@@ -185,7 +184,7 @@ const shaders = {
   pbr: new PbrShader(),
   normalMapped: new NormalMappedShader(),
   textured: new TexturedShader(),
-  gouraudTextured: new GouraudTexturedShader(),
+  gouraudTextured: new GouraudShader(),
   gouraud: new GouraudShader(),
   smooth: new SmoothShader(),
   flat: new FlatShader(),
@@ -273,6 +272,7 @@ const renderMesh = (
   targetBuffer: Framebuffer = frameBuffer,
   perspectiveCorrect: boolean = true,
   snapVertices: boolean = false,
+  tonemap: boolean = false,
 ) => {
   for (let i = 0; i < model.vertices.length; i += 3) {
     // Vertex stage for one triangle.
@@ -297,7 +297,7 @@ const renderMesh = (
     }
 
     // Rasterization + fragment stage.
-    triangle(triVerts, activeShader, targetBuffer, depthBuffer, perspectiveCorrect);
+    triangle(triVerts, activeShader, targetBuffer, depthBuffer, perspectiveCorrect, tonemap);
   }
 };
 
@@ -312,6 +312,7 @@ const draw = () => {
   const renderSettings = activeRenderSettings;
   const perspectiveCorrect = renderSettings.perspectiveCorrect ?? true;
   const snapVertices = renderSettings.snapVertices ?? false;
+  const tonemap = renderSettings.tonemap ?? false;
 
   // 1) Clear all render targets for a new frame.
   if (renderSettings.showEnvironmentBackground) {
@@ -357,6 +358,9 @@ const draw = () => {
     lightSpaceMat,
     shadowMap,
     receiveShadows: renderSettings.useShadows,
+    paletteMode: renderSettings.paletteMode,
+    useSpecular: renderSettings.useSpecular,
+    disableTexture: renderSettings.disableTexture,
   };
   shaders.depth.uniforms = { model, clipMat: mvp };
 
@@ -379,6 +383,7 @@ const draw = () => {
     frameBuffer,
     perspectiveCorrect,
     snapVertices,
+    tonemap,
   );
   ctx.putImageData(imageData, 0, 0);
 };
