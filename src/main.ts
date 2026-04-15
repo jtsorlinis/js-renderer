@@ -272,7 +272,7 @@ const renderMesh = (
   targetBuffer: Framebuffer = frameBuffer,
   perspectiveCorrect: boolean = true,
   snapVertices: boolean = false,
-  tonemap: boolean = false,
+  pixelFn = targetBuffer.setPixel,
 ) => {
   for (let i = 0; i < model.vertices.length; i += 3) {
     // Vertex stage for one triangle.
@@ -297,7 +297,7 @@ const renderMesh = (
     }
 
     // Rasterization + fragment stage.
-    triangle(triVerts, activeShader, targetBuffer, depthBuffer, perspectiveCorrect, tonemap);
+    triangle(triVerts, activeShader, targetBuffer, depthBuffer, perspectiveCorrect, pixelFn);
   }
 };
 
@@ -312,7 +312,6 @@ const draw = () => {
   const renderSettings = activeRenderSettings;
   const perspectiveCorrect = renderSettings.perspectiveCorrect ?? true;
   const snapVertices = renderSettings.snapVertices ?? false;
-  const tonemap = renderSettings.tonemap ?? false;
 
   // 1) Clear all render targets for a new frame.
   if (renderSettings.showEnvironmentBackground) {
@@ -358,7 +357,6 @@ const draw = () => {
     lightSpaceMat,
     shadowMap,
     receiveShadows: renderSettings.useShadows,
-    paletteMode: renderSettings.paletteMode,
     useSpecular: renderSettings.useSpecular,
     disableTexture: renderSettings.disableTexture,
   };
@@ -375,6 +373,8 @@ const draw = () => {
     renderMesh(shaders.depth, depthBuffer, "filled");
   }
 
+  const pixelFn = frameBuffer[renderSettings.setPixelFn ?? "setPixel"];
+
   // 6) Main render pass
   renderMesh(
     shader,
@@ -383,7 +383,7 @@ const draw = () => {
     frameBuffer,
     perspectiveCorrect,
     snapVertices,
-    tonemap,
+    pixelFn,
   );
   ctx.putImageData(imageData, 0, 0);
 };

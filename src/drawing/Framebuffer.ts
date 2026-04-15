@@ -22,6 +22,14 @@ const linearToSrgb8 = (value: number) => {
   return srgb8Lut[index];
 };
 
+const quantize5 = (value: number) => {
+  return Math.round(saturate(value) * 31) / 31;
+};
+
+const quantize4 = (value: number) => {
+  return Math.round(saturate(value) * 15) / 15;
+};
+
 export class Framebuffer {
   width: number;
   height: number;
@@ -43,6 +51,22 @@ export class Framebuffer {
     this.data[index + 0] = linearToSrgb8(this.tonemapAces(color.x));
     this.data[index + 1] = linearToSrgb8(this.tonemapAces(color.y));
     this.data[index + 2] = linearToSrgb8(this.tonemapAces(color.z));
+    this.data[index + 3] = 255;
+  };
+
+  setPixelQuantize5 = (x: number, y: number, color: Vector3) => {
+    const index = (x + y * this.width) * 4;
+    this.data[index + 0] = linearToSrgb8(quantize5(color.x));
+    this.data[index + 1] = linearToSrgb8(quantize5(color.y));
+    this.data[index + 2] = linearToSrgb8(quantize5(color.z));
+    this.data[index + 3] = 255;
+  };
+
+  setPixelQuantize4 = (x: number, y: number, color: Vector3) => {
+    const index = (x + y * this.width) * 4;
+    this.data[index + 0] = linearToSrgb8(quantize4(color.x));
+    this.data[index + 1] = linearToSrgb8(quantize4(color.y));
+    this.data[index + 2] = linearToSrgb8(quantize4(color.z));
     this.data[index + 3] = 255;
   };
 

@@ -1,4 +1,5 @@
 import { Vector3, Matrix4 } from "../maths";
+import { hash3 } from "../utils/hash";
 import type { Mesh } from "../utils/mesh";
 import { BaseShader } from "./BaseShader";
 
@@ -7,28 +8,20 @@ export interface Uniforms {
   mvp: Matrix4;
 }
 
-const SNES_PALETTE = [
-  new Vector3(0.13, 0.16, 0.3),
-  new Vector3(0.2, 0.33, 0.56),
-  new Vector3(0.29, 0.55, 0.56),
-  new Vector3(0.48, 0.71, 0.39),
-  new Vector3(0.82, 0.76, 0.35),
-  new Vector3(0.8, 0.49, 0.24),
-  new Vector3(0.67, 0.3, 0.28),
-  new Vector3(0.72, 0.68, 0.79),
-  new Vector3(0.48, 0.71, 0.39),
-] as const;
+const minColor = 0.25;
+const totalColors = 16;
 
 export class UnlitShader extends BaseShader<Uniforms> {
-  color = SNES_PALETTE[0];
+  color = new Vector3();
 
   vertex = () => {
     const model = this.uniforms.model;
     const faceId = Math.floor(this.vertexId / 3);
+    const i = faceId * 3;
 
-    // Give each face a color from a fixed low-color palette.
+    // Give each face a random color
     if (this.nthVert === 0) {
-      this.color = SNES_PALETTE[faceId % SNES_PALETTE.length];
+      this.color = hash3(i % totalColors, minColor, 1);
     }
 
     // Return clip-space position.
