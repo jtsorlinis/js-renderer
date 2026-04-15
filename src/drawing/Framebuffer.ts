@@ -30,6 +30,19 @@ const quantize4 = (value: number) => {
   return Math.round(saturate(value) * 15) / 15;
 };
 
+const bayer4x4 = new Uint8Array([
+  0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5,
+]);
+
+const quantizeOrdered = (value: number, maxLevel: number, x: number, y: number) => {
+  const scaled = saturate(value) * maxLevel;
+  const baseLevel = Math.floor(scaled);
+  const fraction = scaled - baseLevel;
+  const threshold = (bayer4x4[(x & 3) + ((y & 3) << 2)] + 0.5) / bayer4x4.length;
+  const level = Math.min(maxLevel, baseLevel + (fraction > threshold ? 1 : 0));
+  return level / maxLevel;
+};
+
 export class Framebuffer {
   width: number;
   height: number;
@@ -62,11 +75,27 @@ export class Framebuffer {
     this.data[index + 3] = 255;
   };
 
+  setPixelQuantize5Dither = (x: number, y: number, color: Vector3) => {
+    const index = (x + y * this.width) * 4;
+    this.data[index + 0] = linearToSrgb8(quantizeOrdered(color.x, 31, x, y));
+    this.data[index + 1] = linearToSrgb8(quantizeOrdered(color.y, 31, x, y));
+    this.data[index + 2] = linearToSrgb8(quantizeOrdered(color.z, 31, x, y));
+    this.data[index + 3] = 255;
+  };
+
   setPixelQuantize4 = (x: number, y: number, color: Vector3) => {
     const index = (x + y * this.width) * 4;
     this.data[index + 0] = linearToSrgb8(quantize4(color.x));
     this.data[index + 1] = linearToSrgb8(quantize4(color.y));
     this.data[index + 2] = linearToSrgb8(quantize4(color.z));
+    this.data[index + 3] = 255;
+  };
+
+  setPixelQuantize4Dither = (x: number, y: number, color: Vector3) => {
+    const index = (x + y * this.width) * 4;
+    this.data[index + 0] = linearToSrgb8(quantizeOrdered(color.x, 15, x, y));
+    this.data[index + 1] = linearToSrgb8(quantizeOrdered(color.y, 15, x, y));
+    this.data[index + 2] = linearToSrgb8(quantizeOrdered(color.z, 15, x, y));
     this.data[index + 3] = 255;
   };
 
