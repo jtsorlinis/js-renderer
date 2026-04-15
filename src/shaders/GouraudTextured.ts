@@ -1,9 +1,10 @@
-import { BaseShader, Verts } from "./BaseShader";
+import { BaseShader } from "./BaseShader";
 import { Vector3, Matrix4, Vector2 } from "../maths";
 import { Material } from "../materials/Material";
+import { Mesh } from "../utils/mesh";
 
 export interface Uniforms {
-  model: Verts;
+  model: Mesh;
   modelMat: Matrix4;
   mvp: Matrix4;
   normalMat: Matrix4;
@@ -16,10 +17,7 @@ const specularStrength = 0.5;
 const shininess = 32;
 const ambient = 0.1;
 
-export class GouraudTexturedShader extends BaseShader {
-  // Uniforms are set once per draw call.
-  uniforms!: Uniforms;
-
+export class GouraudTexturedShader extends BaseShader<Uniforms> {
   vLighting = this.varying<number>();
   vUv = this.varying<Vector2>();
 
