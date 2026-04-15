@@ -31,6 +31,7 @@ const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
 const FOV = 50;
 const SHADOW_MAP_SIZE = 512;
+const INITIAL_ROTATION = Math.PI / 2;
 const ROTATION_SPEED = 0.2;
 const ROTATE_SENSITIVITY = 250;
 const PAN_SENSITIVITY = 250;
@@ -159,7 +160,7 @@ let material = initialModelOption.material;
 let shadowOrthoSize = getModelRadius(model);
 
 let modelPos = new Vector3(0, 0, 0);
-let modelRotation = new Vector3(0, Math.PI / 2, 0);
+let modelRotation = new Vector3(0, INITIAL_ROTATION, 0);
 let modelScale = new Vector3(1, 1, 1);
 
 const shaders = {
@@ -185,7 +186,7 @@ const updateModelStats = () => {
 };
 
 const resetModelTransform = () => {
-  modelRotation.set(0, Math.PI / 2, 0);
+  modelRotation.set(0, INITIAL_ROTATION, 0);
   camPos.set(0, 0, -3);
   orthoSize = -camPos.z * Math.tan((FOV * Math.PI) / 180 / 2);
   pathTraceInteractive = true;
