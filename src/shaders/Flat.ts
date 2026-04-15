@@ -11,7 +11,7 @@ export interface Uniforms {
 }
 
 const ambient = 0.1;
-const baseColor = Vector3.One.scale(0.75);
+const baseColor = Vector3.One.scale(0.5);
 const snesSteps = 6;
 const quantizeSnesLighting = (lighting: number) => Math.round(lighting * snesSteps) / snesSteps;
 
