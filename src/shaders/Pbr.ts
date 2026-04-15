@@ -80,9 +80,10 @@ export class PbrShader extends BaseShader {
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
 
     const baseColor = this.sample(material.colorTexture, uv).multiplyInPlace(material.colorFactor);
-    const metallicRoughness = this.sample(material.metallicRoughnessTexture, uv);
-    const roughness = Math.max(0.045, saturate(metallicRoughness.y * material.roughnessFactor));
-    const metallic = saturate(metallicRoughness.z * material.metallicFactor);
+    const orm = this.sample(material.ormTexture, uv);
+    const ambientOcclusion = 1 - material.occlusionStrength + material.occlusionStrength * orm.x;
+    const roughness = Math.max(0.045, saturate(orm.y * material.roughnessFactor));
+    const metallic = saturate(orm.z * material.metallicFactor);
     const f0x = DIELECTRIC_F0.x + (baseColor.x - DIELECTRIC_F0.x) * metallic;
     const f0y = DIELECTRIC_F0.y + (baseColor.y - DIELECTRIC_F0.y) * metallic;
     const f0z = DIELECTRIC_F0.z + (baseColor.z - DIELECTRIC_F0.z) * metallic;
@@ -133,9 +134,9 @@ export class PbrShader extends BaseShader {
     }
 
     // Keep the direct-light PBR step readable with a tiny material-aware fill
-    const ambientR = (baseColor.x * (1 - metallic) + f0x) * ambientIntensity;
-    const ambientG = (baseColor.y * (1 - metallic) + f0y) * ambientIntensity;
-    const ambientB = (baseColor.z * (1 - metallic) + f0z) * ambientIntensity;
+    const ambientR = (baseColor.x * (1 - metallic) + f0x) * ambientIntensity * ambientOcclusion;
+    const ambientG = (baseColor.y * (1 - metallic) + f0y) * ambientIntensity * ambientOcclusion;
+    const ambientB = (baseColor.z * (1 - metallic) + f0z) * ambientIntensity * ambientOcclusion;
 
     return new Vector3(ambientR + directR, ambientG + directG, ambientB + directB);
   };

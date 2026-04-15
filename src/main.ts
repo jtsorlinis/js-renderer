@@ -299,7 +299,7 @@ const renderMesh = (
 
 const update = () => {
   if (!hasDragged) {
-    modelRotation.y = Math.sin(performance.now() * ROTATION_SPEED) * 0.5;
+    modelRotation.y = Math.cos(performance.now() * ROTATION_SPEED) * 0.5;
     modelRotation.x = 0;
   }
 };
