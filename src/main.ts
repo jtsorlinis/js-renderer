@@ -271,7 +271,8 @@ const renderMesh = (
   depthBuffer: DepthTexture,
   renderMode: RenderMode = "filled",
   targetBuffer: Framebuffer = frameBuffer,
-  perspectiveCorrectInterpolation: boolean = true,
+  perspectiveCorrect: boolean = true,
+  snapVertices: boolean = false,
 ) => {
   for (let i = 0; i < model.vertices.length; i += 3) {
     // Vertex stage for one triangle.
@@ -279,6 +280,9 @@ const renderMesh = (
       activeShader.vertexId = i + j;
       activeShader.nthVert = j;
       triVerts[j] = activeShader.vertex().perspectiveDivide();
+      if (snapVertices) {
+        targetBuffer.snapToPixelGrid(triVerts[j]);
+      }
     }
 
     if (renderMode !== "filled") {
@@ -293,7 +297,7 @@ const renderMesh = (
     }
 
     // Rasterization + fragment stage.
-    triangle(triVerts, activeShader, targetBuffer, depthBuffer, perspectiveCorrectInterpolation);
+    triangle(triVerts, activeShader, targetBuffer, depthBuffer, perspectiveCorrect);
   }
 };
 
@@ -306,7 +310,8 @@ const update = () => {
 
 const draw = () => {
   const renderSettings = activeRenderSettings;
-  const perspectiveCorrectInterpolation = renderSettings.interpolationMode !== "affine";
+  const perspectiveCorrect = renderSettings.perspectiveCorrect ?? true;
+  const snapVertices = renderSettings.snapVertices ?? false;
 
   // 1) Clear all render targets for a new frame.
   if (renderSettings.showEnvironmentBackground) {
@@ -372,7 +377,8 @@ const draw = () => {
     depthBuffer,
     renderSettings.renderMode,
     frameBuffer,
-    perspectiveCorrectInterpolation,
+    perspectiveCorrect,
+    snapVertices,
   );
   ctx.putImageData(imageData, 0, 0);
 };

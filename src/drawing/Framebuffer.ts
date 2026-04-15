@@ -56,4 +56,17 @@ export class Framebuffer {
     const y = (-v.y + 1) * (this.height * 0.5);
     return new Vector4(x, y, v.z, v.w);
   };
+
+  snapToPixelGrid = (v: Vector4) => {
+    const halfWidth = this.width * 0.5;
+    const halfHeight = this.height * 0.5;
+    const screenX = (v.x + 1) * halfWidth;
+    const screenY = (-v.y + 1) * halfHeight;
+    const snappedX = Math.round(screenX);
+    const snappedY = Math.round(screenY);
+
+    v.x = snappedX / halfWidth - 1;
+    v.y = 1 - snappedY / halfHeight;
+    return v;
+  };
 }

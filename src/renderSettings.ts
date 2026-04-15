@@ -11,7 +11,6 @@ export type MaterialMode =
   | "depth";
 
 export type RenderMode = "filled" | "depthWireframe" | "wireframe";
-export type InterpolationMode = "perspectiveCorrect" | "affine";
 
 export type RenderSelection = {
   material: MaterialMode;
@@ -19,7 +18,8 @@ export type RenderSelection = {
   resolution?: number;
   model?: string;
   renderMode?: RenderMode;
-  interpolationMode?: InterpolationMode;
+  perspectiveCorrect?: boolean;
+  snapVertices?: boolean;
   useShadows?: boolean;
   showEnvironmentBackground?: boolean;
 };
@@ -92,7 +92,8 @@ export const SHADING_PRESETS = [
     material: "gouraudTextured",
     resolution: 240,
     model: assetPath("head_200.glb"),
-    interpolationMode: "affine",
+    perspectiveCorrect: false,
+    snapVertices: true,
   },
   {
     value: "ps1-2",
@@ -100,7 +101,8 @@ export const SHADING_PRESETS = [
     material: "gouraud",
     resolution: 240,
     model: assetPath("head_200.glb"),
-    interpolationMode: "affine",
+    perspectiveCorrect: false,
+    snapVertices: true,
   },
   {
     value: "ps1",
@@ -108,7 +110,8 @@ export const SHADING_PRESETS = [
     material: "flat",
     resolution: 240,
     model: assetPath("head_200.glb"),
-    interpolationMode: "affine",
+    perspectiveCorrect: false,
+    snapVertices: true,
   },
   {
     value: "snes-2",

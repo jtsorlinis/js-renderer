@@ -17,6 +17,7 @@ export const edgeFunction = (a: Vector4, b: Vector4, c: Vector4) => {
 // Only instantiate these once and reuse them
 const bcClip: Barycentric = { u: 0, v: 0, w: 0 };
 const fragPos = new Vector3();
+const edgeEpsilon = -1e-6;
 
 // Draw a triangle in screen space (pixels)
 export const triangle = (
@@ -24,7 +25,7 @@ export const triangle = (
   shader: BaseShader,
   buffer: Framebuffer,
   depthBuffer: DepthTexture,
-  perspectiveCorrectInterpolation: boolean = true,
+  perspectiveCorrect: boolean = true,
 ) => {
   const v0 = verts[0];
   const v1 = verts[1];
@@ -91,7 +92,7 @@ export const triangle = (
 
     for (let x = minX; x <= maxX; x++) {
       // Check if pixel is inside triangle
-      if (u >= 0 && v >= 0 && w >= 0) {
+      if (u >= edgeEpsilon && v >= edgeEpsilon && w >= edgeEpsilon) {
         // Interpolate depth to get z value at pixel
         const z = v0.z * u + v1.z * v + v2.z * w;
 
@@ -105,7 +106,7 @@ export const triangle = (
             bcClip.u = u;
             bcClip.v = v;
             bcClip.w = w;
-            if (perspectiveCorrectInterpolation) {
+            if (perspectiveCorrect) {
               const invW = 1 / (v0.w * u + v1.w * v + v2.w * w);
               bcClip.u = u * invW * v0.w;
               bcClip.v = v * invW * v1.w;
