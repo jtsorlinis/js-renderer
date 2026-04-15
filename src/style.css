@@ -129,8 +129,9 @@ body {
   content: counter(shading-step);
   color: rgba(255, 255, 255, 0.48);
   font-size: 12px;
-  text-align: right;
+  text-align: center;
   font-variant-numeric: tabular-nums;
+  width: 14px;
 }
 
 .shading-list li:has(.is-active) .shading-option::before {
@@ -295,5 +296,4 @@ canvas:active {
   .shading-option.is-active {
     transform: none;
   }
-
 }

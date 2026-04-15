@@ -105,7 +105,7 @@ export const rebuildEnvironmentBackdrop = (
         roughnessLayer,
         iblData.specularPrefilterLayerStride,
       );
-      targetBuffer.setPixel(x, y, backgroundEnvSample);
+      targetBuffer.setPixelAces(x, y, backgroundEnvSample);
     }
   }
 };

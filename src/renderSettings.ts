@@ -18,8 +18,12 @@ export type RenderSelection = {
   resolution?: number;
   model?: string;
   renderMode?: RenderMode;
+  paletteMode?: "snes";
   perspectiveCorrect?: boolean;
+  disableTexture?: boolean;
+  useSpecular?: boolean;
   snapVertices?: boolean;
+  tonemap?: boolean;
   useShadows?: boolean;
   showEnvironmentBackground?: boolean;
 };
@@ -40,6 +44,7 @@ export const SHADING_PRESETS = [
     model: assetPath("head_50k.glb"),
     useShadows: true,
     showEnvironmentBackground: true,
+    tonemap: true,
   },
   {
     value: "ps4",
@@ -48,6 +53,7 @@ export const SHADING_PRESETS = [
     resolution: 720,
     model: assetPath("head_30k.glb"),
     useShadows: true,
+    tonemap: true,
   },
 
   {
@@ -74,22 +80,23 @@ export const SHADING_PRESETS = [
   },
   {
     value: "ps2-2",
-    label: "PS2 Fragment",
-    material: "textured",
+    label: "PS2 Specular",
+    material: "gouraud",
+    useSpecular: true,
     resolution: 480,
     model: assetPath("head_1k.glb"),
   },
   {
     value: "ps2",
     label: "PS2",
-    material: "gouraudTextured",
+    material: "gouraud",
     resolution: 480,
     model: assetPath("head_1k.glb"),
   },
   {
     value: "ps1-3",
     label: "PS1 Textures",
-    material: "gouraudTextured",
+    material: "gouraud",
     resolution: 240,
     model: assetPath("head_200.glb"),
     perspectiveCorrect: false,
@@ -99,6 +106,7 @@ export const SHADING_PRESETS = [
     value: "ps1-2",
     label: "PS1 Smooth",
     material: "gouraud",
+    disableTexture: true,
     resolution: 240,
     model: assetPath("head_200.glb"),
     perspectiveCorrect: false,
@@ -117,6 +125,7 @@ export const SHADING_PRESETS = [
     value: "snes-2",
     label: "SNES Lighting",
     material: "flat",
+    paletteMode: "snes",
     resolution: 224,
     model: assetPath("head_50.glb"),
   },
