@@ -1,8 +1,9 @@
-import { BaseShader, Verts } from "./BaseShader";
 import { Vector3, Matrix4 } from "../maths";
+import type { Mesh } from "../utils/mesh";
+import { BaseShader } from "./BaseShader";
 
 export interface Uniforms {
-  model: Verts;
+  model: Mesh;
   mvp: Matrix4;
   normalMat: Matrix4;
   worldLightDir: Vector3;
@@ -11,10 +12,7 @@ export interface Uniforms {
 const ambient = 0.1;
 const baseColor = new Vector3(0.5, 0.5, 0.5);
 
-export class FlatShader extends BaseShader {
-  // Uniforms are set once per draw call.
-  uniforms!: Uniforms;
-
+export class FlatShader extends BaseShader<Uniforms> {
   // Flat shading stores one lighting value for the whole triangle.
   lighting = new Vector3();
 

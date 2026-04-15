@@ -1,7 +1,8 @@
-import { BaseShader, Verts } from "./BaseShader";
 import { Vector3, Matrix4, Vector4, Vector2, saturate, clamp } from "../maths";
 import { DepthTexture } from "../drawing";
 import { type Material } from "../materials/Material";
+import type { Mesh } from "../utils/mesh";
+import { BaseShader } from "./BaseShader";
 import {
   DIELECTRIC_F0,
   EPSILON,
@@ -13,7 +14,7 @@ import {
 import { type IblData, wrapUnit, INV_TAU, sampleLatLongMap } from "./iblHelpers";
 
 export interface Uniforms {
-  model: Verts;
+  model: Mesh;
   mvp: Matrix4;
   modelMat: Matrix4;
   normalMat: Matrix4;
@@ -38,9 +39,7 @@ const environmentIntensity = 0.8;
 
 // This shader keeps a few math-heavy sections expanded inline on purpose for
 // performance in the software renderer hot path.
-export class IblShader extends BaseShader {
-  uniforms!: Uniforms;
-
+export class IblShader extends BaseShader<Uniforms> {
   vUV = this.varying<Vector2>();
   vWorldPos = this.varying<Vector3>();
   vWorldNormal = this.varying<Vector3>();

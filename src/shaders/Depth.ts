@@ -1,14 +1,13 @@
 import { Matrix4 } from "../maths";
-import { BaseShader, Verts } from "./BaseShader";
+import type { Mesh } from "../utils/mesh";
+import { BaseShader } from "./BaseShader";
 
 export interface Uniforms {
-  model: Verts;
+  model: Mesh;
   clipMat: Matrix4;
 }
 
-export class DepthShader extends BaseShader {
-  uniforms!: Uniforms;
-
+export class DepthShader extends BaseShader<Uniforms> {
   vertex = () => {
     // Depth-only passes only need clip-space coordinates.
     return this.uniforms.clipMat.transformPoint4(this.uniforms.model.vertices[this.vertexId]);

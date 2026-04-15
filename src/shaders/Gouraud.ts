@@ -1,8 +1,9 @@
-import { BaseShader, Verts } from "./BaseShader";
 import { Vector3, Matrix4 } from "../maths";
+import type { Mesh } from "../utils/mesh";
+import { BaseShader } from "./BaseShader";
 
 export interface Uniforms {
-  model: Verts;
+  model: Mesh;
   modelMat: Matrix4;
   mvp: Matrix4;
   normalMat: Matrix4;
@@ -17,10 +18,7 @@ const shininess = 32;
 const ambient = 0.1;
 const baseColor = new Vector3(0.5, 0.5, 0.5);
 
-export class GouraudShader extends BaseShader {
-  // Uniforms are set once per draw call.
-  uniforms!: Uniforms;
-
+export class GouraudShader extends BaseShader<Uniforms> {
   vertexColor = this.varying<Vector3>();
 
   vertex = () => {
