@@ -414,9 +414,7 @@ export class PathTracer {
 
     const sampledBaseColor = hasUvs ? sampleTexture(scene.material.colorTexture, uv) : Vector3.One;
     const baseColor = sampledBaseColor.multiplyInPlace(scene.material.colorFactor);
-    const metallicRoughness = hasUvs
-      ? sampleTexture(scene.material.metallicRoughnessTexture, uv)
-      : Vector3.One;
+    const metallicRoughness = hasUvs ? sampleTexture(scene.material.ormTexture, uv) : Vector3.One;
     const roughness = Math.max(
       0.045,
       saturate(metallicRoughness.y * scene.material.roughnessFactor),
