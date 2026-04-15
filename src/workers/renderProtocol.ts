@@ -17,7 +17,8 @@ export interface SerializedTexture {
 export interface SerializedMaterial {
   colorTexture: SerializedTexture;
   normalTexture: SerializedTexture;
-  metallicRoughnessTexture: SerializedTexture;
+  ormTexture: SerializedTexture;
+  occlusionStrength: number;
   colorFactor: Vec3Tuple;
   metallicFactor: number;
   roughnessFactor: number;
@@ -199,7 +200,8 @@ export const serializeStaticScene = (
     material: {
       colorTexture: serializeTexture(scene.material.colorTexture),
       normalTexture: serializeTexture(scene.material.normalTexture),
-      metallicRoughnessTexture: serializeTexture(scene.material.metallicRoughnessTexture),
+      ormTexture: serializeTexture(scene.material.ormTexture),
+      occlusionStrength: scene.material.occlusionStrength,
       colorFactor: [
         scene.material.colorFactor.x,
         scene.material.colorFactor.y,
@@ -240,10 +242,11 @@ export const deserializeStaticScene = (scene: SerializedSceneBase): StaticRender
   const material: Material = {
     colorTexture: deserializeTexture(scene.material.colorTexture),
     normalTexture: deserializeTexture(scene.material.normalTexture),
-    metallicRoughnessTexture: deserializeTexture(scene.material.metallicRoughnessTexture),
+    ormTexture: deserializeTexture(scene.material.ormTexture),
     colorFactor: new Vector3(...scene.material.colorFactor),
     metallicFactor: scene.material.metallicFactor,
     roughnessFactor: scene.material.roughnessFactor,
+    occlusionStrength: scene.material.occlusionStrength,
   };
 
   return {
