@@ -30,9 +30,7 @@ const quantize4 = (value: number) => {
   return Math.round(saturate(value) * 15) / 15;
 };
 
-const bayer4x4 = new Uint8Array([
-  0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5,
-]);
+const bayer4x4 = new Uint8Array([0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]);
 
 const quantizeOrdered = (value: number, maxLevel: number, x: number, y: number) => {
   const scaled = saturate(value) * maxLevel;
@@ -109,6 +107,14 @@ export class Framebuffer {
 
   clear = () => {
     this.data.fill(0);
+  };
+
+  fadeToBlack = (amount: number) => {
+    for (let i = 0; i < this.data.length; i += 4) {
+      this.data[i + 0] -= amount * 255;
+      this.data[i + 1] -= amount * 255;
+      this.data[i + 2] -= amount * 255;
+    }
   };
 
   copyFrom = (src: Framebuffer) => {
