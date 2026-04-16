@@ -308,7 +308,7 @@ const update = () => {
   }
 };
 
-const draw = () => {
+const draw = (dt: number) => {
   const renderSettings = activeRenderSettings;
   const perspectiveCorrect = renderSettings.perspectiveCorrect ?? true;
   const snapVertices = renderSettings.snapVertices ?? false;
@@ -316,6 +316,8 @@ const draw = () => {
   // 1) Clear all render targets for a new frame.
   if (renderSettings.showEnvironmentBackground) {
     frameBuffer.copyFrom(bgBuffer);
+  } else if (renderSettings.vectorFade) {
+    frameBuffer.fadeToBlack(dt * 6);
   } else {
     frameBuffer.clear();
   }
@@ -392,9 +394,10 @@ let prevTime = performance.now();
 let lastFpsUiUpdate = prevTime;
 const loop = () => {
   const now = performance.now();
+  const dt = (now - prevTime) / 1000;
   prevTime = now;
   update();
-  draw();
+  draw(dt);
   const actualFrameTime = performance.now() - now;
 
   if (now - lastFpsUiUpdate >= FPS_UPDATE_INTERVAL_MS) {

@@ -30,6 +30,7 @@ export type RenderSelection = {
     | "setPixelQuantize4Dither";
   useShadows?: boolean;
   showEnvironmentBackground?: boolean;
+  vectorFade?: boolean;
 };
 
 const assetPath = (fileName: string) => `${import.meta.env.BASE_URL}models/heads/${fileName}`;
@@ -139,7 +140,8 @@ export const SHADING_PRESETS = [
     material: "depth",
     renderMode: "wireframe",
     model: assetPath("head_50.glb"),
-    resolution: 224,
+    resolution: 360,
+    vectorFade: true,
   },
 ] satisfies ShadingPreset[];
 
