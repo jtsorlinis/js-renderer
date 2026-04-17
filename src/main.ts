@@ -108,10 +108,10 @@ let shadowBuffer = new Framebuffer(shadowImageData);
 let bgImageData = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
 let bgBuffer = new Framebuffer(bgImageData);
 
-const setRenderResolution = (scale = 1) => {
-  const width = CANVAS_WIDTH * scale;
-  const height = CANVAS_HEIGHT * scale;
-  const shadowMapSize = SHADOW_MAP_SIZE * scale;
+const setRenderResolution = () => {
+  const width = CANVAS_WIDTH;
+  const height = CANVAS_HEIGHT;
+  const shadowMapSize = SHADOW_MAP_SIZE;
 
   canvas.width = width;
   canvas.height = height;
