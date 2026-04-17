@@ -49,6 +49,7 @@ export const SHADING_PRESETS = [
     model: assetPath("head_50k.glb"),
     useShadows: true,
     showEnvironmentBackground: true,
+    setPixelFn: "setPixelAces",
   },
   {
     value: "ps4",
@@ -57,6 +58,7 @@ export const SHADING_PRESETS = [
     resolution: 1080,
     model: assetPath("head_30k.glb"),
     useShadows: true,
+    setPixelFn: "setPixelAces",
   },
 
   {
