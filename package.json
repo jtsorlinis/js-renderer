@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "deploy": "tsc && vite build && gh-pages -d dist"
+    "deploy": "npm run build && node scripts/deploy-gh-pages.cjs",
+    "deploy:clean": "npm run build && gh-pages -d dist"
   },
   "prettier": {
     "printWidth": 100
