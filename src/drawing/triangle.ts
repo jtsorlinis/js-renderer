@@ -50,15 +50,6 @@ export const triangle = (
   if (v0.z < 0 || v1.z < 0 || v2.z < 0) return;
   if (v0.z > 1 || v1.z > 1 || v2.z > 1) return;
 
-  // Reject triangles that are fully outside the viewport
-  if (
-    (p0x < 0 && p1x < 0 && p2x < 0) ||
-    (p0x > buffer.width && p1x > buffer.width && p2x > buffer.width) ||
-    (p0y < 0 && p1y < 0 && p2y < 0) ||
-    (p0y > buffer.height && p1y > buffer.height && p2y > buffer.height)
-  )
-    return;
-
   // Calculate bounding box
   const minX = ~~Math.max(0, Math.min(p0x, p1x, p2x));
   const minY = ~~Math.max(0, Math.min(p0y, p1y, p2y));
