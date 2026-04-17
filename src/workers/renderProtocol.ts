@@ -65,15 +65,12 @@ export interface SerializedFrameState {
 
 export interface ConfigureWorkerMessage {
   type: "configure";
-  sceneVersion: number;
   tile: BufferRegion;
   scene: SerializedScene;
 }
 
 export interface RenderWorkerMessage {
   type: "render";
-  sceneVersion: number;
-  frameId: number;
   frame: SerializedFrameState;
   outputBuffer: ArrayBuffer;
   triangleVertexIndices: Uint32Array;
@@ -82,32 +79,13 @@ export interface RenderWorkerMessage {
 
 export type WorkerRequestMessage = ConfigureWorkerMessage | RenderWorkerMessage;
 
-export interface WorkerConfiguredMessage {
-  type: "configured";
-  sceneVersion: number;
-}
-
 export interface WorkerRenderedMessage {
   type: "rendered";
-  sceneVersion: number;
-  frameId: number;
-  tile: BufferRegion;
   pixels: Uint8ClampedArray;
   shadowMapBuffer?: Float32Array;
-  renderTimeMs: number;
 }
 
-export interface WorkerErrorMessage {
-  type: "error";
-  message: string;
-  sceneVersion?: number;
-  frameId?: number;
-}
-
-export type WorkerResponseMessage =
-  | WorkerConfiguredMessage
-  | WorkerRenderedMessage
-  | WorkerErrorMessage;
+export type WorkerResponseMessage = WorkerRenderedMessage;
 
 const serializeVector2Array = (values: Vector2[]) => {
   const data = new Float32Array(values.length * 2);

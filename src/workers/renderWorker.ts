@@ -12,7 +12,6 @@ import {
 const workerScope = self as DedicatedWorkerGlobalScope;
 const shaders = createShaders();
 
-let sceneVersion = 0;
 let frameFov = 50;
 let tile = { x: 0, y: 0, width: 1, height: 1 };
 let scene: ReturnType<typeof deserializeStaticScene> | null = null;
@@ -53,79 +52,56 @@ const sendMessage = (message: WorkerResponseMessage, transfer: Transferable[] = 
 };
 
 workerScope.onmessage = (event: MessageEvent<WorkerRequestMessage>) => {
-  try {
-    const message = event.data;
-    if (message.type === "configure") {
-      sceneVersion = message.sceneVersion;
-      tile = message.tile;
-      frameFov = message.scene.fov;
-      scene = deserializeStaticScene(message.scene);
-      backgroundBuffer = new Framebuffer({
-        width: message.scene.fullWidth,
-        height: message.scene.fullHeight,
-        region: tile,
-        data: message.scene.backgroundData,
-      });
-      createTileBuffers(
-        message.scene.fullWidth,
-        message.scene.fullHeight,
-        message.scene.shadowMapSize,
-      );
-
-      sendMessage({
-        type: "configured",
-        sceneVersion,
-      });
-      return;
-    }
-
-    if (!scene || message.sceneVersion !== sceneVersion) {
-      return;
-    }
-
-    const renderStart = performance.now();
-    bindOutputBuffer(message.outputBuffer);
-    if (message.shadowMapBuffer) {
-      bindShadowMapBuffer(message.shadowMapBuffer);
-    }
-    const frame = deserializeFrameState(message.frame);
-    drawScene(
-      scene,
-      frame,
-      {
-        frameBuffer,
-        depthBuffer,
-        shadowMap,
-        shadowBuffer,
-        backgroundBuffer,
-      },
-      shaders,
-      frameFov,
-      {
-        triangleVertexIndices: message.triangleVertexIndices,
-        skipShadowPass: Boolean(message.shadowMapBuffer),
-      },
-    );
-
-    const renderTimeMs = performance.now() - renderStart;
-    sendMessage(
-      {
-        type: "rendered",
-        sceneVersion,
-        frameId: message.frameId,
-        tile,
-        pixels: frameBuffer.data,
-        shadowMapBuffer: message.shadowMapBuffer ? shadowMap.data : undefined,
-        renderTimeMs,
-      },
-      message.shadowMapBuffer
-        ? [frameBuffer.data.buffer, shadowMap.data.buffer]
-        : [frameBuffer.data.buffer],
-    );
-  } catch (error) {
-    sendMessage({
-      type: "error",
-      message: error instanceof Error ? error.message : String(error),
+  const message = event.data;
+  if (message.type === "configure") {
+    tile = message.tile;
+    frameFov = message.scene.fov;
+    scene = deserializeStaticScene(message.scene);
+    backgroundBuffer = new Framebuffer({
+      width: message.scene.fullWidth,
+      height: message.scene.fullHeight,
+      region: tile,
+      data: message.scene.backgroundData,
     });
+    createTileBuffers(
+      message.scene.fullWidth,
+      message.scene.fullHeight,
+      message.scene.shadowMapSize,
+    );
+    return;
   }
+
+  bindOutputBuffer(message.outputBuffer);
+  if (message.shadowMapBuffer) {
+    bindShadowMapBuffer(message.shadowMapBuffer);
+  }
+  const frame = deserializeFrameState(message.frame);
+  drawScene(
+    scene!,
+    frame,
+    {
+      frameBuffer,
+      depthBuffer,
+      shadowMap,
+      shadowBuffer,
+      backgroundBuffer,
+    },
+    shaders,
+    frameFov,
+    {
+      triangleVertexIndices: message.triangleVertexIndices,
+      skipShadowPass: Boolean(message.shadowMapBuffer),
+    },
+  );
+
+  sendMessage(
+    {
+      type: "rendered",
+      pixels: frameBuffer.data,
+      shadowMapBuffer: message.shadowMapBuffer ? shadowMap.data : undefined,
+    },
+    message.shadowMapBuffer
+      ? [frameBuffer.data.buffer, shadowMap.data.buffer]
+      : [frameBuffer.data.buffer],
+  );
 };

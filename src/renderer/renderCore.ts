@@ -189,20 +189,6 @@ export const buildTileTriangleBins = (
     const v1 = mvp.transformPoint4(model.vertices[i + 1]).perspectiveDivide();
     const v2 = mvp.transformPoint4(model.vertices[i + 2]).perspectiveDivide();
 
-    if (
-      !Number.isFinite(v0.x) ||
-      !Number.isFinite(v0.y) ||
-      !Number.isFinite(v0.z) ||
-      !Number.isFinite(v1.x) ||
-      !Number.isFinite(v1.y) ||
-      !Number.isFinite(v1.z) ||
-      !Number.isFinite(v2.x) ||
-      !Number.isFinite(v2.y) ||
-      !Number.isFinite(v2.z)
-    ) {
-      continue;
-    }
-
     if (v0.z < 0 || v1.z < 0 || v2.z < 0) continue;
     if (v0.z > 1 || v1.z > 1 || v2.z > 1) continue;
 

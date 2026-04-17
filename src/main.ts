@@ -4,7 +4,6 @@ import { DepthTexture, Framebuffer } from "./drawing";
 import {
   buildTileTriangleBins,
   createShaders,
-  drawScene,
   renderShadowPass,
   type FrameRenderState,
   type RenderSettings,
@@ -38,12 +37,6 @@ const PAN_SENSITIVITY = 250;
 const ZOOM_SENSITIVITY = 100;
 const FPS_UPDATE_INTERVAL_MS = 250;
 const INITIAL_MODEL: ModelKey = "dice";
-const MAX_RENDER_WORKERS = 4;
-
-const WORKER_COUNT = (() => {
-  const cores = navigator.hardwareConcurrency ?? MAX_RENDER_WORKERS;
-  return cores > 1 ? Math.min(MAX_RENDER_WORKERS, cores) : 1;
-})();
 
 // UI handles
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -58,13 +51,9 @@ const loadGlbBtn = document.getElementById("loadGlbBtn") as HTMLButtonElement;
 const glbInput = document.getElementById("glbInput") as HTMLInputElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 const localShaders = createShaders();
-const workerRenderer = WORKER_COUNT > 1 ? new TiledWorkerRenderer(WORKER_COUNT) : null;
+const workerRenderer = new TiledWorkerRenderer();
 
 let mouseButtonState = 0;
-let workersDisabled = false;
-let workerSyncPending = false;
-let workerSyncQueue = Promise.resolve();
-let workerFramePromise: Promise<void> | null = null;
 let lastRenderedFrameMs = 0;
 
 const getShadingButton = () => {
@@ -116,24 +105,20 @@ const fitCanvas = () => {
 };
 
 let imageData = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
-let frameBuffer = new Framebuffer(imageData);
-let depthBuffer = new DepthTexture(CANVAS_WIDTH, CANVAS_HEIGHT);
 let shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
 let shadowBuffer = new Framebuffer({ width: SHADOW_MAP_SIZE, height: SHADOW_MAP_SIZE });
 let bgImageData = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
 let bgBuffer = new Framebuffer(bgImageData);
 
-const setRenderResolution = (scale = 1) => {
-  const width = CANVAS_WIDTH * scale;
-  const height = CANVAS_HEIGHT * scale;
-  const shadowMapSize = SHADOW_MAP_SIZE * scale;
+const setRenderResolution = () => {
+  const width = CANVAS_WIDTH;
+  const height = CANVAS_HEIGHT;
+  const shadowMapSize = SHADOW_MAP_SIZE;
 
   canvas.width = width;
   canvas.height = height;
   aspectRatio = width / height;
   imageData = new ImageData(width, height);
-  frameBuffer = new Framebuffer(imageData);
-  depthBuffer = new DepthTexture(width, height);
   shadowMap = new DepthTexture(shadowMapSize, shadowMapSize);
   shadowBuffer = new Framebuffer({ width: shadowMapSize, height: shadowMapSize });
   bgImageData = new ImageData(width, height);
@@ -222,70 +207,11 @@ const buildFrameState = (renderSettings: RenderSettings): FrameRenderState => {
   };
 };
 
-const renderLocally = (renderSettings: RenderSettings) => {
-  drawScene(
-    buildStaticScene(),
-    buildFrameState(renderSettings),
-    {
-      frameBuffer,
-      depthBuffer,
-      shadowMap,
-      shadowBuffer,
-      backgroundBuffer: bgBuffer,
-    },
-    localShaders,
-    FOV,
-  );
-  ctx.putImageData(imageData, 0, 0);
-};
-
-const disableWorkers = (reason: string, error: unknown) => {
-  workersDisabled = true;
-  workerFramePromise = null;
-  workerSyncPending = false;
-  workerRenderer?.dispose();
-  console.error(reason, error);
-};
-
 const syncWorkersScene = () => {
-  if (!workerRenderer || workersDisabled) {
-    return Promise.resolve();
-  }
-
-  workerSyncPending = true;
-  const queuedSync = workerSyncQueue
-    .catch(() => undefined)
-    .then(async () => {
-      await workerRenderer.configure(
-        buildStaticScene(),
-        imageData,
-        shadowMap.width,
-        FOV,
-        bgBuffer.data,
-      );
-    })
-    .catch((error) => {
-      disableWorkers("Failed to configure render workers", error);
-    })
-    .finally(() => {
-      if (workerSyncQueue === queuedSync) {
-        workerSyncPending = false;
-      }
-    });
-
-  workerSyncQueue = queuedSync;
-  return queuedSync;
+  workerRenderer.configure(buildStaticScene(), imageData, shadowMap.width, FOV, bgBuffer.data);
 };
 
-const renderWithWorkers = (renderSettings: RenderSettings) => {
-  if (!workerRenderer || workersDisabled || workerSyncPending || !workerRenderer.isConfigured) {
-    return false;
-  }
-
-  if (workerFramePromise) {
-    return true;
-  }
-
+const renderWithWorkers = async (renderSettings: RenderSettings) => {
   const scene = buildStaticScene();
   const frame = buildFrameState(renderSettings);
   const tileTriangleVertexIndices = buildTileTriangleBins(
@@ -296,33 +222,22 @@ const renderWithWorkers = (renderSettings: RenderSettings) => {
     imageData.height,
     workerRenderer.tiles,
   );
-  const sharedShadowMapData = renderSettings.useShadows ? shadowMap.data : undefined;
+
+  let sharedShadowMapData;
   if (renderSettings.useShadows) {
+    sharedShadowMapData = shadowMap.data;
     renderShadowPass(scene, frame, shadowMap, shadowBuffer, localShaders, FOV);
   }
-  const targetImage = imageData;
-  workerFramePromise = workerRenderer
-    .render(frame, targetImage, tileTriangleVertexIndices, sharedShadowMapData)
-    .then((elapsedMs) => {
-      if (targetImage !== imageData) {
-        return;
-      }
-      lastRenderedFrameMs = elapsedMs;
-      ctx.putImageData(targetImage, 0, 0);
-    })
-    .catch((error) => {
-      disableWorkers("Render workers failed during frame rendering", error);
-      if (targetImage === imageData) {
-        const localStart = performance.now();
-        renderLocally(renderSettings);
-        lastRenderedFrameMs = performance.now() - localStart;
-      }
-    })
-    .finally(() => {
-      workerFramePromise = null;
-    });
 
-  return true;
+  const targetImage = imageData;
+  const elapsedMs = await workerRenderer.render(
+    frame,
+    targetImage,
+    tileTriangleVertexIndices,
+    sharedShadowMapData,
+  );
+  lastRenderedFrameMs = elapsedMs;
+  ctx.putImageData(targetImage, 0, 0);
 };
 
 const applyModelOption = (selectedModel: ModelOption) => {
@@ -344,7 +259,7 @@ const setModel = async (modelKey: ModelKey, resetTransform = true) => {
     resetModelTransform();
   }
 
-  await syncWorkersScene();
+  syncWorkersScene();
 };
 
 const loadSelectedGlb = async (file: File, resetTransform = true) => {
@@ -359,7 +274,7 @@ const loadSelectedGlb = async (file: File, resetTransform = true) => {
     resetModelTransform();
   }
 
-  await syncWorkersScene();
+  syncWorkersScene();
 };
 
 const update = (dt: number) => {
@@ -370,7 +285,7 @@ const update = (dt: number) => {
 
 let prevTime = performance.now();
 let lastFpsUiUpdate = prevTime;
-const loop = () => {
+const loop = async () => {
   const now = performance.now();
   const frameIntervalMs = now - prevTime;
   const deltaTime = frameIntervalMs / 1000;
@@ -379,11 +294,7 @@ const loop = () => {
   update(deltaTime);
   const renderSettings = getRenderSettings();
 
-  if (!renderWithWorkers(renderSettings)) {
-    const localStart = performance.now();
-    renderLocally(renderSettings);
-    lastRenderedFrameMs = performance.now() - localStart;
-  }
+  await renderWithWorkers(renderSettings);
 
   if (now - lastFpsUiUpdate >= FPS_UPDATE_INTERVAL_MS) {
     const fps = 1000 / lastRenderedFrameMs;
@@ -445,22 +356,20 @@ loadGlbBtn.addEventListener("click", () => {
   glbInput.click();
 });
 
-glbInput.addEventListener("change", () => {
+glbInput.addEventListener("change", async () => {
   const [file] = glbInput.files ?? [];
   glbInput.value = "";
   if (!file) {
     return;
   }
 
-  void loadSelectedGlb(file).catch((error) => {
+  try {
+    await loadSelectedGlb(file);
+  } catch (error) {
     console.error(`Failed to load GLB file "${file.name}"`, error);
-  });
-});
-
-window.addEventListener("pagehide", () => {
-  workerRenderer?.dispose();
+  }
 });
 
 updateModelStats();
-await syncWorkersScene();
+syncWorkersScene();
 loop();
