@@ -45,20 +45,18 @@ export const SHADING_PRESETS = [
     value: "ps5",
     label: "PS5",
     material: "ibl",
-    resolution: 720,
+    resolution: 1080,
     model: assetPath("head_50k.glb"),
     useShadows: true,
     showEnvironmentBackground: true,
-    setPixelFn: "setPixelAces",
   },
   {
     value: "ps4",
     label: "PS4",
     material: "pbr",
-    resolution: 720,
+    resolution: 1080,
     model: assetPath("head_30k.glb"),
     useShadows: true,
-    setPixelFn: "setPixelAces",
   },
 
   {
