@@ -47,15 +47,6 @@ export const triangle = (
   if (v0.z < 0 || v1.z < 0 || v2.z < 0) return;
   if (v0.z > 1 || v1.z > 1 || v2.z > 1) return;
 
-  // Reject triangles that are fully outside the viewport
-  if (
-    (p0x < buffer.clipMinX && p1x < buffer.clipMinX && p2x < buffer.clipMinX) ||
-    (p0x > buffer.clipMaxX && p1x > buffer.clipMaxX && p2x > buffer.clipMaxX) ||
-    (p0y < buffer.clipMinY && p1y < buffer.clipMinY && p2y < buffer.clipMinY) ||
-    (p0y > buffer.clipMaxY && p1y > buffer.clipMaxY && p2y > buffer.clipMaxY)
-  )
-    return;
-
   // Calculate bounding box
   const clipMinX = Math.max(buffer.clipMinX, depthBuffer.clipMinX);
   const clipMinY = Math.max(buffer.clipMinY, depthBuffer.clipMinY);

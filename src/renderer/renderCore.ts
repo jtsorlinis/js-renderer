@@ -213,10 +213,10 @@ export const buildTileTriangleBins = (
       if (area <= 0) continue;
     }
 
-    const minX = Math.max(0, Math.min(p0x, p1x, p2x));
-    const minY = Math.max(0, Math.min(p0y, p1y, p2y));
-    const maxX = Math.min(viewportWidth - 1, Math.max(p0x, p1x, p2x));
-    const maxY = Math.min(viewportHeight - 1, Math.max(p0y, p1y, p2y));
+    const minX = ~~Math.max(0, Math.min(p0x, p1x, p2x));
+    const minY = ~~Math.max(0, Math.min(p0y, p1y, p2y));
+    const maxX = ~~Math.min(viewportWidth - 1, Math.max(p0x, p1x, p2x));
+    const maxY = ~~Math.min(viewportHeight - 1, Math.max(p0y, p1y, p2y));
 
     if (minX > maxX || minY > maxY) {
       continue;
