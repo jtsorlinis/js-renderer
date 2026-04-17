@@ -26,8 +26,8 @@ import {
 import { getModelRadius } from "./utils/mesh";
 import { TiledWorkerRenderer } from "./workers/TiledWorkerRenderer";
 
-const CANVAS_WIDTH = 800;
-const CANVAS_HEIGHT = 600;
+const CANVAS_WIDTH = 1280;
+const CANVAS_HEIGHT = 800;
 const FOV = 50;
 const SHADOW_MAP_SIZE = 512;
 const INITIAL_ROTATION = Math.PI / 2;
