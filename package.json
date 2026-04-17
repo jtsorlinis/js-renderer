@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "deploy": "node scripts/deploy-pages.mjs"
+    "deploy": "node scripts/deploy-gh-pages.mjs"
   },
   "prettier": {
     "printWidth": 100
