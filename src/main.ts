@@ -99,16 +99,12 @@ const fitCanvas = () => {
   canvas.style.width = `${Math.floor(w)}px`;
   canvas.style.height = `${Math.floor(h)}px`;
 };
-let imageData = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
-let frameBuffer = new Framebuffer(imageData);
+let frameBuffer = new Framebuffer(CANVAS_WIDTH, CANVAS_HEIGHT);
 let depthBuffer = new DepthTexture(CANVAS_WIDTH, CANVAS_HEIGHT);
 let shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-let shadowImageData = new ImageData(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-let shadowBuffer = new Framebuffer(shadowImageData);
-let bgImageData = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
-let bgImageDataTonemapped = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
-let bgBuffer = new Framebuffer(bgImageData);
-let bgBufferTonemapped = new Framebuffer(bgImageDataTonemapped);
+let shadowBuffer = new Framebuffer(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+let bgBuffer = new Framebuffer(CANVAS_WIDTH, CANVAS_HEIGHT);
+let bgBufferTonemapped = new Framebuffer(CANVAS_WIDTH, CANVAS_HEIGHT);
 
 const setRenderResolution = () => {
   const width = CANVAS_WIDTH;
@@ -118,16 +114,12 @@ const setRenderResolution = () => {
   canvas.width = width;
   canvas.height = height;
   aspectRatio = width / height;
-  imageData = new ImageData(width, height);
-  frameBuffer = new Framebuffer(imageData);
+  frameBuffer = new Framebuffer(width, height);
   depthBuffer = new DepthTexture(width, height);
   shadowMap = new DepthTexture(shadowMapSize, shadowMapSize);
-  shadowImageData = new ImageData(shadowMapSize, shadowMapSize);
-  shadowBuffer = new Framebuffer(shadowImageData);
-  bgImageData = new ImageData(width, height);
-  bgImageDataTonemapped = new ImageData(width, height);
-  bgBuffer = new Framebuffer(bgImageData);
-  bgBufferTonemapped = new Framebuffer(bgImageDataTonemapped);
+  shadowBuffer = new Framebuffer(shadowMapSize, shadowMapSize);
+  bgBuffer = new Framebuffer(width, height);
+  bgBufferTonemapped = new Framebuffer(width, height);
   fitCanvas();
 };
 
@@ -344,7 +336,7 @@ const draw = () => {
 
   // 6) Main render pass
   renderMesh(shader, depthBuffer, renderSettings.renderMode, frameBuffer, renderSettings.tonemap);
-  ctx.putImageData(imageData, 0, 0);
+  ctx.putImageData(frameBuffer.imageData, 0, 0);
 };
 
 let prevTime = performance.now();
