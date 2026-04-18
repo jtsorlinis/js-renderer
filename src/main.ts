@@ -106,7 +106,9 @@ let shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
 let shadowImageData = new ImageData(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
 let shadowBuffer = new Framebuffer(shadowImageData);
 let bgImageData = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
+let bgImageDataTonemapped = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
 let bgBuffer = new Framebuffer(bgImageData);
+let bgBufferTonemapped = new Framebuffer(bgImageDataTonemapped);
 
 const setRenderResolution = () => {
   const width = CANVAS_WIDTH;
@@ -123,7 +125,9 @@ const setRenderResolution = () => {
   shadowImageData = new ImageData(shadowMapSize, shadowMapSize);
   shadowBuffer = new Framebuffer(shadowImageData);
   bgImageData = new ImageData(width, height);
+  bgImageDataTonemapped = new ImageData(width, height);
   bgBuffer = new Framebuffer(bgImageData);
+  bgBufferTonemapped = new Framebuffer(bgImageDataTonemapped);
   fitCanvas();
 };
 
@@ -142,7 +146,8 @@ const cameraLookDir = Vector3.Forward;
 const viewDir = cameraLookDir.scale(-1);
 const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
-rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw);
+rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw, false);
+rebuildEnvironmentBackdrop(bgBufferTonemapped, iblData, aspectRatio, FOV, envYaw, true);
 
 const initialModelOption = await ensureModelOption(INITIAL_MODEL);
 modelDd.value = INITIAL_MODEL;
@@ -228,6 +233,7 @@ const getRenderSettings = (): RenderSettings => {
     renderMode: selection.renderMode,
     useShadows: selection.useShadows,
     showEnvironmentBackground: selection.showEnvironmentBackground,
+    tonemap: selection.tonemap,
   };
 };
 
@@ -236,6 +242,7 @@ const renderMesh = (
   depthBuffer: DepthTexture,
   renderMode: RenderMode = "filled",
   targetBuffer: Framebuffer = frameBuffer,
+  tonemap?: boolean,
 ) => {
   for (let i = 0; i < model.vertices.length; i += 3) {
     // Vertex stage for one triangle.
@@ -257,7 +264,7 @@ const renderMesh = (
     }
 
     // Rasterization + fragment stage.
-    triangle(triVerts, activeShader, targetBuffer, depthBuffer);
+    triangle(triVerts, activeShader, targetBuffer, depthBuffer, tonemap);
   }
 };
 
@@ -272,7 +279,7 @@ const draw = () => {
 
   // 1) Clear all render targets for a new frame.
   if (renderSettings.showEnvironmentBackground) {
-    frameBuffer.copyFrom(bgBuffer);
+    frameBuffer.copyFrom(renderSettings.tonemap ? bgBufferTonemapped : bgBuffer);
   } else {
     frameBuffer.clear();
   }
@@ -336,7 +343,7 @@ const draw = () => {
   }
 
   // 6) Main render pass
-  renderMesh(shader, depthBuffer, renderSettings.renderMode);
+  renderMesh(shader, depthBuffer, renderSettings.renderMode, frameBuffer, renderSettings.tonemap);
   ctx.putImageData(imageData, 0, 0);
 };
 

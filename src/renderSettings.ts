@@ -16,10 +16,19 @@ export type RenderSelection = {
   renderMode?: RenderMode;
   useShadows?: boolean;
   showEnvironmentBackground?: boolean;
+  tonemap?: boolean;
 };
 
 export const resolveShadingSelection = (value: string): RenderSelection => {
   switch (value) {
+    case "tonemapped-ibl":
+      return {
+        material: "ibl",
+        useShadows: true,
+        showEnvironmentBackground: true,
+        normalizedValue: value,
+        tonemap: true,
+      };
     case "ibl":
       return {
         material: "ibl",
