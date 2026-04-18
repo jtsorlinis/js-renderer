@@ -43,7 +43,7 @@
               <button
                 type="button"
                 class="shading-option"
-                data-shading-index="10"
+                data-shading-index="11"
                 data-shading-label="X"
                 data-shading-value="pathTrace"
                 aria-pressed="false"
@@ -55,9 +55,20 @@
               <button
                 type="button"
                 class="shading-option is-active"
+                data-shading-index="10"
+                data-shading-value="tonemapped-ibl"
+                aria-pressed="true"
+              >
+                Tonemapping
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="shading-option"
                 data-shading-index="9"
                 data-shading-value="ibl"
-                aria-pressed="true"
+                aria-pressed="false"
               >
                 Environment
               </button>
@@ -168,9 +179,9 @@
             class="shading-slider hideMobile"
             type="range"
             min="0"
-            max="10"
+            max="11"
             step="1"
-            value="9"
+            value="10"
             aria-label="Shading"
           />
         </div>

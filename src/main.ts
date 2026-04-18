@@ -106,14 +106,12 @@ const fitCanvas = () => {
   canvas.style.width = `${Math.floor(w)}px`;
   canvas.style.height = `${Math.floor(h)}px`;
 };
-let imageData = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
-let frameBuffer = new Framebuffer(imageData);
+let frameBuffer = new Framebuffer(CANVAS_WIDTH, CANVAS_HEIGHT);
 let depthBuffer = new DepthTexture(CANVAS_WIDTH, CANVAS_HEIGHT);
 let shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-let shadowImageData = new ImageData(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-let shadowBuffer = new Framebuffer(shadowImageData);
-let bgImageData = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
-let bgBuffer = new Framebuffer(bgImageData);
+let shadowBuffer = new Framebuffer(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+let bgBuffer = new Framebuffer(CANVAS_WIDTH, CANVAS_HEIGHT);
+let bgBufferTonemapped = new Framebuffer(CANVAS_WIDTH, CANVAS_HEIGHT);
 
 const setRenderResolution = () => {
   const width = CANVAS_WIDTH;
@@ -123,14 +121,12 @@ const setRenderResolution = () => {
   canvas.width = width;
   canvas.height = height;
   aspectRatio = width / height;
-  imageData = new ImageData(width, height);
-  frameBuffer = new Framebuffer(imageData);
+  frameBuffer = new Framebuffer(width, height);
   depthBuffer = new DepthTexture(width, height);
   shadowMap = new DepthTexture(shadowMapSize, shadowMapSize);
-  shadowImageData = new ImageData(shadowMapSize, shadowMapSize);
-  shadowBuffer = new Framebuffer(shadowImageData);
-  bgImageData = new ImageData(width, height);
-  bgBuffer = new Framebuffer(bgImageData);
+  shadowBuffer = new Framebuffer(shadowMapSize, shadowMapSize);
+  bgBuffer = new Framebuffer(width, height);
+  bgBufferTonemapped = new Framebuffer(width, height);
   fitCanvas();
 };
 
@@ -149,7 +145,8 @@ const cameraLookDir = Vector3.Forward;
 const viewDir = cameraLookDir.scale(-1);
 const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
-rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw);
+rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw, false);
+rebuildEnvironmentBackdrop(bgBufferTonemapped, iblData, aspectRatio, FOV, envYaw, true);
 
 const initialModelOption = await ensureModelOption(INITIAL_MODEL);
 modelDd.value = INITIAL_MODEL;
@@ -243,6 +240,7 @@ const getRenderSettings = (): RenderSettings => {
     renderMode: selection.renderMode,
     useShadows: selection.useShadows,
     showEnvironmentBackground: selection.showEnvironmentBackground,
+    tonemap: selection.tonemap,
   };
 };
 
@@ -251,6 +249,7 @@ const renderMesh = (
   depthBuffer: DepthTexture,
   renderMode: RenderMode = "filled",
   targetBuffer: Framebuffer = frameBuffer,
+  tonemap?: boolean,
 ) => {
   for (let i = 0; i < model.vertices.length; i += 3) {
     // Vertex stage for one triangle.
@@ -272,7 +271,7 @@ const renderMesh = (
     }
 
     // Rasterization + fragment stage.
-    triangle(triVerts, activeShader, targetBuffer, depthBuffer);
+    triangle(triVerts, activeShader, targetBuffer, depthBuffer, tonemap);
   }
 };
 
@@ -298,7 +297,7 @@ const draw = () => {
 
   // 1) Clear all render targets for a new frame.
   if (renderSettings.showEnvironmentBackground) {
-    frameBuffer.copyFrom(bgBuffer);
+    frameBuffer.copyFrom(renderSettings.tonemap ? bgBufferTonemapped : bgBuffer);
   } else {
     frameBuffer.clear();
   }
@@ -334,7 +333,7 @@ const draw = () => {
       PATH_TRACE_FRAME_BUDGET_MS,
     );
     pathTraceStatsText = `${pathTraceSampleCount.toFixed(1)} samples`;
-    ctx.putImageData(imageData, 0, 0);
+    ctx.putImageData(frameBuffer.imageData, 0, 0);
     return;
   }
 
@@ -395,8 +394,8 @@ const draw = () => {
   }
 
   // 6) Main render pass
-  renderMesh(shader, depthBuffer, renderSettings.renderMode);
-  ctx.putImageData(imageData, 0, 0);
+  renderMesh(shader, depthBuffer, renderSettings.renderMode, frameBuffer, renderSettings.tonemap);
+  ctx.putImageData(frameBuffer.imageData, 0, 0);
 };
 
 let prevTime = performance.now();

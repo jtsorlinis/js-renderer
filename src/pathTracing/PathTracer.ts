@@ -477,7 +477,7 @@ export class PathTracer {
   };
 
   private present = (target: Framebuffer) => {
-    const targetData = target.data;
+    const targetData = target.imageData.data;
 
     for (let pixelIndex = 0; pixelIndex < this.pixelSampleCounts.length; pixelIndex++) {
       const sourceIndex = pixelIndex * 3;
