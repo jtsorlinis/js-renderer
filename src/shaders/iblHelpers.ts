@@ -75,6 +75,7 @@ export const rebuildEnvironmentBackdrop = (
   aspectRatio: number,
   cameraFov: number,
   envYaw: { sin: number; cos: number },
+  tonemap?: boolean,
   blurAmount = 0.5,
 ) => {
   const tanHalfFov = Math.tan((cameraFov * Math.PI) / 360);
@@ -105,7 +106,11 @@ export const rebuildEnvironmentBackdrop = (
         roughnessLayer,
         iblData.specularPrefilterLayerStride,
       );
-      targetBuffer.setPixel(x, y, backgroundEnvSample);
+      if (tonemap) {
+        targetBuffer.setPixelTonemapped(x, y, backgroundEnvSample);
+      } else {
+        targetBuffer.setPixel(x, y, backgroundEnvSample);
+      }
     }
   }
 };
