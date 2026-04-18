@@ -22,7 +22,7 @@ export const linearToSrgb8 = (value: number) => {
   return srgb8Lut[index];
 };
 
-const tonemapKhronosPbrNeutral = (color: Vector3) => {
+export const tonemapKhronosPbrNeutral = (color: Vector3) => {
   const startCompression = 0.8 - 0.04;
   const desaturation = 0.15;
 

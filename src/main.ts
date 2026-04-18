@@ -331,6 +331,7 @@ const draw = () => {
         position: camPos,
       },
       PATH_TRACE_FRAME_BUDGET_MS,
+      renderSettings.tonemap,
     );
     pathTraceStatsText = `${pathTraceSampleCount.toFixed(1)} samples`;
     ctx.putImageData(frameBuffer.imageData, 0, 0);

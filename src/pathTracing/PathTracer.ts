@@ -1,5 +1,5 @@
 import { Framebuffer, Texture } from "../drawing";
-import { linearToSrgb8 } from "../drawing/Framebuffer";
+import { linearToSrgb8, tonemapKhronosPbrNeutral } from "../drawing/Framebuffer";
 import { Matrix4, saturate, Vector2, Vector3 } from "../maths";
 import { PathTraceBvh } from "./pathTracingBvh";
 import { PathTraceEnvironmentSampler } from "./pathTracingEnvironment";
@@ -79,6 +79,7 @@ export class PathTracer {
     scene: PathTraceScene,
     camera: PathTraceCamera,
     timeBudgetMs: number,
+    tonemap?: boolean,
   ) => {
     if (this.bvh.ensureGeometry(scene.model)) {
       this.needsReset = true;
@@ -115,7 +116,7 @@ export class PathTracer {
       }
     }
 
-    this.present(target);
+    this.present(target, tonemap);
 
     return totalPixels ? this.sampleCount + this.workIndex / totalPixels : 0;
   };
@@ -476,7 +477,7 @@ export class PathTracer {
     return this.bvh.intersect(originModel, directionModel, true) !== undefined;
   };
 
-  private present = (target: Framebuffer) => {
+  private present = (target: Framebuffer, tonemap?: boolean) => {
     const targetData = target.imageData.data;
 
     for (let pixelIndex = 0; pixelIndex < this.pixelSampleCounts.length; pixelIndex++) {
@@ -484,9 +485,15 @@ export class PathTracer {
       const targetIndex = pixelIndex * 4;
       const sampleScale =
         this.pixelSampleCounts[pixelIndex] > 0 ? 1 / this.pixelSampleCounts[pixelIndex] : 0;
-      targetData[targetIndex] = linearToSrgb8(this.accumulation[sourceIndex] * sampleScale);
-      targetData[targetIndex + 1] = linearToSrgb8(this.accumulation[sourceIndex + 1] * sampleScale);
-      targetData[targetIndex + 2] = linearToSrgb8(this.accumulation[sourceIndex + 2] * sampleScale);
+      const color = new Vector3(
+        this.accumulation[sourceIndex] * sampleScale,
+        this.accumulation[sourceIndex + 1] * sampleScale,
+        this.accumulation[sourceIndex + 2] * sampleScale,
+      );
+      const tonemapped = tonemap ? tonemapKhronosPbrNeutral(color) : color;
+      targetData[targetIndex] = linearToSrgb8(tonemapped.x);
+      targetData[targetIndex + 1] = linearToSrgb8(tonemapped.y);
+      targetData[targetIndex + 2] = linearToSrgb8(tonemapped.z);
       targetData[targetIndex + 3] = 255;
     }
   };
