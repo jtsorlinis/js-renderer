@@ -45,80 +45,80 @@ export class Framebuffer {
   width: number;
   height: number;
   totalPixels: number;
-  data: Uint8ClampedArray;
+  imageData: ImageData;
 
-  constructor(imageData: ImageData) {
-    this.width = imageData.width;
-    this.height = imageData.height;
+  constructor(width: number, height: number) {
+    this.imageData = new ImageData(width, height);
+    this.width = this.imageData.width;
+    this.height = this.imageData.height;
     this.totalPixels = this.width * this.height;
-    this.data = imageData.data;
   }
 
   tonemapAces = (val: number) =>
     saturate((val * (2.51 * val + 0.03)) / (val * (2.43 * val + 0.59) + 0.14));
 
-  setPixelAces = (x: number, y: number, color: Vector3) => {
+  setPixelTonemapped = (x: number, y: number, color: Vector3) => {
     const index = (x + y * this.width) * 4;
-    this.data[index + 0] = linearToSrgb8(this.tonemapAces(color.x));
-    this.data[index + 1] = linearToSrgb8(this.tonemapAces(color.y));
-    this.data[index + 2] = linearToSrgb8(this.tonemapAces(color.z));
-    this.data[index + 3] = 255;
+    this.imageData.data[index + 0] = linearToSrgb8(this.tonemapAces(color.x));
+    this.imageData.data[index + 1] = linearToSrgb8(this.tonemapAces(color.y));
+    this.imageData.data[index + 2] = linearToSrgb8(this.tonemapAces(color.z));
+    this.imageData.data[index + 3] = 255;
   };
 
   setPixelQuantize5 = (x: number, y: number, color: Vector3) => {
     const index = (x + y * this.width) * 4;
-    this.data[index + 0] = linearToSrgb8(quantize5(color.x));
-    this.data[index + 1] = linearToSrgb8(quantize5(color.y));
-    this.data[index + 2] = linearToSrgb8(quantize5(color.z));
-    this.data[index + 3] = 255;
+    this.imageData.data[index + 0] = linearToSrgb8(quantize5(color.x));
+    this.imageData.data[index + 1] = linearToSrgb8(quantize5(color.y));
+    this.imageData.data[index + 2] = linearToSrgb8(quantize5(color.z));
+    this.imageData.data[index + 3] = 255;
   };
 
   setPixelQuantize5Dither = (x: number, y: number, color: Vector3) => {
     const index = (x + y * this.width) * 4;
-    this.data[index + 0] = linearToSrgb8(quantizeOrdered(color.x, 31, x, y));
-    this.data[index + 1] = linearToSrgb8(quantizeOrdered(color.y, 31, x, y));
-    this.data[index + 2] = linearToSrgb8(quantizeOrdered(color.z, 31, x, y));
-    this.data[index + 3] = 255;
+    this.imageData.data[index + 0] = linearToSrgb8(quantizeOrdered(color.x, 31, x, y));
+    this.imageData.data[index + 1] = linearToSrgb8(quantizeOrdered(color.y, 31, x, y));
+    this.imageData.data[index + 2] = linearToSrgb8(quantizeOrdered(color.z, 31, x, y));
+    this.imageData.data[index + 3] = 255;
   };
 
   setPixelQuantize4 = (x: number, y: number, color: Vector3) => {
     const index = (x + y * this.width) * 4;
-    this.data[index + 0] = linearToSrgb8(quantize4(color.x));
-    this.data[index + 1] = linearToSrgb8(quantize4(color.y));
-    this.data[index + 2] = linearToSrgb8(quantize4(color.z));
-    this.data[index + 3] = 255;
+    this.imageData.data[index + 0] = linearToSrgb8(quantize4(color.x));
+    this.imageData.data[index + 1] = linearToSrgb8(quantize4(color.y));
+    this.imageData.data[index + 2] = linearToSrgb8(quantize4(color.z));
+    this.imageData.data[index + 3] = 255;
   };
 
   setPixelQuantize4Dither = (x: number, y: number, color: Vector3) => {
     const index = (x + y * this.width) * 4;
-    this.data[index + 0] = linearToSrgb8(quantizeOrdered(color.x, 15, x, y));
-    this.data[index + 1] = linearToSrgb8(quantizeOrdered(color.y, 15, x, y));
-    this.data[index + 2] = linearToSrgb8(quantizeOrdered(color.z, 15, x, y));
-    this.data[index + 3] = 255;
+    this.imageData.data[index + 0] = linearToSrgb8(quantizeOrdered(color.x, 15, x, y));
+    this.imageData.data[index + 1] = linearToSrgb8(quantizeOrdered(color.y, 15, x, y));
+    this.imageData.data[index + 2] = linearToSrgb8(quantizeOrdered(color.z, 15, x, y));
+    this.imageData.data[index + 3] = 255;
   };
 
   setPixel = (x: number, y: number, color: Vector3) => {
     const index = (x + y * this.width) * 4;
-    this.data[index + 0] = linearToSrgb8(color.x);
-    this.data[index + 1] = linearToSrgb8(color.y);
-    this.data[index + 2] = linearToSrgb8(color.z);
-    this.data[index + 3] = 255;
+    this.imageData.data[index + 0] = linearToSrgb8(color.x);
+    this.imageData.data[index + 1] = linearToSrgb8(color.y);
+    this.imageData.data[index + 2] = linearToSrgb8(color.z);
+    this.imageData.data[index + 3] = 255;
   };
 
   clear = () => {
-    this.data.fill(0);
+    this.imageData.data.fill(0);
   };
 
   fadeToBlack = (amount: number) => {
-    for (let i = 0; i < this.data.length; i += 4) {
-      this.data[i + 0] -= amount * 255;
-      this.data[i + 1] -= amount * 255;
-      this.data[i + 2] -= amount * 255;
+    for (let i = 0; i < this.imageData.data.length; i += 4) {
+      this.imageData.data[i + 0] -= amount * 255;
+      this.imageData.data[i + 1] -= amount * 255;
+      this.imageData.data[i + 2] -= amount * 255;
     }
   };
 
   copyFrom = (src: Framebuffer) => {
-    this.data.set(src.data);
+    this.imageData.data.set(src.imageData.data);
   };
 
   viewportTransform = (v: Vector4) => {

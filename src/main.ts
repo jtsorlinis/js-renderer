@@ -125,14 +125,11 @@ const fitCanvas = () => {
   canvas.style.width = `${Math.floor(w)}px`;
   canvas.style.height = `${Math.floor(h)}px`;
 };
-let imageData = new ImageData(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
-let frameBuffer = new Framebuffer(imageData);
+let frameBuffer = new Framebuffer(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
 let depthBuffer = new DepthTexture(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
 let shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-let shadowImageData = new ImageData(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-let shadowBuffer = new Framebuffer(shadowImageData);
-let bgImageData = new ImageData(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
-let bgBuffer = new Framebuffer(bgImageData);
+let shadowBuffer = new Framebuffer(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+let bgBuffer = new Framebuffer(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
 
 const setRenderResolution = (resolutionHeight: number) => {
   const height = resolutionHeight;
@@ -140,14 +137,11 @@ const setRenderResolution = (resolutionHeight: number) => {
 
   canvas.width = width;
   canvas.height = height;
-  imageData = new ImageData(width, height);
-  frameBuffer = new Framebuffer(imageData);
+  frameBuffer = new Framebuffer(width, height);
   depthBuffer = new DepthTexture(width, height);
   shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-  shadowImageData = new ImageData(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-  shadowBuffer = new Framebuffer(shadowImageData);
-  bgImageData = new ImageData(width, height);
-  bgBuffer = new Framebuffer(bgImageData);
+  shadowBuffer = new Framebuffer(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+  bgBuffer = new Framebuffer(width, height);
   fitCanvas();
 };
 
@@ -387,7 +381,7 @@ const draw = (dt: number) => {
     snapVertices,
     pixelFn,
   );
-  ctx.putImageData(imageData, 0, 0);
+  ctx.putImageData(frameBuffer.imageData, 0, 0);
 };
 
 let prevTime = performance.now();
