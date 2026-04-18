@@ -105,11 +105,7 @@ export class Framebuffer {
       this.imageData =
         source.imageData ??
         (source.data
-          ? new ImageData(
-              source.data as unknown as ImageDataArray,
-              region.width,
-              region.height,
-            )
+          ? new ImageData(source.data as unknown as ImageDataArray, region.width, region.height)
           : new ImageData(region.width, region.height));
     }
 
