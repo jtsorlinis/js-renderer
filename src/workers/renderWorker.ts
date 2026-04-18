@@ -17,6 +17,7 @@ let tile = { x: 0, y: 0, width: 1, height: 1 };
 let scene: ReturnType<typeof deserializeStaticScene> | null = null;
 let frameBuffer = new Framebuffer({ width: 1, height: 1 });
 let backgroundBuffer = new Framebuffer({ width: 1, height: 1 });
+let backgroundBufferTonemapped = new Framebuffer({ width: 1, height: 1 });
 let depthBuffer = new DepthTexture(1, 1);
 let shadowMap = new DepthTexture(1, 1);
 let shadowBuffer = new Framebuffer({ width: 1, height: 1 });
@@ -63,6 +64,12 @@ workerScope.onmessage = (event: MessageEvent<WorkerRequestMessage>) => {
       region: tile,
       data: message.scene.backgroundData,
     });
+    backgroundBufferTonemapped = new Framebuffer({
+      width: message.scene.fullWidth,
+      height: message.scene.fullHeight,
+      region: tile,
+      data: message.scene.backgroundDataTonemapped,
+    });
     createTileBuffers(
       message.scene.fullWidth,
       message.scene.fullHeight,
@@ -85,6 +92,7 @@ workerScope.onmessage = (event: MessageEvent<WorkerRequestMessage>) => {
       shadowMap,
       shadowBuffer,
       backgroundBuffer,
+      backgroundBufferTonemapped,
     },
     shaders,
     frameFov,

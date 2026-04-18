@@ -113,6 +113,7 @@ export class TiledWorkerRenderer {
     shadowMapSize: number,
     fov: number,
     backgroundData: Uint8ClampedArray,
+    backgroundDataTonemapped: Uint8ClampedArray,
   ) {
     if (this.workers.length === 0) {
       this.createWorkers(imageData.width, imageData.height);
@@ -134,6 +135,11 @@ export class TiledWorkerRenderer {
         scene: {
           ...serializedScene,
           backgroundData: extractRegionRgba(backgroundData, imageData.width, workerSlot.tile),
+          backgroundDataTonemapped: extractRegionRgba(
+            backgroundDataTonemapped,
+            imageData.width,
+            workerSlot.tile,
+          ),
         },
       };
       workerSlot.worker.postMessage(message);

@@ -103,12 +103,11 @@ const fitCanvas = () => {
   canvas.style.width = `${Math.floor(w)}px`;
   canvas.style.height = `${Math.floor(h)}px`;
 };
-
-let imageData = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
+let frameBuffer = new Framebuffer(CANVAS_WIDTH, CANVAS_HEIGHT);
 let shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-let shadowBuffer = new Framebuffer({ width: SHADOW_MAP_SIZE, height: SHADOW_MAP_SIZE });
-let bgImageData = new ImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
-let bgBuffer = new Framebuffer(bgImageData);
+let shadowBuffer = new Framebuffer(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+let bgBuffer = new Framebuffer(CANVAS_WIDTH, CANVAS_HEIGHT);
+let bgBufferTonemapped = new Framebuffer(CANVAS_WIDTH, CANVAS_HEIGHT);
 
 const setRenderResolution = () => {
   const width = CANVAS_WIDTH;
@@ -118,11 +117,11 @@ const setRenderResolution = () => {
   canvas.width = width;
   canvas.height = height;
   aspectRatio = width / height;
-  imageData = new ImageData(width, height);
+  frameBuffer = new Framebuffer(width, height);
   shadowMap = new DepthTexture(shadowMapSize, shadowMapSize);
-  shadowBuffer = new Framebuffer({ width: shadowMapSize, height: shadowMapSize });
-  bgImageData = new ImageData(width, height);
-  bgBuffer = new Framebuffer(bgImageData);
+  shadowBuffer = new Framebuffer(shadowMapSize, shadowMapSize);
+  bgBuffer = new Framebuffer(width, height);
+  bgBufferTonemapped = new Framebuffer(width, height);
   fitCanvas();
 };
 
@@ -140,7 +139,8 @@ let orthoSize = -camPos.z * Math.tan((FOV * Math.PI) / 180 / 2);
 const viewDir = Vector3.Forward.scale(-1);
 const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
-rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw);
+rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw, false);
+rebuildEnvironmentBackdrop(bgBufferTonemapped, iblData, aspectRatio, FOV, envYaw, true);
 
 const initialModelOption = await ensureModelOption(INITIAL_MODEL);
 modelDd.value = INITIAL_MODEL;
@@ -179,6 +179,7 @@ const getRenderSettings = (): UiRenderSettings => {
     renderMode: selection.renderMode,
     useShadows: selection.useShadows,
     showEnvironmentBackground: selection.showEnvironmentBackground,
+    tonemap: selection.tonemap,
   };
 };
 
@@ -208,7 +209,14 @@ const buildFrameState = (renderSettings: RenderSettings): FrameRenderState => {
 };
 
 const syncWorkersScene = () => {
-  workerRenderer.configure(buildStaticScene(), imageData, shadowMap.width, FOV, bgBuffer.data);
+  workerRenderer.configure(
+    buildStaticScene(),
+    frameBuffer.imageData,
+    shadowMap.width,
+    FOV,
+    bgBuffer.imageData.data,
+    bgBufferTonemapped.imageData.data,
+  );
 };
 
 const renderWithWorkers = async (renderSettings: RenderSettings) => {
@@ -218,8 +226,8 @@ const renderWithWorkers = async (renderSettings: RenderSettings) => {
     scene,
     frame,
     FOV,
-    imageData.width,
-    imageData.height,
+    frameBuffer.imageData.width,
+    frameBuffer.imageData.height,
     workerRenderer.tiles,
   );
 
@@ -229,7 +237,7 @@ const renderWithWorkers = async (renderSettings: RenderSettings) => {
     renderShadowPass(scene, frame, shadowMap, shadowBuffer, localShaders, FOV);
   }
 
-  const targetImage = imageData;
+  const targetImage = frameBuffer.imageData;
   const elapsedMs = await workerRenderer.render(
     frame,
     targetImage,

@@ -49,6 +49,7 @@ export interface SerializedSceneBase {
 
 export interface SerializedScene extends SerializedSceneBase {
   backgroundData: Uint8ClampedArray;
+  backgroundDataTonemapped: Uint8ClampedArray;
 }
 
 export interface SerializedFrameState {

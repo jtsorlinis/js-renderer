@@ -20,6 +20,7 @@ export interface RenderSettings {
   renderMode?: RenderMode;
   useShadows?: boolean;
   showEnvironmentBackground?: boolean;
+  tonemap?: boolean;
 }
 
 export interface StaticRenderScene {
@@ -49,6 +50,7 @@ export interface RenderTargets {
   shadowMap: DepthTexture;
   shadowBuffer: Framebuffer;
   backgroundBuffer?: Framebuffer;
+  backgroundBufferTonemapped?: Framebuffer;
 }
 
 export interface DrawSceneOptions {
@@ -135,6 +137,7 @@ const renderMesh = (
   renderMode: RenderMode = "filled",
   targetBuffer: Framebuffer,
   triangleVertexIndices?: Uint32Array,
+  tonemap?: boolean,
 ) => {
   const triVerts: Vector4[] = [];
   const triangleCount = triangleVertexIndices
@@ -161,7 +164,7 @@ const renderMesh = (
       continue;
     }
 
-    triangle(triVerts, activeShader, targetBuffer, depthBuffer);
+    triangle(triVerts, activeShader, targetBuffer, depthBuffer, tonemap);
   }
 };
 
@@ -244,13 +247,23 @@ export const drawScene = (
   fov: number,
   options: DrawSceneOptions = {},
 ) => {
-  const { frameBuffer, depthBuffer, shadowMap, shadowBuffer, backgroundBuffer } = targets;
+  const {
+    frameBuffer,
+    depthBuffer,
+    shadowMap,
+    shadowBuffer,
+    backgroundBuffer,
+    backgroundBufferTonemapped,
+  } = targets;
   const { model, material, iblData, lightDir, envYaw } = scene;
   const renderSettings = frame.renderSettings;
   const { triangleVertexIndices, skipShadowPass } = options;
+  const activeBackgroundBuffer = renderSettings.tonemap
+    ? backgroundBufferTonemapped ?? backgroundBuffer
+    : backgroundBuffer;
 
-  if (renderSettings.showEnvironmentBackground && backgroundBuffer) {
-    frameBuffer.copyFrom(backgroundBuffer);
+  if (renderSettings.showEnvironmentBackground && activeBackgroundBuffer) {
+    frameBuffer.copyFrom(activeBackgroundBuffer);
   } else {
     frameBuffer.clear();
   }
@@ -300,5 +313,6 @@ export const drawScene = (
     renderSettings.renderMode,
     frameBuffer,
     triangleVertexIndices,
+    renderSettings.tonemap,
   );
 };

@@ -24,6 +24,7 @@ export const triangle = (
   shader: BaseShader,
   buffer: Framebuffer,
   depthBuffer: DepthTexture,
+  tonemap?: boolean,
 ) => {
   const v0 = verts[0];
   const v1 = verts[1];
@@ -113,7 +114,7 @@ export const triangle = (
 
             // Skip if fragment shader discarded the pixel by returning undefined
             if (frag) {
-              buffer.setPixel(x, y, frag);
+              tonemap ? buffer.setPixelTonemapped(x, y, frag) : buffer.setPixel(x, y, frag);
             }
           }
         }
