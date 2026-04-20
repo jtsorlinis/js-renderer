@@ -20,7 +20,7 @@ const shininess = 32;
 const ambient = 0.1;
 
 export class GouraudShader extends BaseShader<Uniforms> {
-  vColorSpec = this.varying<Vector4>();
+  vLighting = this.varying<Vector4>();
   vUv = this.varying<Vector2>();
 
   vertex = () => {
@@ -39,10 +39,9 @@ export class GouraudShader extends BaseShader<Uniforms> {
     }
 
     const diffuse = Math.max(worldNormal.dot(this.uniforms.worldLightDir), 0);
-    const vertexColour = Vector3.One.scaleInPlace(diffuse + ambient);
-    const colorSpecular = new Vector4(vertexColour.x, vertexColour.y, vertexColour.z, spec);
+    const lighting = Vector3.One.scaleInPlace(diffuse + ambient).extend(spec);
 
-    this.v2f(this.vColorSpec, colorSpecular);
+    this.v2f(this.vLighting, lighting);
     if (!this.uniforms.disableTexture) {
       this.v2f(this.vUv, model.uvs[i]);
     }
@@ -58,9 +57,7 @@ export class GouraudShader extends BaseShader<Uniforms> {
       baseColor = this.sample(this.uniforms.material.colorTexture, uv);
     }
 
-    const specColour = this.interpolateVec4(this.vColorSpec);
-    const spec = specColour.w;
-    const color = specColour.xyz;
-    return baseColor.multiplyInPlace(color).addScalar(spec);
+    const lighting = this.interpolateVec4(this.vLighting);
+    return baseColor.multiplyInPlace(lighting.xyz).addScalar(lighting.w);
   };
 }
