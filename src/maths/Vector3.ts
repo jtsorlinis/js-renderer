@@ -106,6 +106,13 @@ export class Vector3 {
     return new Vector3(this.x + s, this.y + s, this.z + s);
   }
 
+  public addScalarInPlace(s: number) {
+    this.x += s;
+    this.y += s;
+    this.z += s;
+    return this;
+  }
+
   public subtract(v: Vector3) {
     return new Vector3(this.x - v.x, this.y - v.y, this.z - v.z);
   }
