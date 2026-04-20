@@ -13,7 +13,7 @@ export interface Uniforms {
   worldViewDir: Vector3;
 }
 
-const specularStrength = 0.5;
+const specularStrength = 0.25;
 const shininess = 32;
 const ambient = 0.1;
 const baseColor = new Vector3(0.5, 0.5, 0.5);
