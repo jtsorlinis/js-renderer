@@ -15,7 +15,7 @@ export interface Uniforms {
   useSpecular?: boolean;
 }
 
-const specularStrength = 0.3;
+const specularStrength = 0.25;
 const shininess = 32;
 const ambient = 0.1;
 
