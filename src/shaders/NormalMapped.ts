@@ -17,7 +17,7 @@ export interface Uniforms {
   receiveShadows: boolean;
 }
 
-const specularStrength = 0.5;
+const specularStrength = 0.25;
 const shininess = 32;
 const ambient = 0.1;
 const minBias = 0.001;
@@ -107,9 +107,11 @@ export class NormalMappedShader extends BaseShader<Uniforms> {
     let spec = Math.pow(Math.max(normal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;
     const diffuse = Math.max(normal.dot(modelLightDir), 0);
-    const lighting = (diffuse + spec) * shadow + ambient;
+    const finalColor = color
+      .scaleInPlace(diffuse * shadow + ambient)
+      .addScalarInPlace(spec * shadow);
 
     // Final lit color.
-    return color.scaleInPlace(lighting);
+    return finalColor;
   };
 }

@@ -13,7 +13,7 @@ export interface Uniforms {
   worldViewDir: Vector3;
 }
 
-const specularStrength = 0.5;
+const specularStrength = 0.25;
 const shininess = 32;
 const ambient = 0.1;
 const baseColor = new Vector3(0.5, 0.5, 0.5);
@@ -51,8 +51,8 @@ export class SmoothShader extends BaseShader<Uniforms> {
     let spec = Math.pow(Math.max(worldNormal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;
     const diffuse = Math.max(worldNormal.dot(this.uniforms.worldLightDir), 0);
-    const lighting = diffuse + spec + ambient;
+    const finalColor = baseColor.scale(diffuse + ambient).addScalarInPlace(spec);
 
-    return baseColor.scale(lighting);
+    return finalColor;
   };
 }
