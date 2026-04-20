@@ -138,7 +138,7 @@ body {
 
 .shading-option {
   width: 100%;
-  padding: 8px 10px;
+  padding: 8px 10px 8px 6px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius);
   background: rgba(15, 52, 96, 0.55);
@@ -156,6 +156,7 @@ body {
 }
 
 .shading-list .shading-option::before {
+  width: 14px;
   content: counter(shading-step);
   color: rgba(255, 255, 255, 0.48);
   font-size: 12px;
