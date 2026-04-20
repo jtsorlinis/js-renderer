@@ -30,6 +30,9 @@ const quantize4 = (value: number) => {
   return Math.round(saturate(value) * 15) / 15;
 };
 
+const tonemapAces = (val: number) =>
+  saturate((val * (2.51 * val + 0.03)) / (val * (2.43 * val + 0.59) + 0.14));
+
 const bayer4x4 = new Uint8Array([0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]);
 
 const quantizeOrdered = (value: number, maxLevel: number, x: number, y: number) => {
@@ -54,14 +57,11 @@ export class Framebuffer {
     this.totalPixels = this.width * this.height;
   }
 
-  tonemapAces = (val: number) =>
-    saturate((val * (2.51 * val + 0.03)) / (val * (2.43 * val + 0.59) + 0.14));
-
   setPixelTonemapped = (x: number, y: number, color: Vector3) => {
     const index = (x + y * this.width) * 4;
-    this.imageData.data[index + 0] = linearToSrgb8(this.tonemapAces(color.x));
-    this.imageData.data[index + 1] = linearToSrgb8(this.tonemapAces(color.y));
-    this.imageData.data[index + 2] = linearToSrgb8(this.tonemapAces(color.z));
+    this.imageData.data[index + 0] = linearToSrgb8(tonemapAces(color.x));
+    this.imageData.data[index + 1] = linearToSrgb8(tonemapAces(color.y));
+    this.imageData.data[index + 2] = linearToSrgb8(tonemapAces(color.z));
     this.imageData.data[index + 3] = 255;
   };
 
