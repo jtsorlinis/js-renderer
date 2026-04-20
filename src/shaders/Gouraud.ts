@@ -35,8 +35,7 @@ export class GouraudShader extends BaseShader<Uniforms> {
     let spec = Math.pow(Math.max(worldNormal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;
     const diffuse = Math.max(worldNormal.dot(this.uniforms.worldLightDir), 0);
-    const lighting = diffuse + spec + ambient;
-    const vertColor = baseColor.scale(lighting);
+    const vertColor = baseColor.scale(diffuse + ambient).addScalarInPlace(spec);
     this.v2f(this.vertexColor, vertColor);
 
     // Return clip-space position.
