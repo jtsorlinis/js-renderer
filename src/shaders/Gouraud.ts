@@ -1,4 +1,4 @@
-import { Vector3, Matrix4 } from "../maths";
+import { Vector3, Matrix4, Vector4 } from "../maths";
 import type { Mesh } from "../utils/mesh";
 import { BaseShader } from "./BaseShader";
 
@@ -13,13 +13,13 @@ export interface Uniforms {
   worldViewDir: Vector3;
 }
 
-const specularStrength = 0.5;
+const specularStrength = 0.25;
 const shininess = 32;
 const ambient = 0.1;
 const baseColor = new Vector3(0.5, 0.5, 0.5);
 
 export class GouraudShader extends BaseShader<Uniforms> {
-  vertexColor = this.varying<Vector3>();
+  vLighting = this.varying<Vector4>();
 
   vertex = () => {
     const model = this.uniforms.model;
@@ -34,16 +34,18 @@ export class GouraudShader extends BaseShader<Uniforms> {
     const halfwayDir = worldViewDir.add(this.uniforms.worldLightDir).normalize();
     let spec = Math.pow(Math.max(worldNormal.dot(halfwayDir), 0), shininess);
     spec *= specularStrength;
+
     const diffuse = Math.max(worldNormal.dot(this.uniforms.worldLightDir), 0);
-    const lighting = diffuse + spec + ambient;
-    const vertColor = baseColor.scale(lighting);
-    this.v2f(this.vertexColor, vertColor);
+    const lighting = baseColor.scale(diffuse + ambient).extend(spec);
+
+    this.v2f(this.vLighting, lighting);
 
     // Return clip-space position.
     return this.uniforms.mvp.transformPoint4(model.vertices[i]);
   };
 
   fragment = () => {
-    return this.interpolateVec3(this.vertexColor);
+    const lighting = this.interpolateVec4(this.vLighting);
+    return lighting.xyz.addScalarInPlace(lighting.w);
   };
 }
