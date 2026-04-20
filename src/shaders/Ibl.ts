@@ -32,8 +32,8 @@ const minBias = 0.001;
 const maxBias = 0.005;
 // We lower the intensity of the direct light to keep the IBL mode consistent
 // with the other modes, since the environment now also contributes to lighting.
-const lightIntensity = 1;
-const environmentIntensity = 0.8;
+const lightIntensity = 2;
+const environmentIntensity = 1;
 
 // This shader keeps a few math-heavy sections expanded inline on purpose for
 // performance in the software renderer hot path.
