@@ -8,6 +8,10 @@ export interface TextureDescriptor {
   colorSpace: TextureColorSpace;
 }
 
+export interface TextureLoadOptions {
+  maxSize?: number;
+}
+
 const srgbToLinear = (value: number) => {
   if (value <= 0.04045) {
     return value / 12.92;
@@ -51,13 +55,19 @@ export class Texture {
     return new Texture(new Float32Array([0, 0, 1]));
   }
 
-  static Load = async (imageURL: string, descriptor: TextureDescriptor) => {
+  static Load = async (
+    imageURL: string,
+    descriptor: TextureDescriptor,
+    options: TextureLoadOptions = {},
+  ) => {
     const img = new Image();
     img.src = imageURL;
     await img.decode();
+    const maxTextureSize = options.maxSize ?? TEXTURE_SIZE_LIMIT;
+    const shouldLimitTextureSize = Number.isFinite(maxTextureSize) && maxTextureSize > 0;
     const scale =
-      Math.max(img.width, img.height) > TEXTURE_SIZE_LIMIT
-        ? TEXTURE_SIZE_LIMIT / Math.max(img.width, img.height)
+      shouldLimitTextureSize && Math.max(img.width, img.height) > maxTextureSize
+        ? maxTextureSize / Math.max(img.width, img.height)
         : 1;
     const targetWidth = Math.max(1, Math.round(img.width * scale));
     const targetHeight = Math.max(1, Math.round(img.height * scale));

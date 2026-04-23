@@ -1,5 +1,6 @@
-import { Texture, type TextureDescriptor } from "../drawing";
+import { Texture, type TextureDescriptor, type TextureLoadOptions } from "../drawing";
 import { Matrix4, Vector2, Vector3 } from "../maths";
+import type { Material } from "../materials/Material";
 import { buildLoadedModel, type Mesh } from "./mesh";
 
 type Gltf = {
@@ -80,6 +81,14 @@ type GltfScene = {
 
 type GltfTexture = {
   source?: number;
+};
+
+type GlbTextureOptions = {
+  maxTextureSize?: number;
+};
+
+export type GlbLoadOptions = {
+  webGpuTextureMaxSize?: number;
 };
 
 type GltfTextureInfo = {
@@ -564,8 +573,10 @@ const loadTextureFromImage = async (
   imageIndex: number,
   assetUrl: string,
   descriptor: TextureDescriptor,
+  options: GlbTextureOptions = {},
 ) => {
   const image = requireValue(gltf.images?.[imageIndex], `Missing image ${imageIndex}`);
+  const textureLoadOptions: TextureLoadOptions = { maxSize: options.maxTextureSize };
 
   if (image.bufferView !== undefined) {
     const bufferView = requireValue(
@@ -577,7 +588,7 @@ const loadTextureFromImage = async (
     const bytes = new Uint8Array(binaryChunk, byteOffset, bufferView.byteLength);
     const objectUrl = URL.createObjectURL(new Blob([bytes], { type: mimeType }));
     try {
-      return await Texture.Load(objectUrl, descriptor);
+      return await Texture.Load(objectUrl, descriptor, textureLoadOptions);
     } finally {
       URL.revokeObjectURL(objectUrl);
     }
@@ -585,7 +596,7 @@ const loadTextureFromImage = async (
 
   if (image.uri) {
     const baseUrl = new URL(assetUrl, window.location.href);
-    return Texture.Load(new URL(image.uri, baseUrl).toString(), descriptor);
+    return Texture.Load(new URL(image.uri, baseUrl).toString(), descriptor, textureLoadOptions);
   }
 
   throw new Error(`Image ${imageIndex} does not contain data`);
@@ -607,12 +618,13 @@ const loadTextureFromSource = async (
   assetUrl: string,
   fallback: Texture,
   descriptor: TextureDescriptor,
+  options?: GlbTextureOptions,
 ) => {
   if (imageIndex === undefined) {
     return fallback;
   }
 
-  return loadTextureFromImage(gltf, binaryChunk, imageIndex, assetUrl, descriptor);
+  return loadTextureFromImage(gltf, binaryChunk, imageIndex, assetUrl, descriptor, options);
 };
 
 const loadTextureFromSlot = async (
@@ -622,6 +634,7 @@ const loadTextureFromSlot = async (
   assetUrl: string,
   fallback: Texture,
   descriptor: TextureDescriptor,
+  options?: GlbTextureOptions,
 ) => {
   return loadTextureFromSource(
     gltf,
@@ -630,6 +643,7 @@ const loadTextureFromSlot = async (
     assetUrl,
     fallback,
     descriptor,
+    options,
   );
 };
 
@@ -663,7 +677,12 @@ const packOrmTexture = (occlusionTexture: Texture, metallicRoughnessTexture: Tex
   return new Texture(data, width, height);
 };
 
-export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => {
+export const loadGlbAsset = async (
+  url: string,
+  normalize = true,
+  scale = 1,
+  options: GlbLoadOptions = {},
+) => {
   const { json, binaryChunk } = await readGlb(url);
   const converted = convertGlbGeometry(json, binaryChunk, normalize, scale);
 
@@ -675,18 +694,35 @@ export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => 
     json,
     converted.pbrMaterial.occlusionTextureIndex,
   );
-  const ormTexturePromise =
-    metallicRoughnessSourceIndex !== undefined &&
-    metallicRoughnessSourceIndex === occlusionSourceIndex
-      ? loadTextureFromSource(json, binaryChunk, metallicRoughnessSourceIndex, url, Texture.White, {
-          type: "color",
-          colorSpace: "linear",
-        })
-      : Promise.all([
-          loadTextureFromSource(json, binaryChunk, occlusionSourceIndex, url, Texture.White, {
+
+  const loadOrmTexture = (textureOptions?: GlbTextureOptions) => {
+    return metallicRoughnessSourceIndex !== undefined &&
+      metallicRoughnessSourceIndex === occlusionSourceIndex
+      ? loadTextureFromSource(
+          json,
+          binaryChunk,
+          metallicRoughnessSourceIndex,
+          url,
+          Texture.White,
+          {
             type: "color",
             colorSpace: "linear",
-          }),
+          },
+          textureOptions,
+        )
+      : Promise.all([
+          loadTextureFromSource(
+            json,
+            binaryChunk,
+            occlusionSourceIndex,
+            url,
+            Texture.White,
+            {
+              type: "color",
+              colorSpace: "linear",
+            },
+            textureOptions,
+          ),
           loadTextureFromSource(
             json,
             binaryChunk,
@@ -694,26 +730,43 @@ export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => 
             url,
             Texture.White,
             { type: "color", colorSpace: "linear" },
+            textureOptions,
           ),
         ]).then(([occlusionTexture, metallicRoughnessTexture]) =>
           packOrmTexture(occlusionTexture, metallicRoughnessTexture),
         );
+  };
 
-  const [colorTexture, normalTexture, ormTexture] = await Promise.all([
-    loadTextureFromSlot(json, binaryChunk, converted.baseColorTextureIndex, url, Texture.White, {
-      type: "color",
-      colorSpace: "srgb",
-    }),
-    loadTextureFromSlot(json, binaryChunk, converted.normalTextureIndex, url, Texture.Normal, {
-      type: "normal",
-      colorSpace: "linear",
-    }),
-    ormTexturePromise,
-  ]);
+  const loadMaterial = async (textureOptions?: GlbTextureOptions): Promise<Material> => {
+    const [colorTexture, normalTexture, ormTexture] = await Promise.all([
+      loadTextureFromSlot(
+        json,
+        binaryChunk,
+        converted.baseColorTextureIndex,
+        url,
+        Texture.White,
+        {
+          type: "color",
+          colorSpace: "srgb",
+        },
+        textureOptions,
+      ),
+      loadTextureFromSlot(
+        json,
+        binaryChunk,
+        converted.normalTextureIndex,
+        url,
+        Texture.Normal,
+        {
+          type: "normal",
+          colorSpace: "linear",
+        },
+        textureOptions,
+      ),
+      loadOrmTexture(textureOptions),
+    ]);
 
-  return {
-    mesh: converted.mesh,
-    material: {
+    return {
       colorTexture,
       normalTexture,
       colorFactor: converted.pbrMaterial.baseColorFactor,
@@ -721,6 +774,19 @@ export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => 
       occlusionStrength: converted.pbrMaterial.occlusionStrength,
       ormTexture,
       roughnessFactor: converted.pbrMaterial.roughnessFactor,
-    },
+    };
+  };
+
+  const [material, webGpuMaterial] = await Promise.all([
+    loadMaterial(),
+    options.webGpuTextureMaxSize !== undefined
+      ? loadMaterial({ maxTextureSize: options.webGpuTextureMaxSize })
+      : Promise.resolve(undefined),
+  ]);
+
+  return {
+    mesh: converted.mesh,
+    material,
+    webGpuMaterial,
   };
 };

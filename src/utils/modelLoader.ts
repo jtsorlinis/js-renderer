@@ -1,5 +1,5 @@
 import type { Material } from "../materials/Material";
-import { loadGlbAsset } from "./glbLoader";
+import { loadGlbAsset, type GlbLoadOptions } from "./glbLoader";
 import { type Mesh } from "./mesh";
 
 const assetPath = (fileName: string) => `${import.meta.env.BASE_URL}models/${fileName}`;
@@ -40,6 +40,7 @@ export type ModelKey = keyof typeof modelAssets;
 export type ModelOption = {
   mesh: Mesh;
   material: Material;
+  webGpuMaterial?: Material;
 };
 
 type ModelAssetSource = {
@@ -47,7 +48,9 @@ type ModelAssetSource = {
   normalize?: boolean;
   scale?: number;
   loaded?: ModelOption;
+  loadedWebGpuTextureMaxSize?: number;
   pending?: Promise<ModelOption>;
+  pendingWebGpuTextureMaxSize?: number;
   prefetched?: Promise<void>;
 };
 
@@ -68,31 +71,44 @@ const prefetchModelAssets = (modelKey: ModelKey) => {
   return modelAsset.prefetched;
 };
 
-export const ensureModelOption = (modelKey: ModelKey) => {
+export const ensureModelOption = (modelKey: ModelKey, options: GlbLoadOptions = {}) => {
   const modelAsset = modelAssets[modelKey];
-  if (modelAsset.loaded) {
+  if (modelAsset.loaded && modelAsset.loadedWebGpuTextureMaxSize === options.webGpuTextureMaxSize) {
     return Promise.resolve(modelAsset.loaded);
   }
 
-  modelAsset.pending ??= (async () => {
-    const loadedModel = await loadGlbAsset(
-      modelAsset.glbUrl,
-      modelAsset.normalize,
-      modelAsset.scale,
-    );
+  if (
+    !modelAsset.pending ||
+    modelAsset.pendingWebGpuTextureMaxSize !== options.webGpuTextureMaxSize
+  ) {
+    modelAsset.pendingWebGpuTextureMaxSize = options.webGpuTextureMaxSize;
+    modelAsset.pending = (async () => {
+      const loadedModel = await loadGlbAsset(
+        modelAsset.glbUrl,
+        modelAsset.normalize,
+        modelAsset.scale,
+        options,
+      );
 
-    modelAsset.loaded = loadedModel;
-    return loadedModel;
-  })();
+      modelAsset.loaded = loadedModel;
+      modelAsset.loadedWebGpuTextureMaxSize = options.webGpuTextureMaxSize;
+      return loadedModel;
+    })();
+  }
 
   return modelAsset.pending;
 };
 
-export const loadCustomGlb = async (file: File, normalize = true, scale = 1) => {
+export const loadCustomGlb = async (
+  file: File,
+  normalize = true,
+  scale = 1,
+  options: GlbLoadOptions = {},
+) => {
   const objectUrl = URL.createObjectURL(file);
 
   try {
-    return await loadGlbAsset(objectUrl, normalize, scale);
+    return await loadGlbAsset(objectUrl, normalize, scale, options);
   } finally {
     URL.revokeObjectURL(objectUrl);
   }

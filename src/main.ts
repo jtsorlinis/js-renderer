@@ -25,9 +25,12 @@ import {
 } from "./shaders/iblHelpers";
 import { RenderSelection, resolveShadingSelection, type RenderMode } from "./renderSettings";
 import { loadHdrTexture } from "./utils/hdrLoader";
+import { WebGpuRenderer, type WebGpuRenderParams } from "./webgpu/WebGpuRenderer";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
+const WEBGPU_CANVAS_WIDTH = 1600;
+const WEBGPU_CANVAS_HEIGHT = 1200;
 const FOV = 50;
 const SHADOW_MAP_SIZE = 512;
 const INITIAL_ROTATION = Math.PI / 2;
@@ -40,6 +43,7 @@ const INITIAL_MODEL: ModelKey = "dice";
 
 // UI handles
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+const gpuCanvas = document.getElementById("gpuCanvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
 const orthoCb = document.getElementById("orthoCb") as HTMLInputElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
@@ -47,6 +51,8 @@ const resolutionText = document.getElementById("resolution") as HTMLSpanElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
 const shadingSlider = document.getElementById("shadingSlider") as HTMLInputElement;
 const modelDd = document.getElementById("modelDd") as HTMLSelectElement;
+const gpuCb = document.getElementById("gpuCb") as HTMLInputElement;
+const rendererStatus = document.getElementById("rendererStatus") as HTMLSpanElement;
 const loadGlbBtn = document.getElementById("loadGlbBtn") as HTMLButtonElement;
 const glbInput = document.getElementById("glbInput") as HTMLInputElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
@@ -87,6 +93,12 @@ shadingSlider.addEventListener("input", syncShadingButtons);
 let aspectRatio = CANVAS_WIDTH / CANVAS_HEIGHT;
 
 const viewport = canvas.parentElement!;
+const renderCanvases = [canvas, gpuCanvas];
+const getRendererResolutionText = () => {
+  return activeRenderer === "webgpu"
+    ? `${WEBGPU_CANVAS_WIDTH} x ${WEBGPU_CANVAS_HEIGHT}`
+    : `${CANVAS_WIDTH} x ${CANVAS_HEIGHT}`;
+};
 const fitCanvas = () => {
   const vw = viewport.clientWidth;
   const vh = viewport.clientHeight;
@@ -96,8 +108,10 @@ const fitCanvas = () => {
     h = vh;
     w = h * aspectRatio;
   }
-  canvas.style.width = `${Math.floor(w)}px`;
-  canvas.style.height = `${Math.floor(h)}px`;
+  for (const renderCanvas of renderCanvases) {
+    renderCanvas.style.width = `${Math.floor(w)}px`;
+    renderCanvas.style.height = `${Math.floor(h)}px`;
+  }
 };
 let frameBuffer = new Framebuffer(CANVAS_WIDTH, CANVAS_HEIGHT);
 let depthBuffer = new DepthTexture(CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -113,6 +127,8 @@ const setRenderResolution = () => {
 
   canvas.width = width;
   canvas.height = height;
+  gpuCanvas.width = WEBGPU_CANVAS_WIDTH;
+  gpuCanvas.height = WEBGPU_CANVAS_HEIGHT;
   aspectRatio = width / height;
   frameBuffer = new Framebuffer(width, height);
   depthBuffer = new DepthTexture(width, height);
@@ -125,6 +141,53 @@ const setRenderResolution = () => {
 
 setRenderResolution();
 window.addEventListener("resize", fitCanvas);
+
+type RenderBackend = "cpu" | "webgpu";
+
+let preferredRenderer: RenderBackend = "cpu";
+let activeRenderer: RenderBackend = "cpu";
+let webGpuRenderer: WebGpuRenderer | undefined;
+let webGpuRenderError = "";
+
+const setRendererStatus = (message: string) => {
+  if (rendererStatus.innerText !== message) {
+    rendererStatus.innerText = message;
+  }
+};
+
+const setActiveRenderer = (renderer: RenderBackend) => {
+  if (activeRenderer === renderer) {
+    return;
+  }
+
+  activeRenderer = renderer;
+  canvas.hidden = renderer !== "cpu";
+  gpuCanvas.hidden = renderer !== "webgpu";
+  resolutionText.innerText = getRendererResolutionText();
+};
+
+const initializeWebGpuRenderer = async () => {
+  try {
+    webGpuRenderer = await WebGpuRenderer.create(gpuCanvas);
+    preferredRenderer = gpuCb.checked ? "webgpu" : "cpu";
+    setActiveRenderer(preferredRenderer);
+    setRendererStatus(
+      preferredRenderer === "webgpu" ? "WebGPU active" : "Software renderer active",
+    );
+  } catch (error) {
+    console.warn("WebGPU unavailable; using software renderer.", error);
+    preferredRenderer = "cpu";
+    gpuCb.checked = false;
+    gpuCb.disabled = true;
+    setActiveRenderer("cpu");
+    setRendererStatus("Software renderer (WebGPU unavailable)");
+  }
+};
+
+await initializeWebGpuRenderer();
+const modelLoadOptions = {
+  webGpuTextureMaxSize: webGpuRenderer?.maxTextureDimension2D,
+};
 
 const hdrEnvironment = await loadHdrTexture(`${import.meta.env.BASE_URL}environments/sunny.hdr`);
 
@@ -141,12 +204,13 @@ const iblData = buildEnvironmentIbl(hdrEnvironment);
 rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw, false);
 rebuildEnvironmentBackdrop(bgBufferTonemapped, iblData, aspectRatio, FOV, envYaw, true);
 
-const initialModelOption = await ensureModelOption(INITIAL_MODEL);
+const initialModelOption = await ensureModelOption(INITIAL_MODEL, modelLoadOptions);
 modelDd.value = INITIAL_MODEL;
 prefetchRemainingModels(INITIAL_MODEL);
 
 let model = initialModelOption.mesh;
 let material = initialModelOption.material;
+let webGpuMaterial = initialModelOption.webGpuMaterial ?? initialModelOption.material;
 let shadowOrthoSize = getModelRadius(model);
 
 let modelPos = new Vector3(0, 0, 0);
@@ -165,12 +229,23 @@ const shaders = {
 };
 
 type RenderSettings = Omit<RenderSelection, "normalizedValue">;
+type FrameState = {
+  renderSettings: RenderSettings;
+  modelMat: Matrix4;
+  normalMat: Matrix4;
+  lightSpaceMat: Matrix4;
+  modelLightDir: Vector3;
+  modelCamPos: Vector3;
+  modelViewDir: Vector3;
+  isOrtho: boolean;
+  mvp: Matrix4;
+};
 
 const triVerts: Vector4[] = [];
 
 const updateModelStats = () => {
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
-  resolutionText.innerText = `${CANVAS_WIDTH} x ${CANVAS_HEIGHT}`;
+  resolutionText.innerText = getRendererResolutionText();
 };
 
 const resetModelTransform = () => {
@@ -184,13 +259,14 @@ let activeModelRequest = 0;
 const applyModelOption = (selectedModel: ModelOption) => {
   model = selectedModel.mesh;
   material = selectedModel.material;
+  webGpuMaterial = selectedModel.webGpuMaterial ?? selectedModel.material;
   shadowOrthoSize = getModelRadius(model);
   updateModelStats();
 };
 
 const setModel = async (modelKey: ModelKey, resetTransform = true) => {
   const requestId = ++activeModelRequest;
-  const selectedModel = await ensureModelOption(modelKey);
+  const selectedModel = await ensureModelOption(modelKey, modelLoadOptions);
   if (requestId !== activeModelRequest) {
     return;
   }
@@ -203,7 +279,7 @@ const setModel = async (modelKey: ModelKey, resetTransform = true) => {
 
 const loadSelectedGlb = async (file: File, resetTransform = true) => {
   const requestId = ++activeModelRequest;
-  const selectedModel = await loadCustomGlb(file);
+  const selectedModel = await loadCustomGlb(file, true, 1, modelLoadOptions);
   if (requestId !== activeModelRequest) {
     return;
   }
@@ -266,8 +342,42 @@ const update = (dt: number) => {
   }
 };
 
-const draw = () => {
+const getFrameState = (): FrameState => {
   const renderSettings = getRenderSettings();
+
+  const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
+  const invModelMat = modelMat.invert();
+  const normalMat = invModelMat.transpose();
+
+  const lightViewMat = Matrix4.LookAt(lightDir.scale(5), Vector3.Zero);
+  const lightProjMat = Matrix4.Ortho(shadowOrthoSize, 1, 1, 10);
+  const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
+  const modelLightDir = invModelMat.transformDirection(lightDir).normalize();
+  const modelCamPos = invModelMat.transformPoint(camPos);
+  const modelViewDir = invModelMat.transformDirection(viewDir).normalize();
+
+  const isOrtho = orthoCb.checked;
+  const viewMat = Matrix4.LookTo(camPos, cameraLookDir, Vector3.Up);
+  const projMat = isOrtho
+    ? Matrix4.Ortho(orthoSize, aspectRatio)
+    : Matrix4.Perspective(FOV, aspectRatio);
+  const mvp = projMat.multiply(viewMat).multiply(modelMat);
+
+  return {
+    renderSettings,
+    modelMat,
+    normalMat,
+    lightSpaceMat,
+    modelLightDir,
+    modelCamPos,
+    modelViewDir,
+    isOrtho,
+    mvp,
+  };
+};
+
+const drawSoftware = (frameState: FrameState) => {
+  const { renderSettings } = frameState;
 
   // 1) Clear all render targets for a new frame.
   if (renderSettings.showEnvironmentBackground) {
@@ -278,54 +388,33 @@ const draw = () => {
   depthBuffer.clear(1000);
   shadowMap.clear(1000);
 
-  // 2) Build model-space transforms.
-  const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
-  const invModelMat = modelMat.invert();
-  const normalMat = invModelMat.transpose();
-
-  // 3) Build light-space transform (for shadow mapping).
-  const lightViewMat = Matrix4.LookAt(lightDir.scale(5), Vector3.Zero);
-  const lightProjMat = Matrix4.Ortho(shadowOrthoSize, 1, 1, 10);
-  const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
-  const modelLightDir = invModelMat.transformDirection(lightDir).normalize();
-  const modelCamPos = invModelMat.transformPoint(camPos);
-  const modelViewDir = invModelMat.transformDirection(viewDir).normalize();
-
-  // 4) Build camera transform and final clip transform.
-  const isOrtho = orthoCb.checked;
-  const viewMat = Matrix4.LookTo(camPos, cameraLookDir, Vector3.Up);
-  const projMat = isOrtho
-    ? Matrix4.Ortho(orthoSize, aspectRatio)
-    : Matrix4.Perspective(FOV, aspectRatio);
-  const mvp = projMat.multiply(viewMat).multiply(modelMat);
-
   // 5) Select active material shader and update uniforms.
   const shader = shaders[renderSettings.material];
 
   shader.uniforms = {
     model,
-    modelMat,
-    mvp,
-    normalMat,
+    modelMat: frameState.modelMat,
+    mvp: frameState.mvp,
+    normalMat: frameState.normalMat,
     worldLightDir: lightDir,
     envYaw,
-    modelLightDir,
+    modelLightDir: frameState.modelLightDir,
     worldCamPos: camPos,
-    modelCamPos,
-    orthographic: isOrtho,
+    modelCamPos: frameState.modelCamPos,
+    orthographic: frameState.isOrtho,
     worldViewDir: viewDir,
-    modelViewDir,
+    modelViewDir: frameState.modelViewDir,
     material,
     iblData,
-    lightSpaceMat,
+    lightSpaceMat: frameState.lightSpaceMat,
     shadowMap,
     receiveShadows: renderSettings.useShadows,
   };
-  shaders.depth.uniforms = { model, clipMat: mvp };
+  shaders.depth.uniforms = { model, clipMat: frameState.mvp };
 
   // Optional shadow pass first
   if (renderSettings.useShadows) {
-    shaders.depth.uniforms.clipMat = lightSpaceMat;
+    shaders.depth.uniforms.clipMat = frameState.lightSpaceMat;
     renderMesh(shaders.depth, shadowMap, "filled", shadowBuffer);
   }
 
@@ -337,6 +426,75 @@ const draw = () => {
   // 6) Main render pass
   renderMesh(shader, depthBuffer, renderSettings.renderMode, frameBuffer, renderSettings.tonemap);
   ctx.putImageData(frameBuffer.imageData, 0, 0);
+};
+
+const drawWebGpu = (frameState: FrameState) => {
+  if (!webGpuRenderer) {
+    return false;
+  }
+
+  const { renderSettings } = frameState;
+  const params: WebGpuRenderParams = {
+    model,
+    material: webGpuMaterial,
+    iblData,
+    materialMode: renderSettings.material,
+    renderMode: renderSettings.renderMode,
+    mvp: frameState.mvp,
+    modelMat: frameState.modelMat,
+    normalMat: frameState.normalMat,
+    lightSpaceMat: frameState.lightSpaceMat,
+    worldLightDir: lightDir,
+    worldCamPos: camPos,
+    worldViewDir: viewDir,
+    modelLightDir: frameState.modelLightDir,
+    modelCamPos: frameState.modelCamPos,
+    modelViewDir: frameState.modelViewDir,
+    envYaw,
+    aspectRatio,
+    fov: FOV,
+    orthographic: frameState.isOrtho,
+    useShadows: renderSettings.useShadows,
+    showEnvironmentBackground: renderSettings.showEnvironmentBackground,
+    tonemap: renderSettings.tonemap,
+  };
+
+  if (!webGpuRenderer.canRender(params.renderMode)) {
+    return false;
+  }
+
+  try {
+    webGpuRenderer.render(params);
+    webGpuRenderError = "";
+    return true;
+  } catch (error) {
+    console.warn("WebGPU render failed; falling back to software renderer.", error);
+    webGpuRenderError = error instanceof Error ? error.message : "render failed";
+    return false;
+  }
+};
+
+const draw = () => {
+  const frameState = getFrameState();
+  const usedWebGpu = preferredRenderer === "webgpu" && drawWebGpu(frameState);
+
+  if (usedWebGpu) {
+    setActiveRenderer("webgpu");
+    setRendererStatus("WebGPU active");
+    return;
+  }
+
+  setActiveRenderer("cpu");
+  if (webGpuRenderError) {
+    setRendererStatus(`Software fallback: ${webGpuRenderError}`);
+  } else if (preferredRenderer === "webgpu" && webGpuRenderer) {
+    setRendererStatus("Software fallback for wireframe modes");
+  } else if (!webGpuRenderer) {
+    setRendererStatus("Software renderer (WebGPU unavailable)");
+  } else {
+    setRendererStatus("Software renderer active");
+  }
+  drawSoftware(frameState);
 };
 
 let prevTime = performance.now();
@@ -359,7 +517,7 @@ const loop = () => {
   requestAnimationFrame(loop);
 };
 
-canvas.onpointerdown = (e) => {
+viewport.onpointerdown = (e) => {
   mouseButtonState = e.buttons;
 };
 window.onpointerup = (e) => {
@@ -368,7 +526,7 @@ window.onpointerup = (e) => {
 
 let prevX = NaN;
 let prevY = NaN;
-canvas.onpointermove = (e) => {
+viewport.onpointermove = (e) => {
   const dx = isNaN(prevX) ? 0 : e.clientX - prevX;
   const dy = isNaN(prevY) ? 0 : e.clientY - prevY;
   prevX = e.clientX;
@@ -386,14 +544,14 @@ canvas.onpointermove = (e) => {
   }
 };
 
-canvas.onwheel = (e) => {
+viewport.onwheel = (e) => {
   e.preventDefault();
   const scale = Math.tan((FOV * 0.5 * Math.PI) / 180);
   orthoSize += (e.deltaY * scale) / ZOOM_SENSITIVITY;
   camPos.z -= e.deltaY / ZOOM_SENSITIVITY;
 };
 
-canvas.oncontextmenu = (e) => e.preventDefault();
+viewport.oncontextmenu = (e) => e.preventDefault();
 
 window.addEventListener("keydown", (event) => {
   if (modelDd.value !== "nyxy" && event.key.toLowerCase() === "n") {
@@ -404,6 +562,11 @@ window.addEventListener("keydown", (event) => {
 
 modelDd.onchange = () => {
   setModel(modelDd.value as ModelKey);
+};
+
+gpuCb.onchange = () => {
+  preferredRenderer = gpuCb.checked && webGpuRenderer ? "webgpu" : "cpu";
+  webGpuRenderError = "";
 };
 
 loadGlbBtn.addEventListener("click", () => {

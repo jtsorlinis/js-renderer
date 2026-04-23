@@ -10,7 +10,8 @@
     <div id="app"></div>
 
     <div class="viewport">
-      <canvas id="canvas"></canvas>
+      <canvas id="canvas" class="render-canvas"></canvas>
+      <canvas id="gpuCanvas" class="render-canvas" hidden></canvas>
     </div>
 
     <aside class="sidebar">
@@ -177,6 +178,8 @@
 
       <div class="section options">
         <label><input type="checkbox" id="orthoCb" /> Orthographic</label>
+        <label><input type="checkbox" id="gpuCb" checked /> GPU</label>
+        <span class="renderer-status" id="rendererStatus">Starting...</span>
       </div>
 
       <div class="stats">
