@@ -62,8 +62,8 @@ export class NormalMappedShader extends BaseShader<Uniforms> {
     const handedness = modelTangent.w < 0 ? -1 : 1;
 
     // Sample material inputs.
-    const color = this.sample(this.uniforms.material.colorTexture, uv);
-    const normalTexel = this.sample(this.uniforms.material.normalTexture, uv);
+    const color = this.sampleFiltered(this.uniforms.material.colorTexture, uv);
+    const normalTexel = this.sampleFiltered(this.uniforms.material.normalTexture, uv);
 
     // Rebuild TBN in scalar form for performance.
     const tDotN = modelTangent.dot3(modelNormal);
@@ -90,10 +90,9 @@ export class NormalMappedShader extends BaseShader<Uniforms> {
     let shadow = 1;
     if (this.uniforms.receiveShadows) {
       const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
-      const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-      const nDotL = Math.max(modelNormal.dot(this.uniforms.modelLightDir), 0.0);
+      const nDotL = Math.max(normal.dot(this.uniforms.modelLightDir), 0.0);
       const bias = minBias + (maxBias - minBias) * (1 - nDotL);
-      shadow = lightSpacePos.z - bias > depth ? 0 : 1;
+      shadow = this.sampleShadow(this.uniforms.shadowMap, lightSpacePos, bias);
     }
 
     // Blinn-Phong shading

@@ -48,7 +48,7 @@ export class TexturedShader extends BaseShader<Uniforms> {
     const uv = this.interpolateVec2(this.vUV);
 
     // Sample albedo texture.
-    const baseColor = this.sample(this.uniforms.material.colorTexture, uv);
+    const baseColor = this.sampleFiltered(this.uniforms.material.colorTexture, uv);
 
     // Basic Blinn-Phong lighting in world space.
     const worldViewDir = this.uniforms.worldCamPos.subtract(worldPos).normalize();
