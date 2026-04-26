@@ -3,14 +3,13 @@ export type MaterialMode =
   | "pbr"
   | "normalMapped"
   | "textured"
-  | "gouraudTextured"
   | "gouraud"
-  | "smooth"
   | "flat"
   | "unlit"
   | "depth";
 
 export type RenderMode = "filled" | "depthWireframe" | "wireframe";
+export type TextureFiltering = "nearest" | "bilinear";
 
 export type RenderSelection = {
   material: MaterialMode;
@@ -30,6 +29,7 @@ export type RenderSelection = {
     | "setPixelQuantize4Dither";
   useShadows?: boolean;
   showEnvironmentBackground?: boolean;
+  textureFiltering?: TextureFiltering;
   vectorFade?: boolean;
 };
 
@@ -90,6 +90,7 @@ export const SHADING_PRESETS = [
     useSpecular: true,
     resolution: 480,
     model: assetPath("head_1k.glb"),
+    textureFiltering: "bilinear",
   },
   {
     value: "ps2",
@@ -97,6 +98,7 @@ export const SHADING_PRESETS = [
     material: "gouraud",
     resolution: 480,
     model: assetPath("head_1k.glb"),
+    textureFiltering: "bilinear",
   },
   {
     value: "ps1-2",
