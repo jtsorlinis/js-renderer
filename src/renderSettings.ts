@@ -21,12 +21,7 @@ export type RenderSelection = {
   disableTexture?: boolean;
   useSpecular?: boolean;
   snapVertices?: boolean;
-  setPixelFn?:
-    | "setPixelTonemapped"
-    | "setPixelQuantize5"
-    | "setPixelQuantize5Dither"
-    | "setPixelQuantize4"
-    | "setPixelQuantize4Dither";
+  setPixelFn?: "setPixelTonemapped" | "setPixelQuantize5Dither" | "setPixelQuantize4Dither";
   useShadows?: boolean;
   showEnvironmentBackground?: boolean;
   textureFiltering?: TextureFiltering;
