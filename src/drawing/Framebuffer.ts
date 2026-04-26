@@ -22,14 +22,6 @@ const linearToSrgb8 = (value: number) => {
   return srgb8Lut[index];
 };
 
-const quantize5 = (value: number) => {
-  return Math.round(saturate(value) * 31) / 31;
-};
-
-const quantize4 = (value: number) => {
-  return Math.round(saturate(value) * 15) / 15;
-};
-
 const tonemapAces = (val: number) =>
   saturate((val * (2.51 * val + 0.03)) / (val * (2.43 * val + 0.59) + 0.14));
 
@@ -65,27 +57,11 @@ export class Framebuffer {
     this.imageData.data[index + 3] = 255;
   };
 
-  setPixelQuantize5 = (x: number, y: number, color: Vector3) => {
-    const index = (x + y * this.width) * 4;
-    this.imageData.data[index + 0] = linearToSrgb8(quantize5(color.x));
-    this.imageData.data[index + 1] = linearToSrgb8(quantize5(color.y));
-    this.imageData.data[index + 2] = linearToSrgb8(quantize5(color.z));
-    this.imageData.data[index + 3] = 255;
-  };
-
   setPixelQuantize5Dither = (x: number, y: number, color: Vector3) => {
     const index = (x + y * this.width) * 4;
     this.imageData.data[index + 0] = linearToSrgb8(quantizeOrdered(color.x, 31, x, y));
     this.imageData.data[index + 1] = linearToSrgb8(quantizeOrdered(color.y, 31, x, y));
     this.imageData.data[index + 2] = linearToSrgb8(quantizeOrdered(color.z, 31, x, y));
-    this.imageData.data[index + 3] = 255;
-  };
-
-  setPixelQuantize4 = (x: number, y: number, color: Vector3) => {
-    const index = (x + y * this.width) * 4;
-    this.imageData.data[index + 0] = linearToSrgb8(quantize4(color.x));
-    this.imageData.data[index + 1] = linearToSrgb8(quantize4(color.y));
-    this.imageData.data[index + 2] = linearToSrgb8(quantize4(color.z));
     this.imageData.data[index + 3] = 255;
   };
 
