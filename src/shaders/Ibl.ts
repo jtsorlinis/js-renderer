@@ -125,10 +125,8 @@ export class IblShader extends BaseShader<Uniforms> {
       let shadow = 1;
       if (this.uniforms.receiveShadows) {
         const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
-        const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-        const faceNDotL = saturate(worldNormal.dot(this.uniforms.worldLightDir));
-        const bias = minBias + (maxBias - minBias) * (1 - faceNDotL);
-        shadow = lightSpacePos.z - bias > depth ? 0 : 1;
+        const bias = minBias + (maxBias - minBias) * (1 - nDotL);
+        shadow = this.sampleShadow(this.uniforms.shadowMap, lightSpacePos, bias);
       }
 
       if (shadow > 0) {
@@ -145,7 +143,7 @@ export class IblShader extends BaseShader<Uniforms> {
         const geometry = geometrySmith(nDotV, nDotL, roughness);
         const specularFactor = (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
         const diffuseFactor = (1 - metallic) * INV_PI;
-        const lightScale = nDotL * lightIntensity;
+        const lightScale = nDotL * lightIntensity * shadow;
 
         directR =
           ((1 - fresnelX) * diffuseFactor * baseColor.x + fresnelX * specularFactor) * lightScale;

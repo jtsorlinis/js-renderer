@@ -61,4 +61,21 @@ export abstract class BaseShader<TUniforms = unknown> {
     const texel = this.toTexelIndex(uv, depthTexture.width, depthTexture.height);
     return depthTexture.data[texel];
   };
+
+  sampleShadow = (depthTexture: DepthTexture, lightSpacePos: Vector3, bias: number) => {
+    const compareDepth = lightSpacePos.z - bias;
+    const centerX = Math.floor(lightSpacePos.x * depthTexture.width);
+    const centerY = Math.floor((1 - lightSpacePos.y) * depthTexture.height);
+
+    let litSamples = 0;
+    for (let offsetY = -1; offsetY <= 1; offsetY++) {
+      const iy = Math.max(0, Math.min(depthTexture.height - 1, centerY + offsetY));
+      for (let offsetX = -1; offsetX <= 1; offsetX++) {
+        const ix = Math.max(0, Math.min(depthTexture.width - 1, centerX + offsetX));
+        litSamples += compareDepth <= depthTexture.data[ix + iy * depthTexture.width] ? 1 : 0;
+      }
+    }
+
+    return litSamples / 9;
+  };
 }
