@@ -413,8 +413,7 @@ export class PathTracer {
     const orientedGeometricNormal =
       geometricNormal.dot(directionWorld) > 0 ? geometricNormal.scale(-1) : geometricNormal;
 
-    const sampledBaseColor = hasUvs ? sampleTexture(scene.material.colorTexture, uv) : Vector3.One;
-    const baseColor = sampledBaseColor.multiplyInPlace(scene.material.colorFactor);
+    const baseColor = hasUvs ? sampleTexture(scene.material.colorTexture, uv) : Vector3.One;
     const metallicRoughness = hasUvs ? sampleTexture(scene.material.ormTexture, uv) : Vector3.One;
     const roughness = Math.max(
       0.045,
