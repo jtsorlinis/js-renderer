@@ -9,8 +9,8 @@ const modelAssets: Record<string, ModelAssetSource> = {
     glbUrl: assetPath("d20.glb"),
     scale: 0.8,
   },
-  rock: {
-    glbUrl: assetPath("rock.glb"),
+  mushroom: {
+    glbUrl: assetPath("mushroom.glb"),
     scale: 0.9,
   },
   hydrant: {
