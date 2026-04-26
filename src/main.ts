@@ -355,6 +355,7 @@ const draw = (dt: number) => {
     receiveShadows: renderSettings.useShadows,
     useSpecular: renderSettings.useSpecular,
     disableTexture: renderSettings.disableTexture,
+    textureFiltering: renderSettings.textureFiltering,
   };
   shaders.depth.uniforms = { model, clipMat: mvp };
 

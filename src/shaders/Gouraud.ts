@@ -2,6 +2,7 @@ import { BaseShader } from "./BaseShader";
 import { Vector3, Matrix4, Vector2, Vector4 } from "../maths";
 import { Material } from "../materials/Material";
 import { Mesh } from "../utils/mesh";
+import type { TextureFiltering } from "../renderSettings";
 
 export interface Uniforms {
   model: Mesh;
@@ -13,6 +14,7 @@ export interface Uniforms {
   material: Material;
   disableTexture?: boolean;
   useSpecular?: boolean;
+  textureFiltering?: TextureFiltering;
 }
 
 const specularStrength = 0.25;
@@ -54,7 +56,10 @@ export class GouraudShader extends BaseShader<Uniforms> {
     let baseColor = new Vector3(0.75, 0.75, 0.75);
     if (!this.uniforms.disableTexture) {
       const uv = this.interpolateVec2(this.vUv);
-      baseColor = this.sample(this.uniforms.material.colorTexture, uv);
+      baseColor =
+        this.uniforms.textureFiltering === "bilinear"
+          ? this.sampleFiltered(this.uniforms.material.colorTexture, uv)
+          : this.sample(this.uniforms.material.colorTexture, uv);
     }
 
     const lighting = this.interpolateVec4(this.vLighting);
