@@ -64,8 +64,8 @@ export class NormalMappedShader extends BaseShader<Uniforms> {
     const handedness = modelTangent.w < 0 ? -1 : 1;
 
     // Sample material inputs.
-    const color = this.sample(this.uniforms.material.colorTexture, uv);
-    const normalTexel = this.sample(this.uniforms.material.normalTexture, uv);
+    const color = this.sampleFiltered(this.uniforms.material.colorTexture, uv);
+    const normalTexel = this.sampleFiltered(this.uniforms.material.normalTexture, uv);
 
     // Rebuild TBN in scalar form for performance.
     const tDotN = modelTangent.dot3(modelNormal);
