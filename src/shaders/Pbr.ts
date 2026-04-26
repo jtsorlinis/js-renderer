@@ -72,7 +72,7 @@ export class PbrShader extends BaseShader<Uniforms> {
     const By = (modelNormal.z * T.x - modelNormal.x * T.z) * handedness;
     const Bz = (modelNormal.x * T.y - modelNormal.y * T.x) * handedness;
 
-    const normalTexel = this.sample(material.normalTexture, uv);
+    const normalTexel = this.sampleFiltered(material.normalTexture, uv);
     const Nx = T.x * normalTexel.x + Bx * normalTexel.y + modelNormal.x * normalTexel.z;
     const Ny = T.y * normalTexel.x + By * normalTexel.y + modelNormal.y * normalTexel.z;
     const Nz = T.z * normalTexel.x + Bz * normalTexel.y + modelNormal.z * normalTexel.z;
@@ -80,8 +80,8 @@ export class PbrShader extends BaseShader<Uniforms> {
     const NScale = 1 / Math.sqrt(NLengthSq);
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
 
-    const baseColor = this.sample(material.colorTexture, uv).multiplyInPlace(material.colorFactor);
-    const orm = this.sample(material.ormTexture, uv);
+    const baseColor = this.sampleFiltered(material.colorTexture, uv);
+    const orm = this.sampleFiltered(material.ormTexture, uv);
     const ambientOcclusion = 1 - material.occlusionStrength + material.occlusionStrength * orm.x;
     const roughness = Math.max(0.045, saturate(orm.y * material.roughnessFactor));
     const metallic = saturate(orm.z * material.metallicFactor);
@@ -107,10 +107,8 @@ export class PbrShader extends BaseShader<Uniforms> {
       let shadow = 1;
       if (this.uniforms.receiveShadows) {
         const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
-        const depth = this.sampleDepth(this.uniforms.shadowMap, lightSpacePos);
-        const faceNDotL = saturate(modelNormal.dot(this.uniforms.modelLightDir));
-        const bias = minBias + (maxBias - minBias) * (1 - faceNDotL);
-        shadow = lightSpacePos.z - bias > depth ? 0 : 1;
+        const bias = minBias + (maxBias - minBias) * (1 - nDotL);
+        shadow = this.sampleShadow(this.uniforms.shadowMap, lightSpacePos, bias);
       }
 
       if (shadow > 0) {
@@ -125,7 +123,7 @@ export class PbrShader extends BaseShader<Uniforms> {
         const geometry = geometrySmith(nDotV, nDotL, roughness);
         const specularFactor = (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
         const diffuseFactor = (1 - metallic) * INV_PI;
-        const lightScale = nDotL * lightIntensity;
+        const lightScale = nDotL * lightIntensity * shadow;
 
         directR =
           ((1 - fresnelX) * diffuseFactor * baseColor.x + fresnelX * specularFactor) * lightScale;

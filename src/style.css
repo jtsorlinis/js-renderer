@@ -115,13 +115,6 @@ body {
   box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.25);
 }
 
-.renderer-status {
-  margin-top: 6px;
-  font-size: 11px;
-  line-height: 1.35;
-  color: var(--text-muted);
-}
-
 .shading-picker {
   display: flex;
   align-items: stretch;

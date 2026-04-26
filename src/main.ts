@@ -52,7 +52,6 @@ const shadingList = document.getElementById("shadingList") as HTMLUListElement;
 const shadingSlider = document.getElementById("shadingSlider") as HTMLInputElement;
 const modelDd = document.getElementById("modelDd") as HTMLSelectElement;
 const gpuCb = document.getElementById("gpuCb") as HTMLInputElement;
-const rendererStatus = document.getElementById("rendererStatus") as HTMLSpanElement;
 const loadGlbBtn = document.getElementById("loadGlbBtn") as HTMLButtonElement;
 const glbInput = document.getElementById("glbInput") as HTMLInputElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
@@ -149,12 +148,6 @@ let activeRenderer: RenderBackend = "cpu";
 let webGpuRenderer: WebGpuRenderer | undefined;
 let webGpuRenderError = "";
 
-const setRendererStatus = (message: string) => {
-  if (rendererStatus.innerText !== message) {
-    rendererStatus.innerText = message;
-  }
-};
-
 const setActiveRenderer = (renderer: RenderBackend) => {
   if (activeRenderer === renderer) {
     return;
@@ -167,21 +160,9 @@ const setActiveRenderer = (renderer: RenderBackend) => {
 };
 
 const initializeWebGpuRenderer = async () => {
-  try {
-    webGpuRenderer = await WebGpuRenderer.create(gpuCanvas);
-    preferredRenderer = gpuCb.checked ? "webgpu" : "cpu";
-    setActiveRenderer(preferredRenderer);
-    setRendererStatus(
-      preferredRenderer === "webgpu" ? "WebGPU active" : "Software renderer active",
-    );
-  } catch (error) {
-    console.warn("WebGPU unavailable; using software renderer.", error);
-    preferredRenderer = "cpu";
-    gpuCb.checked = false;
-    gpuCb.disabled = true;
-    setActiveRenderer("cpu");
-    setRendererStatus("Software renderer (WebGPU unavailable)");
-  }
+  webGpuRenderer = await WebGpuRenderer.create(gpuCanvas);
+  preferredRenderer = gpuCb.checked ? "webgpu" : "cpu";
+  setActiveRenderer(preferredRenderer);
 };
 
 await initializeWebGpuRenderer();
@@ -480,20 +461,10 @@ const draw = () => {
 
   if (usedWebGpu) {
     setActiveRenderer("webgpu");
-    setRendererStatus("WebGPU active");
     return;
   }
 
   setActiveRenderer("cpu");
-  if (webGpuRenderError) {
-    setRendererStatus(`Software fallback: ${webGpuRenderError}`);
-  } else if (preferredRenderer === "webgpu" && webGpuRenderer) {
-    setRendererStatus("Software fallback for wireframe modes");
-  } else if (!webGpuRenderer) {
-    setRendererStatus("Software renderer (WebGPU unavailable)");
-  } else {
-    setRendererStatus("Software renderer active");
-  }
   drawSoftware(frameState);
 };
 
@@ -509,7 +480,7 @@ const loop = () => {
   const actualFrameTime = performance.now() - now;
 
   if (now - lastFpsUiUpdate >= FPS_UPDATE_INTERVAL_MS) {
-    const fps = 1000 / actualFrameTime;
+    const fps = Math.min(1000 / actualFrameTime, 1000);
     fpsText.innerText = `${actualFrameTime.toFixed(0)} ms (${fps.toFixed(0)} fps)`;
     lastFpsUiUpdate = now;
   }

@@ -20,12 +20,11 @@ const UNIFORM_WORLD_VIEW_OFFSET = 72;
 const UNIFORM_MODEL_LIGHT_OFFSET = 76;
 const UNIFORM_MODEL_CAM_OFFSET = 80;
 const UNIFORM_MODEL_VIEW_OFFSET = 84;
-const UNIFORM_COLOR_FACTOR_OFFSET = 88;
-const UNIFORM_MATERIAL_FACTORS_OFFSET = 92;
-const UNIFORM_FLAGS_OFFSET = 96;
-const UNIFORM_ENV_YAW_OFFSET = 100;
-const UNIFORM_CAMERA_OFFSET = 104;
-const UNIFORM_FLOAT_COUNT = 108;
+const UNIFORM_MATERIAL_FACTORS_OFFSET = 88;
+const UNIFORM_FLAGS_OFFSET = 92;
+const UNIFORM_ENV_YAW_OFFSET = 96;
+const UNIFORM_CAMERA_OFFSET = 100;
+const UNIFORM_FLOAT_COUNT = 104;
 
 const GPU_BUFFER_USAGE = {
   COPY_DST: 0x0008,
@@ -93,7 +92,6 @@ struct Uniforms {
   modelLightDir: vec4f,
   modelCamPos: vec4f,
   modelViewDir: vec4f,
-  colorFactor: vec4f,
   materialFactors: vec4f,
   flags: vec4f,
   envYaw: vec4f,
@@ -481,7 +479,7 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
   }
 
   if (mode >= MODE_TEXTURED) {
-    baseColor = textureSample(colorTexture, materialSampler, material_uv(input.uv)).xyz * uniforms.colorFactor.xyz;
+    baseColor = textureSample(colorTexture, materialSampler, material_uv(input.uv)).xyz;
   }
 
   if (mode >= MODE_NORMAL_MAPPED) {
@@ -1083,11 +1081,6 @@ export class WebGpuRenderer {
     vectorToUniform(this.uniformData, UNIFORM_MODEL_LIGHT_OFFSET, params.modelLightDir);
     vectorToUniform(this.uniformData, UNIFORM_MODEL_CAM_OFFSET, params.modelCamPos, 1);
     vectorToUniform(this.uniformData, UNIFORM_MODEL_VIEW_OFFSET, params.modelViewDir);
-
-    this.uniformData[UNIFORM_COLOR_FACTOR_OFFSET] = params.material.colorFactor.x;
-    this.uniformData[UNIFORM_COLOR_FACTOR_OFFSET + 1] = params.material.colorFactor.y;
-    this.uniformData[UNIFORM_COLOR_FACTOR_OFFSET + 2] = params.material.colorFactor.z;
-    this.uniformData[UNIFORM_COLOR_FACTOR_OFFSET + 3] = 1;
 
     this.uniformData[UNIFORM_MATERIAL_FACTORS_OFFSET] = params.material.occlusionStrength;
     this.uniformData[UNIFORM_MATERIAL_FACTORS_OFFSET + 1] = params.material.roughnessFactor;
