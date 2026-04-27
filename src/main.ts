@@ -197,6 +197,7 @@ let shadowOrthoSize = getModelRadius(model);
 let modelPos = new Vector3(0, 0, 0);
 let modelRotation = new Vector3(0, INITIAL_ROTATION, 0);
 let modelScale = new Vector3(1, 1, 1);
+let rotationPaused = false;
 
 const shaders = {
   ibl: new IblShader(),
@@ -318,7 +319,7 @@ const renderMesh = (
 };
 
 const update = (dt: number) => {
-  if (mouseButtonState !== 1) {
+  if (!rotationPaused && mouseButtonState !== 1) {
     modelRotation.y -= dt * ROTATION_SPEED;
   }
 };
@@ -528,6 +529,25 @@ window.addEventListener("keydown", (event) => {
   if (modelDd.value !== "nyxy" && event.key.toLowerCase() === "n") {
     modelDd.value = "nyxy";
     modelDd.dispatchEvent(new Event("change"));
+    return;
+  }
+
+  if (event.code === "Space") {
+    if (!event.repeat) rotationPaused = !rotationPaused;
+    event.preventDefault();
+  } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+    const models = [...modelDd.options].filter((option) => !option.hidden);
+    const index = models.findIndex((option) => option.value === modelDd.value);
+    const nextIndex = (index + (event.key === "ArrowRight" ? 1 : -1) + models.length) % models.length;
+    modelDd.value = models[nextIndex].value;
+    modelDd.dispatchEvent(new Event("change"));
+    event.preventDefault();
+  } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+    shadingSlider.value = String(
+      Math.min(10, Math.max(0, Number(shadingSlider.value) + (event.key === "ArrowUp" ? 1 : -1))),
+    );
+    syncShadingButtons();
+    event.preventDefault();
   }
 });
 
