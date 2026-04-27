@@ -439,5 +439,16 @@ canvas.onwheel = (e) => {
 
 canvas.oncontextmenu = (e) => e.preventDefault();
 
+window.addEventListener("keydown", (event) => {
+  if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+    shadingSlider.value = String(
+      Math.min(11, Math.max(0, Number(shadingSlider.value) + (event.key === "ArrowUp" ? 1 : -1))),
+    );
+    syncShadingButtons();
+    applyCurrentShadingSelection();
+    event.preventDefault();
+  }
+});
+
 updateModelStats();
 loop();
