@@ -16,8 +16,8 @@ const modelAssets: Record<string, ModelAssetSource> = {
   hydrant: {
     glbUrl: assetPath("hydrant.glb"),
   },
-  spartan: {
-    glbUrl: assetPath("spartan.glb"),
+  bird: {
+    glbUrl: assetPath("bird.glb"),
     scale: 1.3,
   },
   head: {
