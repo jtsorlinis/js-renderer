@@ -93,25 +93,22 @@ export const renderShadowPass = (
   fov: number,
 ) => {
   const { model } = scene;
-  const { lightSpaceMat } = buildFrameTransforms(scene, frame, fov);
+  const { worldLightSpaceMat, modelMat } = buildFrameTransforms(scene, frame, fov);
   shadowMap.clear(1000);
-  shaders.depth.uniforms = { model, clipMat: lightSpaceMat };
+  shaders.depth.uniforms = { model, clipMat: worldLightSpaceMat.multiply(modelMat) };
   renderMesh(model, shaders.depth, shadowMap, "filled", shadowBuffer);
 };
 
 const buildFrameTransforms = (scene: StaticRenderScene, frame: FrameRenderState, fov: number) => {
   const { lightDir, shadowOrthoSize } = scene;
-  const { modelPos, modelRotation, modelScale, camPos, viewDir, aspectRatio, orthoSize } = frame;
+  const { modelPos, modelRotation, modelScale, camPos, aspectRatio, orthoSize } = frame;
   const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
   const invModelMat = modelMat.invert();
   const normalMat = invModelMat.transpose();
 
   const lightViewMat = Matrix4.LookAt(lightDir.scale(5), Vector3.Zero);
   const lightProjMat = Matrix4.Ortho(shadowOrthoSize, 1, 1, 10);
-  const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
-  const modelLightDir = invModelMat.transformDirection(lightDir).normalize();
-  const modelCamPos = invModelMat.transformPoint(camPos);
-  const modelViewDir = invModelMat.transformDirection(viewDir).normalize();
+  const worldLightSpaceMat = lightProjMat.multiply(lightViewMat);
 
   const viewMat = Matrix4.LookTo(camPos, cameraLookDir, Vector3.Up);
   const projMat = frame.isOrtho
@@ -122,10 +119,7 @@ const buildFrameTransforms = (scene: StaticRenderScene, frame: FrameRenderState,
   return {
     modelMat,
     normalMat,
-    lightSpaceMat,
-    modelLightDir,
-    modelCamPos,
-    modelViewDir,
+    worldLightSpaceMat,
     mvp,
   };
 };
@@ -259,7 +253,7 @@ export const drawScene = (
   const renderSettings = frame.renderSettings;
   const { triangleVertexIndices, skipShadowPass } = options;
   const activeBackgroundBuffer = renderSettings.tonemap
-    ? backgroundBufferTonemapped ?? backgroundBuffer
+    ? (backgroundBufferTonemapped ?? backgroundBuffer)
     : backgroundBuffer;
 
   if (renderSettings.showEnvironmentBackground && activeBackgroundBuffer) {
@@ -273,8 +267,7 @@ export const drawScene = (
     return;
   }
 
-  const { modelMat, normalMat, lightSpaceMat, modelLightDir, modelCamPos, modelViewDir, mvp } =
-    buildFrameTransforms(scene, frame, fov);
+  const { modelMat, normalMat, worldLightSpaceMat, mvp } = buildFrameTransforms(scene, frame, fov);
 
   const shader = shaders[renderSettings.material];
   shader.uniforms = {
@@ -284,15 +277,12 @@ export const drawScene = (
     normalMat,
     worldLightDir: lightDir,
     envYaw,
-    modelLightDir,
     worldCamPos: frame.camPos,
-    modelCamPos,
     orthographic: frame.isOrtho,
     worldViewDir: frame.viewDir,
-    modelViewDir,
     material,
     iblData,
-    lightSpaceMat,
+    worldLightSpaceMat,
     shadowMap,
     receiveShadows: renderSettings.useShadows,
   };
