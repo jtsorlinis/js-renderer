@@ -279,18 +279,16 @@ const draw = () => {
   depthBuffer.clear(1000);
   shadowMap.clear(1000);
 
-  // 2) Build model-space transforms.
+  // 2) Build model and world-space transforms.
   const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
   const invModelMat = modelMat.invert();
   const normalMat = invModelMat.transpose();
+  const useShadows = renderSettings.useShadows === true;
 
   // 3) Build light-space transform (for shadow mapping).
   const lightViewMat = Matrix4.LookAt(lightDir.scale(5), Vector3.Zero);
   const lightProjMat = Matrix4.Ortho(shadowOrthoSize, 1, 1, 10);
-  const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
-  const modelLightDir = invModelMat.transformDirection(lightDir).normalize();
-  const modelCamPos = invModelMat.transformPoint(camPos);
-  const modelViewDir = invModelMat.transformDirection(viewDir).normalize();
+  const worldLightSpaceMat = lightProjMat.multiply(lightViewMat);
 
   // 4) Build camera transform and final clip transform.
   const isOrtho = orthoCb.checked;
@@ -310,23 +308,20 @@ const draw = () => {
     normalMat,
     worldLightDir: lightDir,
     envYaw,
-    modelLightDir,
     worldCamPos: camPos,
-    modelCamPos,
     orthographic: isOrtho,
     worldViewDir: viewDir,
-    modelViewDir,
     material,
     iblData,
-    lightSpaceMat,
+    worldLightSpaceMat,
     shadowMap,
-    receiveShadows: renderSettings.useShadows,
+    receiveShadows: useShadows,
   };
   shaders.depth.uniforms = { model, clipMat: mvp };
 
   // Optional shadow pass first
-  if (renderSettings.useShadows) {
-    shaders.depth.uniforms.clipMat = lightSpaceMat;
+  if (useShadows) {
+    shaders.depth.uniforms.clipMat = worldLightSpaceMat.multiply(modelMat);
     renderMesh(shaders.depth, shadowMap, "filled", shadowBuffer);
   }
 
