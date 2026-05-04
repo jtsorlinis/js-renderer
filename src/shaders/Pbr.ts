@@ -8,10 +8,13 @@ import { DIELECTRIC_F0, EPSILON, INV_PI, distributionGGX, geometrySmith } from "
 export interface Uniforms {
   model: Mesh;
   mvp: Matrix4;
-  modelLightDir: Vector3;
-  modelCamPos: Vector3;
+  modelMat: Matrix4;
+  normalMat: Matrix4;
+  worldLightDir: Vector3;
+  worldCamPos: Vector3;
+  worldViewDir: Vector3;
   material: Material;
-  lightSpaceMat: Matrix4;
+  worldLightSpaceMat: Matrix4;
   shadowMap: DepthTexture;
   receiveShadows: boolean;
 }
@@ -26,22 +29,25 @@ const ambientIntensity = 0.1;
 export class PbrShader extends BaseShader<Uniforms> {
   vUV = this.varying<Vector2>();
   vLightSpacePos = this.varying<Vector3>();
-  vModelPos = this.varying<Vector3>();
-  vModelNormal = this.varying<Vector3>();
-  vModelTangent = this.varying<Vector4>();
+  vWorldPos = this.varying<Vector3>();
+  vWorldNormal = this.varying<Vector3>();
+  vWorldTangent = this.varying<Vector4>();
 
   vertex = () => {
     const model = this.uniforms.model;
     const i = this.vertexId;
     const modelPos = model.vertices[i];
+    const worldPos = this.uniforms.modelMat.transformPoint(modelPos);
+    const worldNormal = this.uniforms.normalMat.transformDirection(model.normals[i]).normalize();
+    const worldTangent = this.uniforms.modelMat.transformDirection4(model.tangents[i]).normalize3();
 
     this.v2f(this.vUV, model.uvs[i]);
-    this.v2f(this.vModelPos, modelPos);
-    this.v2f(this.vModelNormal, model.normals[i]);
-    this.v2f(this.vModelTangent, model.tangents[i]);
+    this.v2f(this.vWorldPos, worldPos);
+    this.v2f(this.vWorldNormal, worldNormal);
+    this.v2f(this.vWorldTangent, worldTangent);
 
     if (this.uniforms.receiveShadows) {
-      const lightSpacePos = this.uniforms.lightSpaceMat.transformPoint(modelPos);
+      const lightSpacePos = this.uniforms.worldLightSpaceMat.transformPoint(worldPos);
       lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
       lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
       this.v2f(this.vLightSpacePos, lightSpacePos);
@@ -53,27 +59,27 @@ export class PbrShader extends BaseShader<Uniforms> {
   fragment = () => {
     const uv = this.interpolateVec2(this.vUV);
     const material = this.uniforms.material;
-    const modelPos = this.interpolateVec3(this.vModelPos);
-    const modelNormal = this.interpolateVec3(this.vModelNormal).normalize();
-    const modelTangent = this.interpolateVec4(this.vModelTangent);
-    const handedness = modelTangent.w < 0 ? -1 : 1;
+    const worldPos = this.interpolateVec3(this.vWorldPos);
+    const worldNormal = this.interpolateVec3(this.vWorldNormal).normalize();
+    const worldTangent = this.interpolateVec4(this.vWorldTangent);
+    const handedness = worldTangent.w < 0 ? -1 : 1;
 
-    const tDotN = modelTangent.dot3(modelNormal);
-    const Tx = modelTangent.x - modelNormal.x * tDotN;
-    const Ty = modelTangent.y - modelNormal.y * tDotN;
-    const Tz = modelTangent.z - modelNormal.z * tDotN;
+    const tDotN = worldTangent.dot3(worldNormal);
+    const Tx = worldTangent.x - worldNormal.x * tDotN;
+    const Ty = worldTangent.y - worldNormal.y * tDotN;
+    const Tz = worldTangent.z - worldNormal.z * tDotN;
     const TLengthSq = Tx * Tx + Ty * Ty + Tz * Tz;
     const TScale = 1 / Math.sqrt(TLengthSq);
     const T = new Vector3(Tx * TScale, Ty * TScale, Tz * TScale);
 
-    const Bx = (modelNormal.y * T.z - modelNormal.z * T.y) * handedness;
-    const By = (modelNormal.z * T.x - modelNormal.x * T.z) * handedness;
-    const Bz = (modelNormal.x * T.y - modelNormal.y * T.x) * handedness;
+    const Bx = (worldNormal.y * T.z - worldNormal.z * T.y) * handedness;
+    const By = (worldNormal.z * T.x - worldNormal.x * T.z) * handedness;
+    const Bz = (worldNormal.x * T.y - worldNormal.y * T.x) * handedness;
 
     const normalTexel = this.sampleFiltered(material.normalTexture, uv);
-    const Nx = T.x * normalTexel.x + Bx * normalTexel.y + modelNormal.x * normalTexel.z;
-    const Ny = T.y * normalTexel.x + By * normalTexel.y + modelNormal.y * normalTexel.z;
-    const Nz = T.z * normalTexel.x + Bz * normalTexel.y + modelNormal.z * normalTexel.z;
+    const Nx = T.x * normalTexel.x + Bx * normalTexel.y + worldNormal.x * normalTexel.z;
+    const Ny = T.y * normalTexel.x + By * normalTexel.y + worldNormal.y * normalTexel.z;
+    const Nz = T.z * normalTexel.x + Bz * normalTexel.y + worldNormal.z * normalTexel.z;
     const NLengthSq = Nx * Nx + Ny * Ny + Nz * Nz;
     const NScale = 1 / Math.sqrt(NLengthSq);
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
@@ -87,14 +93,10 @@ export class PbrShader extends BaseShader<Uniforms> {
     const f0y = DIELECTRIC_F0.y + (baseColor.y - DIELECTRIC_F0.y) * metallic;
     const f0z = DIELECTRIC_F0.z + (baseColor.z - DIELECTRIC_F0.z) * metallic;
 
-    const modelLightDir = this.uniforms.modelLightDir;
-    const modelViewDir = this.uniforms.modelCamPos.subtract(modelPos).normalize();
-    const nDotL = saturate(
-      normal.x * modelLightDir.x + normal.y * modelLightDir.y + normal.z * modelLightDir.z,
-    );
-    const nDotV = saturate(
-      normal.x * modelViewDir.x + normal.y * modelViewDir.y + normal.z * modelViewDir.z,
-    );
+    const worldLightDir = this.uniforms.worldLightDir;
+    const worldViewDir = this.uniforms.worldCamPos.subtract(worldPos).normalize();
+    const nDotL = saturate(normal.dot(worldLightDir));
+    const nDotV = saturate(normal.dot(worldViewDir));
 
     let directR = 0;
     let directG = 0;
@@ -108,9 +110,9 @@ export class PbrShader extends BaseShader<Uniforms> {
       }
 
       if (shadow > 0) {
-        const halfDir = modelViewDir.add(modelLightDir).normalize();
-        const nDotH = saturate(normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z);
-        const vDotH = saturate(modelViewDir.dot(halfDir));
+        const halfDir = worldViewDir.add(worldLightDir).normalize();
+        const nDotH = saturate(normal.dot(halfDir));
+        const vDotH = saturate(worldViewDir.dot(halfDir));
         const fresnelFactor = Math.pow(1 - saturate(vDotH), 5);
         const fresnelX = f0x + (1 - f0x) * fresnelFactor;
         const fresnelY = f0y + (1 - f0y) * fresnelFactor;

@@ -23,7 +23,7 @@ export interface Uniforms {
   worldCamPos: Vector3;
   material: Material;
   iblData: IblData;
-  lightSpaceMat: Matrix4;
+  worldLightSpaceMat: Matrix4;
   shadowMap: DepthTexture;
   receiveShadows: boolean;
 }
@@ -58,7 +58,7 @@ export class IblShader extends BaseShader<Uniforms> {
     this.v2f(this.vWorldTangent, worldTangent);
 
     if (this.uniforms.receiveShadows) {
-      const lightSpacePos = this.uniforms.lightSpaceMat.transformPoint(modelPos);
+      const lightSpacePos = this.uniforms.worldLightSpaceMat.transformPoint(worldPos);
       lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
       lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
       this.v2f(this.vLightSpacePos, lightSpacePos);
@@ -107,11 +107,8 @@ export class IblShader extends BaseShader<Uniforms> {
     const f0z = DIELECTRIC_F0.z + (baseColor.z - DIELECTRIC_F0.z) * metallic;
 
     const worldLightDir = this.uniforms.worldLightDir;
-    const nDotL = saturate(
-      normal.x * worldLightDir.x + normal.y * worldLightDir.y + normal.z * worldLightDir.z,
-    );
-    const rawNDotV =
-      normal.x * worldViewDir.x + normal.y * worldViewDir.y + normal.z * worldViewDir.z;
+    const nDotL = saturate(normal.dot(worldLightDir));
+    const rawNDotV = normal.dot(worldViewDir);
     const nDotV = saturate(rawNDotV);
 
     let directR = 0;
@@ -127,7 +124,7 @@ export class IblShader extends BaseShader<Uniforms> {
 
       if (shadow > 0) {
         const halfDir = worldViewDir.add(worldLightDir).normalize();
-        const nDotH = saturate(normal.x * halfDir.x + normal.y * halfDir.y + normal.z * halfDir.z);
+        const nDotH = saturate(normal.dot(halfDir));
         const vDotH = saturate(worldViewDir.dot(halfDir));
         const fresnelBase = 1 - vDotH;
         const fresnelBaseSq = fresnelBase * fresnelBase;
