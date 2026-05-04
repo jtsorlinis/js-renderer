@@ -146,7 +146,6 @@ type RenderBackend = "cpu" | "webgpu";
 let preferredRenderer: RenderBackend = "cpu";
 let activeRenderer: RenderBackend = "cpu";
 let webGpuRenderer: WebGpuRenderer | undefined;
-let webGpuRenderError = "";
 
 const setActiveRenderer = (renderer: RenderBackend) => {
   if (activeRenderer === renderer) {
@@ -215,7 +214,7 @@ type FrameState = {
   renderSettings: RenderSettings;
   modelMat: Matrix4;
   normalMat: Matrix4;
-  lightSpaceMat: Matrix4;
+  worldLightSpaceMat: Matrix4;
   modelLightDir: Vector3;
   modelCamPos: Vector3;
   modelViewDir: Vector3;
@@ -333,7 +332,7 @@ const getFrameState = (): FrameState => {
 
   const lightViewMat = Matrix4.LookAt(lightDir.scale(5), Vector3.Zero);
   const lightProjMat = Matrix4.Ortho(shadowOrthoSize, 1, 1, 10);
-  const lightSpaceMat = lightProjMat.multiply(lightViewMat).multiply(modelMat);
+  const worldLightSpaceMat = lightProjMat.multiply(lightViewMat);
   const modelLightDir = invModelMat.transformDirection(lightDir).normalize();
   const modelCamPos = invModelMat.transformPoint(camPos);
   const modelViewDir = invModelMat.transformDirection(viewDir).normalize();
@@ -349,7 +348,7 @@ const getFrameState = (): FrameState => {
     renderSettings,
     modelMat,
     normalMat,
-    lightSpaceMat,
+    worldLightSpaceMat,
     modelLightDir,
     modelCamPos,
     modelViewDir,
@@ -380,15 +379,12 @@ const drawSoftware = (frameState: FrameState) => {
     normalMat: frameState.normalMat,
     worldLightDir: lightDir,
     envYaw,
-    modelLightDir: frameState.modelLightDir,
     worldCamPos: camPos,
-    modelCamPos: frameState.modelCamPos,
     orthographic: frameState.isOrtho,
     worldViewDir: viewDir,
-    modelViewDir: frameState.modelViewDir,
     material,
     iblData,
-    lightSpaceMat: frameState.lightSpaceMat,
+    worldLightSpaceMat: frameState.worldLightSpaceMat,
     shadowMap,
     receiveShadows: renderSettings.useShadows,
   };
@@ -396,7 +392,7 @@ const drawSoftware = (frameState: FrameState) => {
 
   // Optional shadow pass first
   if (renderSettings.useShadows) {
-    shaders.depth.uniforms.clipMat = frameState.lightSpaceMat;
+    shaders.depth.uniforms.clipMat = frameState.worldLightSpaceMat.multiply(frameState.modelMat);
     renderMesh(shaders.depth, shadowMap, "filled", shadowBuffer);
   }
 
@@ -425,13 +421,10 @@ const drawWebGpu = (frameState: FrameState) => {
     mvp: frameState.mvp,
     modelMat: frameState.modelMat,
     normalMat: frameState.normalMat,
-    lightSpaceMat: frameState.lightSpaceMat,
+    worldLightSpaceMat: frameState.worldLightSpaceMat,
     worldLightDir: lightDir,
     worldCamPos: camPos,
     worldViewDir: viewDir,
-    modelLightDir: frameState.modelLightDir,
-    modelCamPos: frameState.modelCamPos,
-    modelViewDir: frameState.modelViewDir,
     envYaw,
     aspectRatio,
     fov: FOV,
@@ -447,11 +440,9 @@ const drawWebGpu = (frameState: FrameState) => {
 
   try {
     webGpuRenderer.render(params);
-    webGpuRenderError = "";
     return true;
   } catch (error) {
     console.warn("WebGPU render failed; falling back to software renderer.", error);
-    webGpuRenderError = error instanceof Error ? error.message : "render failed";
     return false;
   }
 };
@@ -538,7 +529,8 @@ window.addEventListener("keydown", (event) => {
   } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
     const models = [...modelDd.options].filter((option) => !option.hidden);
     const index = models.findIndex((option) => option.value === modelDd.value);
-    const nextIndex = (index + (event.key === "ArrowRight" ? 1 : -1) + models.length) % models.length;
+    const nextIndex =
+      (index + (event.key === "ArrowRight" ? 1 : -1) + models.length) % models.length;
     modelDd.value = models[nextIndex].value;
     modelDd.dispatchEvent(new Event("change"));
     event.preventDefault();
@@ -557,7 +549,6 @@ modelDd.onchange = () => {
 
 gpuCb.onchange = () => {
   preferredRenderer = gpuCb.checked && webGpuRenderer ? "webgpu" : "cpu";
-  webGpuRenderError = "";
 };
 
 loadGlbBtn.addEventListener("click", () => {

@@ -17,14 +17,11 @@ const UNIFORM_LIGHT_SPACE_OFFSET = 48;
 const UNIFORM_WORLD_LIGHT_OFFSET = 64;
 const UNIFORM_WORLD_CAM_OFFSET = 68;
 const UNIFORM_WORLD_VIEW_OFFSET = 72;
-const UNIFORM_MODEL_LIGHT_OFFSET = 76;
-const UNIFORM_MODEL_CAM_OFFSET = 80;
-const UNIFORM_MODEL_VIEW_OFFSET = 84;
-const UNIFORM_MATERIAL_FACTORS_OFFSET = 88;
-const UNIFORM_FLAGS_OFFSET = 92;
-const UNIFORM_ENV_YAW_OFFSET = 96;
-const UNIFORM_CAMERA_OFFSET = 100;
-const UNIFORM_FLOAT_COUNT = 104;
+const UNIFORM_MATERIAL_FACTORS_OFFSET = 76;
+const UNIFORM_FLAGS_OFFSET = 80;
+const UNIFORM_ENV_YAW_OFFSET = 84;
+const UNIFORM_CAMERA_OFFSET = 88;
+const UNIFORM_FLOAT_COUNT = 92;
 
 const GPU_BUFFER_USAGE = {
   COPY_DST: 0x0008,
@@ -64,13 +61,10 @@ export type WebGpuRenderParams = {
   mvp: Matrix4;
   modelMat: Matrix4;
   normalMat: Matrix4;
-  lightSpaceMat: Matrix4;
+  worldLightSpaceMat: Matrix4;
   worldLightDir: Vector3;
   worldCamPos: Vector3;
   worldViewDir: Vector3;
-  modelLightDir: Vector3;
-  modelCamPos: Vector3;
-  modelViewDir: Vector3;
   envYaw: { sin: number; cos: number };
   aspectRatio: number;
   fov: number;
@@ -85,13 +79,10 @@ struct Uniforms {
   mvp: mat4x4f,
   modelMat: mat4x4f,
   normalMat: mat4x4f,
-  lightSpaceMat: mat4x4f,
+  worldLightSpaceMat: mat4x4f,
   worldLightDir: vec4f,
   worldCamPos: vec4f,
   worldViewDir: vec4f,
-  modelLightDir: vec4f,
-  modelCamPos: vec4f,
-  modelViewDir: vec4f,
   materialFactors: vec4f,
   flags: vec4f,
   envYaw: vec4f,
@@ -113,7 +104,7 @@ struct VertexOutput {
   @location(2) faceNormal: vec3f,
   @location(3) uv: vec2f,
   @location(4) worldTangent: vec4f,
-  @location(5) lightSpacePos: vec4f,
+  @location(5) worldLightSpacePos: vec4f,
   @location(6) faceColor: vec3f,
 };
 
@@ -321,12 +312,12 @@ fn apply_normal_map(baseNormal: vec3f, tangentInput: vec4f, uv: vec2f) -> vec3f 
   return normalize(tangent * normalTexel.x + bitangent * normalTexel.y + baseNormal * normalTexel.z);
 }
 
-fn shadow_factor(lightSpacePos: vec4f, normal: vec3f) -> f32 {
+fn shadow_factor(worldLightSpacePos: vec4f, normal: vec3f) -> f32 {
   if (uniforms.flags.w < 0.5) {
     return 1.0;
   }
 
-  let ndc = lightSpacePos.xyz / lightSpacePos.w;
+  let ndc = worldLightSpacePos.xyz / worldLightSpacePos.w;
   let uv = vec2f(ndc.x * 0.5 + 0.5, 1.0 - (ndc.y * 0.5 + 0.5));
   let validProjection = uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0 && ndc.z >= 0.0 && ndc.z <= 1.0;
   let nDotL = saturate(dot(normal, uniforms.worldLightDir.xyz));
@@ -454,7 +445,7 @@ fn vertex_main(input: VertexInput, @builtin(vertex_index) vertexIndex: u32) -> V
   output.faceNormal = normalize((uniforms.normalMat * vec4f(input.faceNormal, 0.0)).xyz);
   output.uv = input.uv;
   output.worldTangent = vec4f(normalize((uniforms.modelMat * vec4f(input.tangent.xyz, 0.0)).xyz), input.tangent.w);
-  output.lightSpacePos = uniforms.lightSpaceMat * modelPosition;
+  output.worldLightSpacePos = uniforms.worldLightSpaceMat * uniforms.modelMat * modelPosition;
   output.faceColor = hash3((vertexIndex / 3u) * 3u, 0.25, 1.0);
   return output;
 }
@@ -486,7 +477,7 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
     normal = apply_normal_map(normal, input.worldTangent, input.uv);
   }
 
-  let shadow = shadow_factor(input.lightSpacePos, normal);
+  let shadow = shadow_factor(input.worldLightSpacePos, normal);
   if (mode >= MODE_PBR) {
     return output_color(pbr_lighting(baseColor, normal, viewDir, shadow, mode, input.uv));
   }
@@ -524,7 +515,7 @@ struct Uniforms {
   mvp: mat4x4f,
   modelMat: mat4x4f,
   normalMat: mat4x4f,
-  lightSpaceMat: mat4x4f,
+  worldLightSpaceMat: mat4x4f,
 };
 
 struct VertexInput {
@@ -539,7 +530,7 @@ struct VertexInput {
 
 @vertex
 fn vertex_main(input: VertexInput) -> @builtin(position) vec4f {
-  return uniforms.lightSpaceMat * vec4f(input.position, 1.0);
+  return uniforms.worldLightSpaceMat * uniforms.modelMat * vec4f(input.position, 1.0);
 }
 `;
 
@@ -1074,13 +1065,10 @@ export class WebGpuRenderer {
     this.uniformData.set(params.mvp.m, UNIFORM_MVP_OFFSET);
     this.uniformData.set(params.modelMat.m, UNIFORM_MODEL_OFFSET);
     this.uniformData.set(params.normalMat.m, UNIFORM_NORMAL_OFFSET);
-    this.uniformData.set(params.lightSpaceMat.m, UNIFORM_LIGHT_SPACE_OFFSET);
+    this.uniformData.set(params.worldLightSpaceMat.m, UNIFORM_LIGHT_SPACE_OFFSET);
     vectorToUniform(this.uniformData, UNIFORM_WORLD_LIGHT_OFFSET, params.worldLightDir);
     vectorToUniform(this.uniformData, UNIFORM_WORLD_CAM_OFFSET, params.worldCamPos, 1);
     vectorToUniform(this.uniformData, UNIFORM_WORLD_VIEW_OFFSET, params.worldViewDir);
-    vectorToUniform(this.uniformData, UNIFORM_MODEL_LIGHT_OFFSET, params.modelLightDir);
-    vectorToUniform(this.uniformData, UNIFORM_MODEL_CAM_OFFSET, params.modelCamPos, 1);
-    vectorToUniform(this.uniformData, UNIFORM_MODEL_VIEW_OFFSET, params.modelViewDir);
 
     this.uniformData[UNIFORM_MATERIAL_FACTORS_OFFSET] = params.material.occlusionStrength;
     this.uniformData[UNIFORM_MATERIAL_FACTORS_OFFSET + 1] = params.material.roughnessFactor;

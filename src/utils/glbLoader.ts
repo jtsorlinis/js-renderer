@@ -677,21 +677,6 @@ const packOrmTexture = (occlusionTexture: Texture, metallicRoughnessTexture: Tex
   return new Texture(data, width, height);
 };
 
-const applyBaseColorFactor = (texture: Texture, factor: Vector3) => {
-  if (factor.x === 1 && factor.y === 1 && factor.z === 1) {
-    return texture;
-  }
-
-  const data = new Float32Array(texture.data.length);
-  for (let i = 0; i < texture.data.length; i += 3) {
-    data[i] = texture.data[i] * factor.x;
-    data[i + 1] = texture.data[i + 1] * factor.y;
-    data[i + 2] = texture.data[i + 2] * factor.z;
-  }
-
-  return new Texture(data, texture.width, texture.height);
-};
-
 export const loadGlbAsset = async (
   url: string,
   normalize = true,
