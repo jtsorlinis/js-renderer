@@ -171,7 +171,7 @@ let material = initialModelOption.material;
 let shadowOrthoSize = getModelRadius(model);
 let modelPos = new Vector3(0, 0, 0);
 let modelRotation = new Vector3(0, Math.PI / 2, 0);
-let modelScale = new Vector3(1, 1, 1);
+let modelScale = Vector3.One.scaleInPlace(1.15);
 
 const shaders = {
   ibl: new IblShader(),
