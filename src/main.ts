@@ -43,7 +43,6 @@ const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
 const orthoCb = document.getElementById("orthoCb") as HTMLInputElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
-const resolutionText = document.getElementById("resolution") as HTMLSpanElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
 const shadingSlider = document.getElementById("shadingSlider") as HTMLInputElement;
 const modelDd = document.getElementById("modelDd") as HTMLSelectElement;
@@ -160,7 +159,6 @@ type UiRenderSettings = Omit<RenderSelection, "normalizedValue">;
 
 const updateModelStats = () => {
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
-  resolutionText.innerText = `${CANVAS_WIDTH} x ${CANVAS_HEIGHT}`;
 };
 
 const resetModelTransform = () => {
