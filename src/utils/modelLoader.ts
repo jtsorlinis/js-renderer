@@ -7,7 +7,7 @@ const assetPath = (fileName: string) => `${import.meta.env.BASE_URL}models/${fil
 const modelAssets: Record<string, ModelAssetSource> = {
   dice: {
     glbUrl: assetPath("d20.glb"),
-    scale: 0.8,
+    scale: 0.9,
   },
   mushroom: {
     glbUrl: assetPath("mushroom.glb"),
@@ -15,13 +15,15 @@ const modelAssets: Record<string, ModelAssetSource> = {
   },
   hydrant: {
     glbUrl: assetPath("hydrant.glb"),
+    scale: 1.1,
   },
   bird: {
     glbUrl: assetPath("bird.glb"),
-    scale: 1.3,
+    scale: 1.4,
   },
   head: {
     glbUrl: assetPath("head.glb"),
+    scale: 1.1,
   },
   dragon: {
     glbUrl: assetPath("dragon.glb"),
@@ -30,6 +32,7 @@ const modelAssets: Record<string, ModelAssetSource> = {
   // Secret nyxy model
   nyxy: {
     glbUrl: assetPath("nyxy.glb"),
+    scale: 1.2,
   },
 };
 

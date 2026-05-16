@@ -43,7 +43,6 @@ const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
 const orthoCb = document.getElementById("orthoCb") as HTMLInputElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
-const resolutionText = document.getElementById("resolution") as HTMLSpanElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
 const shadingSlider = document.getElementById("shadingSlider") as HTMLInputElement;
 const modelDd = document.getElementById("modelDd") as HTMLSelectElement;
@@ -171,7 +170,6 @@ const triVerts: Vector4[] = [];
 
 const updateModelStats = () => {
   trisText.innerText = (model.vertices.length / 3).toFixed(0);
-  resolutionText.innerText = `${CANVAS_WIDTH} x ${CANVAS_HEIGHT}`;
 };
 
 const resetModelTransform = () => {
@@ -404,7 +402,8 @@ window.addEventListener("keydown", (event) => {
   } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
     const models = [...modelDd.options].filter((option) => !option.hidden);
     const index = models.findIndex((option) => option.value === modelDd.value);
-    const nextIndex = (index + (event.key === "ArrowRight" ? 1 : -1) + models.length) % models.length;
+    const nextIndex =
+      (index + (event.key === "ArrowRight" ? 1 : -1) + models.length) % models.length;
     modelDd.value = models[nextIndex].value;
     modelDd.dispatchEvent(new Event("change"));
     event.preventDefault();
