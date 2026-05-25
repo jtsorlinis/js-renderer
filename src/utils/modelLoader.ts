@@ -10,8 +10,8 @@ const modelAssets: Record<string, ModelAssetSource> = {
     scale: 0.9,
   },
   mushroom: {
-    glbUrl: assetPath("mushroom.glb"),
-    scale: 0.9,
+    glbUrl: assetPath("can.glb"),
+    scale: 0.95,
   },
   hydrant: {
     glbUrl: assetPath("hydrant.glb"),
