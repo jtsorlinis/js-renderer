@@ -1,6 +1,7 @@
 # TypeScript CPU Software Renderer
 
-![dragon](https://github.com/user-attachments/assets/ad8a7763-dd85-4db3-a9e3-392182bf8490)
+<img width="1004" height="754" alt="image" src="https://github.com/user-attachments/assets/379dec50-9b94-4ca1-914f-96d4cc8ef7cc" />
+
 
 **Experience it here: [jtsorlinis.github.io/js-renderer](https://jtsorlinis.github.io/js-renderer/)**
 
