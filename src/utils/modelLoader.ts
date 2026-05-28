@@ -9,17 +9,13 @@ const modelAssets: Record<string, ModelAssetSource> = {
     glbUrl: assetPath("d20.glb"),
     scale: 0.9,
   },
-  mushroom: {
-    glbUrl: assetPath("mushroom.glb"),
+  can: {
+    glbUrl: assetPath("can.glb"),
     scale: 0.95,
   },
   hydrant: {
     glbUrl: assetPath("hydrant.glb"),
     scale: 1.15,
-  },
-  bird: {
-    glbUrl: assetPath("bird.glb"),
-    scale: 1.4,
   },
   head: {
     glbUrl: assetPath("head.glb"),
@@ -27,6 +23,10 @@ const modelAssets: Record<string, ModelAssetSource> = {
   },
   dragon: {
     glbUrl: assetPath("dragon.glb"),
+    scale: 1.4,
+  },
+  demon: {
+    glbUrl: assetPath("warrior.glb"),
     scale: 1.3,
   },
   // Secret nyxy model
