@@ -80,6 +80,7 @@ export const rebuildEnvironmentBackdrop = (
 ) => {
   const tanHalfFov = Math.tan((cameraFov * Math.PI) / 360);
   const roughnessLayer = Math.round(blurAmount * iblData.specularPrefilterRoughnessMaxIndex);
+  const writePixel = tonemap ? targetBuffer.setPixelTonemapped : targetBuffer.setPixel;
 
   for (let y = 0; y < targetBuffer.height; y++) {
     const ndcY = 1 - ((y + 0.5) / targetBuffer.height) * 2;
@@ -106,11 +107,7 @@ export const rebuildEnvironmentBackdrop = (
         roughnessLayer,
         iblData.specularPrefilterLayerStride,
       );
-      if (tonemap) {
-        targetBuffer.setPixelTonemapped(x, y, backgroundEnvSample);
-      } else {
-        targetBuffer.setPixel(x, y, backgroundEnvSample);
-      }
+      writePixel(x, y, backgroundEnvSample);
     }
   }
 };

@@ -69,6 +69,7 @@ export const triangle = (
   const wStepY = (p0x - p1x) * invArea;
 
   const fragment = shader.fragment;
+  const writePixel = tonemap ? buffer.setPixelTonemapped : buffer.setPixel;
   shader.bc = bcClip;
   shader.fragPos = fragPos;
 
@@ -108,7 +109,7 @@ export const triangle = (
 
             // Skip if fragment shader discarded the pixel by returning undefined
             if (frag) {
-              tonemap ? buffer.setPixelTonemapped(x, y, frag) : buffer.setPixel(x, y, frag);
+              writePixel(x, y, frag);
             }
           }
         }
