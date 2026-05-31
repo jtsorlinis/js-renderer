@@ -75,9 +75,9 @@ export class Matrix4 {
   }
 
   public static LookTo(eye: Vector3, dir: Vector3, up: Vector3) {
-    const z = dir.normalize();
-    const x = up.cross(z).normalize();
-    const y = z.cross(x).normalize();
+    const z = dir.normalized();
+    const x = up.cross(z).normalized();
+    const y = z.cross(x).normalized();
 
     const m = Matrix4.Identity();
     m.m[0] = x.x;
@@ -305,5 +305,4 @@ export class Matrix4 {
      
       return result;
   }
-
 }
