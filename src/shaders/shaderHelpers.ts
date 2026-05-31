@@ -51,8 +51,8 @@ export const sampleLatLongMap = (
   const y0 = Math.floor(yCoord);
   const xBlend = xCoord - x0;
   const yBlend = yCoord - y0;
-  const xIndex0 = ((x0 % width) + width) % width;
-  const xIndex1 = (xIndex0 + 1) % width;
+  const xIndex0 = x0 < 0 ? width - 1 : x0;
+  const xIndex1 = xIndex0 === width - 1 ? 0 : xIndex0 + 1;
   const yIndex0 = Math.max(0, Math.min(height - 1, y0));
   const yIndex1 = Math.min(yIndex0 + 1, height - 1);
   const rowStride = width * 3;
