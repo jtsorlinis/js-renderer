@@ -35,10 +35,6 @@ const specularBrdfLutSize = 128;
 const specularBrdfSampleCount = 96;
 const SUN_LUMINANCE_THRESHOLD = 0.98;
 
-export const wrapUnit = (value: number) => {
-  return value - Math.floor(value);
-};
-
 export const sampleLatLongMap = (
   data: Float32Array,
   width: number,
@@ -49,7 +45,7 @@ export const sampleLatLongMap = (
   layerStride = width * height * 3,
 ) => {
   const layerOffset = layerIndex * layerStride;
-  const xCoord = wrapUnit(u) * width - 0.5;
+  const xCoord = (u - Math.floor(u)) * width - 0.5;
   const yCoord = clamp(v * height - 0.5, 0, height - 1);
   const x0 = Math.floor(xCoord);
   const y0 = Math.floor(yCoord);
@@ -117,8 +113,10 @@ export const rebuildEnvironmentBackdrop = (
 };
 
 const directionToLatLongUv = (x: number, y: number, z: number) => {
+  const u = Math.atan2(x, z) * INV_TAU + 0.5;
+
   return {
-    u: wrapUnit(Math.atan2(x, z) * INV_TAU + 0.5),
+    u: u - Math.floor(u),
     v: Math.acos(clamp(y, -1, 1)) * INV_PI,
   };
 };
@@ -164,7 +162,7 @@ const sampleLatLongData = (
   u: number,
   v: number,
 ) => {
-  const xCoord = wrapUnit(u) * width - 0.5;
+  const xCoord = (u - Math.floor(u)) * width - 0.5;
   const yCoord = clamp(v * height - 0.5, 0, height - 1);
   const x0 = Math.floor(xCoord);
   const y0 = Math.floor(yCoord);
@@ -208,10 +206,6 @@ const wrapAngle = (angle: number) => {
   }
 
   return angle;
-};
-
-const directionToYaw = (direction: Vector3) => {
-  return Math.atan2(direction.x, direction.z);
 };
 
 export const estimateEnvironmentSunDirection = (texture: Texture) => {
@@ -280,7 +274,9 @@ export const estimateEnvironmentYaw = (texture: Texture, lightDir: Vector3) => {
     };
   }
 
-  const angle = wrapAngle(directionToYaw(lightDir) - directionToYaw(sunDirection));
+  const angle = wrapAngle(
+    Math.atan2(lightDir.x, lightDir.z) - Math.atan2(sunDirection.x, sunDirection.z),
+  );
   return {
     angle,
     sin: Math.sin(angle),
@@ -296,15 +292,6 @@ const radicalInverseVdc = (bits: number) => {
   value = (((value & 0x0f0f0f0f) << 4) | ((value & 0xf0f0f0f0) >>> 4)) >>> 0;
   value = (((value & 0x00ff00ff) << 8) | ((value & 0xff00ff00) >>> 8)) >>> 0;
   return value * 2.3283064365386963e-10;
-};
-
-const geometrySchlickGGXIbl = (nDotX: number, roughness: number) => {
-  const k = roughness * roughness * 0.5;
-  return nDotX / Math.max(nDotX * (1 - k) + k, EPSILON);
-};
-
-const geometrySmithIbl = (nDotV: number, nDotL: number, roughness: number) => {
-  return geometrySchlickGGXIbl(nDotV, roughness) * geometrySchlickGGXIbl(nDotL, roughness);
 };
 
 const buildDiffuseIrradianceLut = (
@@ -433,9 +420,11 @@ const buildSpecularBrdfLut = (lutSize: number, sampleCount: number) => {
     const roughness = Math.max(0.045, roughnessIndex / (lutSize - 1));
     const alpha = roughness * roughness;
     const alphaSq = alpha * alpha;
+    const geometryK = roughness * roughness * 0.5;
 
     for (let viewIndex = 0; viewIndex < lutSize; viewIndex++) {
       const nDotV = Math.max(0.0001, viewIndex / (lutSize - 1));
+      const geometryV = nDotV / Math.max(nDotV * (1 - geometryK) + geometryK, EPSILON);
       const vx = Math.sqrt(Math.max(0, 1 - nDotV * nDotV));
       const vz = nDotV;
       let brdfA = 0;
@@ -457,7 +446,8 @@ const buildSpecularBrdfLut = (lutSize: number, sampleCount: number) => {
           continue;
         }
 
-        const geometry = geometrySmithIbl(nDotV, nDotL, roughness);
+        const geometryL = nDotL / Math.max(nDotL * (1 - geometryK) + geometryK, EPSILON);
+        const geometry = geometryV * geometryL;
         const visibility = (geometry * vDotH) / Math.max(nDotH * nDotV, EPSILON);
         const fresnel = Math.pow(1 - vDotH, 5);
         brdfA += (1 - fresnel) * visibility;

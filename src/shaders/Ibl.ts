@@ -11,7 +11,6 @@ import {
   type IblData,
   INV_TAU,
   sampleLatLongMap,
-  wrapUnit,
 } from "./shaderHelpers";
 
 export interface Uniforms {
@@ -166,7 +165,8 @@ export class IblShader extends BaseShader<Uniforms> {
     const ambientDiffuseFactor = 1 - metallic;
     const diffuseDirX = normal.x * envYaw.cos - normal.z * envYaw.sin;
     const diffuseDirZ = normal.x * envYaw.sin + normal.z * envYaw.cos;
-    const diffuseU = wrapUnit(Math.atan2(diffuseDirX, diffuseDirZ) * INV_TAU + 0.5);
+    const diffuseRawU = Math.atan2(diffuseDirX, diffuseDirZ) * INV_TAU + 0.5;
+    const diffuseU = diffuseRawU - Math.floor(diffuseRawU);
     const diffuseV = Math.acos(clamp(normal.y, -1, 1)) * INV_PI;
     const diffuseEnv = sampleLatLongMap(
       ibl.diffuseIrradianceMap,
@@ -182,9 +182,8 @@ export class IblShader extends BaseShader<Uniforms> {
     const reflectionZ = normal.z * reflectionScale - worldViewDir.z;
     const rotatedReflectionX = reflectionX * envYaw.cos - reflectionZ * envYaw.sin;
     const rotatedReflectionZ = reflectionX * envYaw.sin + reflectionZ * envYaw.cos;
-    const reflectionU = wrapUnit(
-      Math.atan2(rotatedReflectionX, rotatedReflectionZ) * INV_TAU + 0.5,
-    );
+    const reflectionRawU = Math.atan2(rotatedReflectionX, rotatedReflectionZ) * INV_TAU + 0.5;
+    const reflectionU = reflectionRawU - Math.floor(reflectionRawU);
     const reflectionV = Math.acos(clamp(reflectionY, -1, 1)) * INV_PI;
     const specularRoughnessIndex = Math.min(
       ibl.specularPrefilterRoughnessMaxIndex,
