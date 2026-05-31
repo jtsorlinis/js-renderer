@@ -19,7 +19,7 @@ export type RenderSelection = {
   tonemap?: boolean;
 };
 
-type RenderSelectionPreset = Omit<RenderSelection, "normalizedValue">;
+export type RenderSelectionPreset = Omit<RenderSelection, "normalizedValue">;
 
 const DEFAULT_SHADING_SELECTION: RenderSelection = {
   material: "depth",

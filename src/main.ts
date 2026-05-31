@@ -23,7 +23,7 @@ import { DepthShader } from "./shaders/Depth";
 import { NormalMappedShader } from "./shaders/NormalMapped";
 import { PbrShader } from "./shaders/Pbr";
 import { IblShader } from "./shaders/Ibl";
-import { RenderSelection, resolveShadingSelection, type RenderMode } from "./renderSettings";
+import { RenderSelectionPreset, resolveShadingSelection, type RenderMode } from "./renderSettings";
 import { loadHdrTexture } from "./utils/hdrLoader";
 
 const CANVAS_WIDTH = 800;
@@ -167,8 +167,6 @@ const shaders = {
   depth: new DepthShader(),
 };
 
-type RenderSettings = Omit<RenderSelection, "normalizedValue">;
-
 const triVerts: Vector4[] = [];
 
 const updateModelStats = () => {
@@ -209,7 +207,7 @@ const setModel = (modelKey: ModelKey, resetTransform = true) =>
 const loadSelectedGlb = (file: File, resetTransform = true) =>
   loadAndApplyModel(() => loadCustomGlb(file), resetTransform);
 
-const getRenderSettings = (): RenderSettings => {
+const getRenderSettings = (): RenderSelectionPreset => {
   const shadingValue = getShadingButton()?.dataset.shadingValue || "wireframe";
   const selection = resolveShadingSelection(shadingValue);
   if (selection.normalizedValue !== shadingValue) {
