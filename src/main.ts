@@ -29,6 +29,7 @@ import { loadHdrTexture } from "./utils/hdrLoader";
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
 const FOV = 50;
+const INITIAL_CAMERA_Z = -3;
 const SHADOW_MAP_SIZE = 512;
 const INITIAL_ROTATION = Math.PI / 3;
 const ROTATION_SPEED = 0.2;
@@ -37,6 +38,8 @@ const PAN_SENSITIVITY = 250;
 const ZOOM_SENSITIVITY = 100;
 const FPS_UPDATE_INTERVAL_MS = 250;
 const INITIAL_MODEL: ModelKey = "dice";
+
+const getDefaultOrthoSize = () => -INITIAL_CAMERA_Z * Math.tan((FOV * Math.PI) / 180 / 2);
 
 // UI handles
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -129,8 +132,8 @@ const hdrEnvironment = await loadHdrTexture(`${import.meta.env.BASE_URL}environm
 
 // Scene and camera
 const lightDir = new Vector3(1, -1, 1).scale(-1).normalize();
-const camPos = new Vector3(0, 0, -3);
-let orthoSize = -camPos.z * Math.tan((FOV * Math.PI) / 180 / 2);
+const camPos = new Vector3(0, 0, INITIAL_CAMERA_Z);
+let orthoSize = getDefaultOrthoSize();
 
 // Derived scene data
 const cameraLookDir = Vector3.Forward;
@@ -174,8 +177,8 @@ const updateModelStats = () => {
 
 const resetModelTransform = () => {
   modelRotation.set(0, INITIAL_ROTATION, 0);
-  camPos.set(0, 0, -3);
-  orthoSize = -camPos.z * Math.tan((FOV * Math.PI) / 180 / 2);
+  camPos.set(0, 0, INITIAL_CAMERA_Z);
+  orthoSize = getDefaultOrthoSize();
 };
 
 let activeModelRequest = 0;
@@ -187,9 +190,9 @@ const applyModelOption = (selectedModel: ModelOption) => {
   updateModelStats();
 };
 
-const setModel = async (modelKey: ModelKey, resetTransform = true) => {
+const loadAndApplyModel = async (loadModel: () => Promise<ModelOption>, resetTransform = true) => {
   const requestId = ++activeModelRequest;
-  const selectedModel = await ensureModelOption(modelKey);
+  const selectedModel = await loadModel();
   if (requestId !== activeModelRequest) {
     return;
   }
@@ -200,18 +203,11 @@ const setModel = async (modelKey: ModelKey, resetTransform = true) => {
   }
 };
 
-const loadSelectedGlb = async (file: File, resetTransform = true) => {
-  const requestId = ++activeModelRequest;
-  const selectedModel = await loadCustomGlb(file);
-  if (requestId !== activeModelRequest) {
-    return;
-  }
+const setModel = (modelKey: ModelKey, resetTransform = true) =>
+  loadAndApplyModel(() => ensureModelOption(modelKey), resetTransform);
 
-  applyModelOption(selectedModel);
-  if (resetTransform) {
-    resetModelTransform();
-  }
-};
+const loadSelectedGlb = (file: File, resetTransform = true) =>
+  loadAndApplyModel(() => loadCustomGlb(file), resetTransform);
 
 const getRenderSettings = (): RenderSettings => {
   const shadingValue = getShadingButton()?.dataset.shadingValue || "wireframe";
@@ -363,8 +359,8 @@ window.onpointerup = (e) => {
 let prevX = NaN;
 let prevY = NaN;
 canvas.onpointermove = (e) => {
-  const dx = isNaN(prevX) ? 0 : e.clientX - prevX;
-  const dy = isNaN(prevY) ? 0 : e.clientY - prevY;
+  const dx = Number.isNaN(prevX) ? 0 : e.clientX - prevX;
+  const dy = Number.isNaN(prevY) ? 0 : e.clientY - prevY;
   prevX = e.clientX;
   prevY = e.clientY;
 
