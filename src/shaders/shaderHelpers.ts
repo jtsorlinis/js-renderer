@@ -1,6 +1,10 @@
 import { Framebuffer, Texture } from "../drawing";
 import { clamp, Vector3 } from "../maths";
-import { EPSILON, INV_PI } from "./pbrHelpers";
+
+export const EPSILON = 0.00001;
+export const DIELECTRIC_F0 = new Vector3(0.04, 0.04, 0.04);
+export const INV_PI = 1 / Math.PI;
+export const INV_21 = 1 / 21;
 
 export interface IblData {
   diffuseIrradianceMap: Float32Array;
