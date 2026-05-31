@@ -27,10 +27,6 @@ export class Vector3 {
     this.z = z;
   }
 
-  public toArray() {
-    return [this.x, this.y, this.z];
-  }
-
   public extend(w: number) {
     return new Vector4(this.x, this.y, this.z, w);
   }
@@ -45,10 +41,6 @@ export class Vector3 {
 
   public clone() {
     return new Vector3(this.x, this.y, this.z);
-  }
-
-  public truncate() {
-    return new Vector3(~~this.x, ~~this.y, ~~this.z);
   }
 
   public scale(s: number) {
@@ -83,27 +75,12 @@ export class Vector3 {
     return this;
   }
 
-  public translate(v: Vector3) {
-    return new Vector3(this.x + v.x, this.y + v.y, this.z + v.z);
-  }
-
   public dot(v: Vector3) {
     return this.x * v.x + this.y * v.y + this.z * v.z;
   }
 
   public add(v: Vector3) {
     return new Vector3(this.x + v.x, this.y + v.y, this.z + v.z);
-  }
-
-  public addInPlace(v: Vector3) {
-    this.x += v.x;
-    this.y += v.y;
-    this.z += v.z;
-    return this;
-  }
-
-  public addScalar(s: number) {
-    return new Vector3(this.x + s, this.y + s, this.z + s);
   }
 
   public addScalarInPlace(s: number) {
@@ -117,31 +94,9 @@ export class Vector3 {
     return new Vector3(this.x - v.x, this.y - v.y, this.z - v.z);
   }
 
-  public subtractInPlace(v: Vector3) {
-    this.x -= v.x;
-    this.y -= v.y;
-    this.z -= v.z;
-    return this;
-  }
-
-  public multiply(v: Vector3) {
-    return new Vector3(this.x * v.x, this.y * v.y, this.z * v.z);
-  }
-
-  public multiplyInPlace(v: Vector3) {
-    this.x *= v.x;
-    this.y *= v.y;
-    this.z *= v.z;
-    return this;
-  }
-
   public set(x: number, y: number, z: number) {
     this.x = x;
     this.y = y;
     this.z = z;
-  }
-
-  public reflect(n: Vector3) {
-    return this.subtract(n.scale(2 * this.dot(n)));
   }
 }

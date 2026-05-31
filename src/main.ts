@@ -9,6 +9,11 @@ import {
   type ModelKey,
   type ModelOption,
 } from "./utils/modelLoader";
+import {
+  buildEnvironmentIbl,
+  estimateEnvironmentYaw,
+  rebuildEnvironmentBackdrop,
+} from "./shaders/shaderHelpers";
 import { SmoothShader } from "./shaders/Smooth";
 import { TexturedShader } from "./shaders/Textured";
 import { FlatShader } from "./shaders/Flat";
@@ -18,11 +23,6 @@ import { DepthShader } from "./shaders/Depth";
 import { NormalMappedShader } from "./shaders/NormalMapped";
 import { PbrShader } from "./shaders/Pbr";
 import { IblShader } from "./shaders/Ibl";
-import {
-  buildEnvironmentIbl,
-  estimateEnvironmentYaw,
-  rebuildEnvironmentBackdrop,
-} from "./shaders/iblHelpers";
 import { RenderSelection, resolveShadingSelection, type RenderMode } from "./renderSettings";
 import { loadHdrTexture } from "./utils/hdrLoader";
 

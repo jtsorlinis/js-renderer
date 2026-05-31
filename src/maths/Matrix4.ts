@@ -141,27 +141,12 @@ export class Matrix4 {
     return perspectiveMat;
   }
 
-  public toArray() {
-    return this.m;
-  }
-
   private multiplyVector3(v: Vector3, w: number) {
     return new Vector3(
       this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12] * w,
       this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z + this.m[13] * w,
       this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z + this.m[14] * w,
     );
-  }
-
-  // prettier-ignore
-  public multiplyVector4(v: Vector4) {
-    const result = new Vector4();
-    result.x = this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12] * v.w;
-    result.y = this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z + this.m[13] * v.w;
-    result.z = this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z + this.m[14] * v.w;
-    result.w = this.m[3] * v.x + this.m[7] * v.y + this.m[11] * v.z + this.m[15] * v.w;
-
-    return result;
   }
 
   public multiplyVector4InPlace(v: Vector4) {
@@ -338,19 +323,4 @@ export class Matrix4 {
       return result;
   }
 
-  public lerp(to: Matrix4, t: number) {
-    const result = new Matrix4();
-    for (let i = 0; i < 16; i++) {
-      result.m[i] = this.m[i] + (to.m[i] - this.m[i]) * t;
-    }
-    return result;
-  }
-
-  // prettier-ignore
-  public print() {
-    console.log(this.m[0].toFixed(2), this.m[4].toFixed(2), this.m[8].toFixed(2), this.m[12].toFixed(2));
-    console.log(this.m[1].toFixed(2), this.m[5].toFixed(2), this.m[9].toFixed(2), this.m[13].toFixed(2));
-    console.log(this.m[2].toFixed(2), this.m[6].toFixed(2), this.m[10].toFixed(2), this.m[14].toFixed(2));
-    console.log(this.m[3].toFixed(2), this.m[7].toFixed(2), this.m[11].toFixed(2), this.m[15].toFixed(2));
-  }
 }

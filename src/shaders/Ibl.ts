@@ -8,10 +8,11 @@ import {
   EPSILON,
   INV_21,
   INV_PI,
-  distributionGGX,
-  geometrySmith,
-} from "./pbrHelpers";
-import { type IblData, wrapUnit, INV_TAU, sampleLatLongMap } from "./iblHelpers";
+  type IblData,
+  INV_TAU,
+  sampleLatLongMap,
+  wrapUnit,
+} from "./shaderHelpers";
 
 export interface Uniforms {
   model: Mesh;
@@ -136,8 +137,16 @@ export class IblShader extends BaseShader<Uniforms> {
         const fresnelX = f0x + (1 - f0x) * fresnelFactor;
         const fresnelY = f0y + (1 - f0y) * fresnelFactor;
         const fresnelZ = f0z + (1 - f0z) * fresnelFactor;
-        const distribution = distributionGGX(nDotH, roughness);
-        const geometry = geometrySmith(nDotV, nDotL, roughness);
+        const alpha = roughness * roughness;
+        const alphaSq = alpha * alpha;
+        const distributionDenom = nDotH * nDotH * (alphaSq - 1) + 1;
+        const distribution =
+          alphaSq / Math.max(Math.PI * distributionDenom * distributionDenom, EPSILON);
+        const geometryR = roughness + 1;
+        const geometryK = (geometryR * geometryR) / 8;
+        const geometryV = nDotV / Math.max(nDotV * (1 - geometryK) + geometryK, EPSILON);
+        const geometryL = nDotL / Math.max(nDotL * (1 - geometryK) + geometryK, EPSILON);
+        const geometry = geometryV * geometryL;
         const specularFactor = (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
         const diffuseFactor = (1 - metallic) * INV_PI;
         const lightScale = nDotL * lightIntensity * shadow;
