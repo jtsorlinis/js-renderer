@@ -96,24 +96,7 @@ export class Matrix4 {
   }
 
   public static LookAt(eye: Vector3, target: Vector3, up: Vector3 = Vector3.Up) {
-    const z = target.subtract(eye).normalize();
-    const x = up.cross(z).normalize();
-    const y = z.cross(x).normalize();
-
-    const m = Matrix4.Identity();
-    m.m[0] = x.x;
-    m.m[1] = y.x;
-    m.m[2] = z.x;
-    m.m[4] = x.y;
-    m.m[5] = y.y;
-    m.m[6] = z.y;
-    m.m[8] = x.z;
-    m.m[9] = y.z;
-    m.m[10] = z.z;
-    m.m[12] = -x.dot(eye);
-    m.m[13] = -y.dot(eye);
-    m.m[14] = -z.dot(eye);
-    return m;
+    return Matrix4.LookTo(eye, target.subtract(eye), up);
   }
 
   static Ortho(orthoSize: number, aspectRatio: number, near = 0.1, far = 100) {

@@ -155,45 +155,9 @@ const buildBasis = (nx: number, ny: number, nz: number) => {
   };
 };
 
-const sampleLatLongData = (
-  data: Float32Array,
-  width: number,
-  height: number,
-  u: number,
-  v: number,
-) => {
-  const xCoord = (u - Math.floor(u)) * width - 0.5;
-  const yCoord = clamp(v * height - 0.5, 0, height - 1);
-  const x0 = Math.floor(xCoord);
-  const y0 = Math.floor(yCoord);
-  const xBlend = xCoord - x0;
-  const yBlend = yCoord - y0;
-  const xIndex0 = ((x0 % width) + width) % width;
-  const xIndex1 = (xIndex0 + 1) % width;
-  const yIndex0 = Math.max(0, Math.min(height - 1, y0));
-  const yIndex1 = Math.min(yIndex0 + 1, height - 1);
-  const rowStride = width * 3;
-  const base00 = yIndex0 * rowStride + xIndex0 * 3;
-  const base10 = yIndex0 * rowStride + xIndex1 * 3;
-  const base01 = yIndex1 * rowStride + xIndex0 * 3;
-  const base11 = yIndex1 * rowStride + xIndex1 * 3;
-  const r0 = data[base00] + (data[base10] - data[base00]) * xBlend;
-  const r1 = data[base01] + (data[base11] - data[base01]) * xBlend;
-  const g0 = data[base00 + 1] + (data[base10 + 1] - data[base00 + 1]) * xBlend;
-  const g1 = data[base01 + 1] + (data[base11 + 1] - data[base01 + 1]) * xBlend;
-  const b0 = data[base00 + 2] + (data[base10 + 2] - data[base00 + 2]) * xBlend;
-  const b1 = data[base01 + 2] + (data[base11 + 2] - data[base01 + 2]) * xBlend;
-
-  return {
-    r: r0 + (r1 - r0) * yBlend,
-    g: g0 + (g1 - g0) * yBlend,
-    b: b0 + (b1 - b0) * yBlend,
-  };
-};
-
 const sampleEnvironment = (texture: Texture, x: number, y: number, z: number) => {
   const uv = directionToLatLongUv(x, y, z);
-  return sampleLatLongData(texture.data, texture.width, texture.height, uv.u, uv.v);
+  return sampleLatLongMap(texture.data, texture.width, texture.height, uv.u, uv.v);
 };
 
 const wrapAngle = (angle: number) => {
@@ -332,9 +296,9 @@ const buildDiffuseIrradianceLut = (
           const sampleZ =
             basis.tz * sinThetaCosPhi + basis.bz * sinThetaSinPhi + normal.z * cosTheta;
           const sample = sampleEnvironment(texture, sampleX, sampleY, sampleZ);
-          irradianceR += sample.r * sampleWeight;
-          irradianceG += sample.g * sampleWeight;
-          irradianceB += sample.b * sampleWeight;
+          irradianceR += sample.x * sampleWeight;
+          irradianceG += sample.y * sampleWeight;
+          irradianceB += sample.z * sampleWeight;
         }
       }
 
@@ -395,9 +359,9 @@ const buildSpecularPrefilterLut = (
           }
 
           const sample = sampleEnvironment(texture, lx, ly, lz);
-          prefilteredR += sample.r * nDotL;
-          prefilteredG += sample.g * nDotL;
-          prefilteredB += sample.b * nDotL;
+          prefilteredR += sample.x * nDotL;
+          prefilteredG += sample.y * nDotL;
+          prefilteredB += sample.z * nDotL;
           totalWeight += nDotL;
         }
 
