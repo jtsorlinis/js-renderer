@@ -17,7 +17,7 @@ import {
   buildEnvironmentIbl,
   estimateEnvironmentYaw,
   rebuildEnvironmentBackdrop,
-} from "./shaders/iblHelpers";
+} from "./shaders/shaderHelpers";
 import {
   SHADING_PRESETS,
   type RenderSelection,
@@ -27,6 +27,7 @@ import {
 import { loadHdrTexture } from "./utils/hdrLoader";
 
 const FOV = 50;
+const INITIAL_CAMERA_Z = -3;
 const SHADOW_MAP_SIZE = 512;
 const ROTATION_SPEED = 0.001;
 const ROTATE_SENSITIVITY = 250;
@@ -156,7 +157,7 @@ const hdrEnvironment = await loadHdrTexture(`${import.meta.env.BASE_URL}environm
 
 // Scene and camera
 const lightDir = new Vector3(1, -1, 1).scale(-1).normalize();
-const camPos = new Vector3(0, 0, -3);
+const camPos = new Vector3(0, 0, INITIAL_CAMERA_Z);
 
 // Derived scene data
 const cameraLookDir = Vector3.Forward;
@@ -411,8 +412,8 @@ window.onpointerup = (e) => {
 let prevX = NaN;
 let prevY = NaN;
 canvas.onpointermove = (e) => {
-  const dx = isNaN(prevX) ? 0 : e.clientX - prevX;
-  const dy = isNaN(prevY) ? 0 : e.clientY - prevY;
+  const dx = Number.isNaN(prevX) ? 0 : e.clientX - prevX;
+  const dy = Number.isNaN(prevY) ? 0 : e.clientY - prevY;
   prevX = e.clientX;
   prevY = e.clientY;
 

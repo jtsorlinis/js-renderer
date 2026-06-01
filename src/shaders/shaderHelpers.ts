@@ -1,6 +1,10 @@
 import { Framebuffer, Texture } from "../drawing";
 import { clamp, Vector3 } from "../maths";
-import { EPSILON, INV_PI } from "./pbrHelpers";
+
+export const EPSILON = 0.00001;
+export const DIELECTRIC_F0 = new Vector3(0.04, 0.04, 0.04);
+export const INV_PI = 1 / Math.PI;
+export const INV_21 = 1 / 21;
 
 export interface IblData {
   diffuseIrradianceMap: Float32Array;
@@ -31,10 +35,6 @@ const specularBrdfLutSize = 128;
 const specularBrdfSampleCount = 96;
 const SUN_LUMINANCE_THRESHOLD = 0.98;
 
-export const wrapUnit = (value: number) => {
-  return value - Math.floor(value);
-};
-
 export const sampleLatLongMap = (
   data: Float32Array,
   width: number,
@@ -45,14 +45,14 @@ export const sampleLatLongMap = (
   layerStride = width * height * 3,
 ) => {
   const layerOffset = layerIndex * layerStride;
-  const xCoord = wrapUnit(u) * width - 0.5;
+  const xCoord = (u - Math.floor(u)) * width - 0.5;
   const yCoord = clamp(v * height - 0.5, 0, height - 1);
   const x0 = Math.floor(xCoord);
   const y0 = Math.floor(yCoord);
   const xBlend = xCoord - x0;
   const yBlend = yCoord - y0;
-  const xIndex0 = ((x0 % width) + width) % width;
-  const xIndex1 = (xIndex0 + 1) % width;
+  const xIndex0 = x0 < 0 ? width - 1 : x0;
+  const xIndex1 = xIndex0 === width - 1 ? 0 : xIndex0 + 1;
   const yIndex0 = Math.max(0, Math.min(height - 1, y0));
   const yIndex1 = Math.min(yIndex0 + 1, height - 1);
   const rowStride = width * 3;
@@ -111,8 +111,10 @@ export const rebuildEnvironmentBackdrop = (
 };
 
 const directionToLatLongUv = (x: number, y: number, z: number) => {
+  const u = Math.atan2(x, z) * INV_TAU + 0.5;
+
   return {
-    u: wrapUnit(Math.atan2(x, z) * INV_TAU + 0.5),
+    u: u - Math.floor(u),
     v: Math.acos(clamp(y, -1, 1)) * INV_PI,
   };
 };
@@ -151,45 +153,9 @@ const buildBasis = (nx: number, ny: number, nz: number) => {
   };
 };
 
-const sampleLatLongData = (
-  data: Float32Array,
-  width: number,
-  height: number,
-  u: number,
-  v: number,
-) => {
-  const xCoord = wrapUnit(u) * width - 0.5;
-  const yCoord = clamp(v * height - 0.5, 0, height - 1);
-  const x0 = Math.floor(xCoord);
-  const y0 = Math.floor(yCoord);
-  const xBlend = xCoord - x0;
-  const yBlend = yCoord - y0;
-  const xIndex0 = ((x0 % width) + width) % width;
-  const xIndex1 = (xIndex0 + 1) % width;
-  const yIndex0 = Math.max(0, Math.min(height - 1, y0));
-  const yIndex1 = Math.min(yIndex0 + 1, height - 1);
-  const rowStride = width * 3;
-  const base00 = yIndex0 * rowStride + xIndex0 * 3;
-  const base10 = yIndex0 * rowStride + xIndex1 * 3;
-  const base01 = yIndex1 * rowStride + xIndex0 * 3;
-  const base11 = yIndex1 * rowStride + xIndex1 * 3;
-  const r0 = data[base00] + (data[base10] - data[base00]) * xBlend;
-  const r1 = data[base01] + (data[base11] - data[base01]) * xBlend;
-  const g0 = data[base00 + 1] + (data[base10 + 1] - data[base00 + 1]) * xBlend;
-  const g1 = data[base01 + 1] + (data[base11 + 1] - data[base01 + 1]) * xBlend;
-  const b0 = data[base00 + 2] + (data[base10 + 2] - data[base00 + 2]) * xBlend;
-  const b1 = data[base01 + 2] + (data[base11 + 2] - data[base01 + 2]) * xBlend;
-
-  return {
-    r: r0 + (r1 - r0) * yBlend,
-    g: g0 + (g1 - g0) * yBlend,
-    b: b0 + (b1 - b0) * yBlend,
-  };
-};
-
 const sampleEnvironment = (texture: Texture, x: number, y: number, z: number) => {
   const uv = directionToLatLongUv(x, y, z);
-  return sampleLatLongData(texture.data, texture.width, texture.height, uv.u, uv.v);
+  return sampleLatLongMap(texture.data, texture.width, texture.height, uv.u, uv.v);
 };
 
 const wrapAngle = (angle: number) => {
@@ -202,10 +168,6 @@ const wrapAngle = (angle: number) => {
   }
 
   return angle;
-};
-
-const directionToYaw = (direction: Vector3) => {
-  return Math.atan2(direction.x, direction.z);
 };
 
 export const estimateEnvironmentSunDirection = (texture: Texture) => {
@@ -274,7 +236,9 @@ export const estimateEnvironmentYaw = (texture: Texture, lightDir: Vector3) => {
     };
   }
 
-  const angle = wrapAngle(directionToYaw(lightDir) - directionToYaw(sunDirection));
+  const angle = wrapAngle(
+    Math.atan2(lightDir.x, lightDir.z) - Math.atan2(sunDirection.x, sunDirection.z),
+  );
   return {
     angle,
     sin: Math.sin(angle),
@@ -290,15 +254,6 @@ const radicalInverseVdc = (bits: number) => {
   value = (((value & 0x0f0f0f0f) << 4) | ((value & 0xf0f0f0f0) >>> 4)) >>> 0;
   value = (((value & 0x00ff00ff) << 8) | ((value & 0xff00ff00) >>> 8)) >>> 0;
   return value * 2.3283064365386963e-10;
-};
-
-const geometrySchlickGGXIbl = (nDotX: number, roughness: number) => {
-  const k = roughness * roughness * 0.5;
-  return nDotX / Math.max(nDotX * (1 - k) + k, EPSILON);
-};
-
-const geometrySmithIbl = (nDotV: number, nDotL: number, roughness: number) => {
-  return geometrySchlickGGXIbl(nDotV, roughness) * geometrySchlickGGXIbl(nDotL, roughness);
 };
 
 const buildDiffuseIrradianceLut = (
@@ -339,9 +294,9 @@ const buildDiffuseIrradianceLut = (
           const sampleZ =
             basis.tz * sinThetaCosPhi + basis.bz * sinThetaSinPhi + normal.z * cosTheta;
           const sample = sampleEnvironment(texture, sampleX, sampleY, sampleZ);
-          irradianceR += sample.r * sampleWeight;
-          irradianceG += sample.g * sampleWeight;
-          irradianceB += sample.b * sampleWeight;
+          irradianceR += sample.x * sampleWeight;
+          irradianceG += sample.y * sampleWeight;
+          irradianceB += sample.z * sampleWeight;
         }
       }
 
@@ -402,9 +357,9 @@ const buildSpecularPrefilterLut = (
           }
 
           const sample = sampleEnvironment(texture, lx, ly, lz);
-          prefilteredR += sample.r * nDotL;
-          prefilteredG += sample.g * nDotL;
-          prefilteredB += sample.b * nDotL;
+          prefilteredR += sample.x * nDotL;
+          prefilteredG += sample.y * nDotL;
+          prefilteredB += sample.z * nDotL;
           totalWeight += nDotL;
         }
 
@@ -427,9 +382,11 @@ const buildSpecularBrdfLut = (lutSize: number, sampleCount: number) => {
     const roughness = Math.max(0.045, roughnessIndex / (lutSize - 1));
     const alpha = roughness * roughness;
     const alphaSq = alpha * alpha;
+    const geometryK = roughness * roughness * 0.5;
 
     for (let viewIndex = 0; viewIndex < lutSize; viewIndex++) {
       const nDotV = Math.max(0.0001, viewIndex / (lutSize - 1));
+      const geometryV = nDotV / Math.max(nDotV * (1 - geometryK) + geometryK, EPSILON);
       const vx = Math.sqrt(Math.max(0, 1 - nDotV * nDotV));
       const vz = nDotV;
       let brdfA = 0;
@@ -451,7 +408,8 @@ const buildSpecularBrdfLut = (lutSize: number, sampleCount: number) => {
           continue;
         }
 
-        const geometry = geometrySmithIbl(nDotV, nDotL, roughness);
+        const geometryL = nDotL / Math.max(nDotL * (1 - geometryK) + geometryK, EPSILON);
+        const geometry = geometryV * geometryL;
         const visibility = (geometry * vDotH) / Math.max(nDotH * nDotV, EPSILON);
         const fresnel = Math.pow(1 - vDotH, 5);
         brdfA += (1 - fresnel) * visibility;

@@ -17,10 +17,6 @@ export class Vector4 {
     this.w = w;
   }
 
-  public toArray() {
-    return [this.x, this.y, this.z, this.w];
-  }
-
   get xyz() {
     return new Vector3(this.x, this.y, this.z);
   }
@@ -51,8 +47,4 @@ export class Vector4 {
     return this;
   }
 
-  divideByW() {
-    const invW = 1 / this.w;
-    return new Vector3(this.x * invW, this.y * invW, this.z * invW);
-  }
 }
