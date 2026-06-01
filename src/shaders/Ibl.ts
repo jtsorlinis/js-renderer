@@ -8,10 +8,10 @@ import {
   EPSILON,
   INV_21,
   INV_PI,
-  distributionGGX,
-  geometrySmith,
-} from "./pbrHelpers";
-import { type IblData, wrapUnit, INV_TAU, sampleLatLongMap } from "./iblHelpers";
+  type IblData,
+  INV_TAU,
+  sampleLatLongMap,
+} from "./shaderHelpers";
 
 export interface Uniforms {
   model: Mesh;
@@ -92,11 +92,12 @@ export class IblShader extends BaseShader<Uniforms> {
     const Bx = (worldNormal.y * T.z - worldNormal.z * T.y) * handedness;
     const By = (worldNormal.z * T.x - worldNormal.x * T.z) * handedness;
     const Bz = (worldNormal.x * T.y - worldNormal.y * T.x) * handedness;
+    const B = new Vector3(Bx, By, Bz);
 
     const normalTexel = this.sampleFiltered(material.normalTexture, uv);
-    const Nx = T.x * normalTexel.x + Bx * normalTexel.y + worldNormal.x * normalTexel.z;
-    const Ny = T.y * normalTexel.x + By * normalTexel.y + worldNormal.y * normalTexel.z;
-    const Nz = T.z * normalTexel.x + Bz * normalTexel.y + worldNormal.z * normalTexel.z;
+    const Nx = T.x * normalTexel.x + B.x * normalTexel.y + worldNormal.x * normalTexel.z;
+    const Ny = T.y * normalTexel.x + B.y * normalTexel.y + worldNormal.y * normalTexel.z;
+    const Nz = T.z * normalTexel.x + B.z * normalTexel.y + worldNormal.z * normalTexel.z;
     const NLengthSq = Nx * Nx + Ny * Ny + Nz * Nz;
     const NScale = 1 / Math.sqrt(NLengthSq);
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
@@ -136,8 +137,16 @@ export class IblShader extends BaseShader<Uniforms> {
         const fresnelX = f0x + (1 - f0x) * fresnelFactor;
         const fresnelY = f0y + (1 - f0y) * fresnelFactor;
         const fresnelZ = f0z + (1 - f0z) * fresnelFactor;
-        const distribution = distributionGGX(nDotH, roughness);
-        const geometry = geometrySmith(nDotV, nDotL, roughness);
+        const alpha = roughness * roughness;
+        const alphaSq = alpha * alpha;
+        const distributionDenom = nDotH * nDotH * (alphaSq - 1) + 1;
+        const distribution =
+          alphaSq / Math.max(Math.PI * distributionDenom * distributionDenom, EPSILON);
+        const geometryR = roughness + 1;
+        const geometryK = (geometryR * geometryR) / 8;
+        const geometryV = nDotV / Math.max(nDotV * (1 - geometryK) + geometryK, EPSILON);
+        const geometryL = nDotL / Math.max(nDotL * (1 - geometryK) + geometryK, EPSILON);
+        const geometry = geometryV * geometryL;
         const specularFactor = (distribution * geometry) / Math.max(4 * nDotV * nDotL, EPSILON);
         const diffuseFactor = (1 - metallic) * INV_PI;
         const lightScale = nDotL * lightIntensity * shadow;
@@ -157,7 +166,8 @@ export class IblShader extends BaseShader<Uniforms> {
     const ambientDiffuseFactor = 1 - metallic;
     const diffuseDirX = normal.x * envYaw.cos - normal.z * envYaw.sin;
     const diffuseDirZ = normal.x * envYaw.sin + normal.z * envYaw.cos;
-    const diffuseU = wrapUnit(Math.atan2(diffuseDirX, diffuseDirZ) * INV_TAU + 0.5);
+    const diffuseRawU = Math.atan2(diffuseDirX, diffuseDirZ) * INV_TAU + 0.5;
+    const diffuseU = diffuseRawU - Math.floor(diffuseRawU);
     const diffuseV = Math.acos(clamp(normal.y, -1, 1)) * INV_PI;
     const diffuseEnv = sampleLatLongMap(
       ibl.diffuseIrradianceMap,
@@ -173,9 +183,8 @@ export class IblShader extends BaseShader<Uniforms> {
     const reflectionZ = normal.z * reflectionScale - worldViewDir.z;
     const rotatedReflectionX = reflectionX * envYaw.cos - reflectionZ * envYaw.sin;
     const rotatedReflectionZ = reflectionX * envYaw.sin + reflectionZ * envYaw.cos;
-    const reflectionU = wrapUnit(
-      Math.atan2(rotatedReflectionX, rotatedReflectionZ) * INV_TAU + 0.5,
-    );
+    const reflectionRawU = Math.atan2(rotatedReflectionX, rotatedReflectionZ) * INV_TAU + 0.5;
+    const reflectionU = reflectionRawU - Math.floor(reflectionRawU);
     const reflectionV = Math.acos(clamp(reflectionY, -1, 1)) * INV_PI;
     const specularRoughnessIndex = Math.min(
       ibl.specularPrefilterRoughnessMaxIndex,

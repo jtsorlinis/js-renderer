@@ -75,9 +75,9 @@ export class Matrix4 {
   }
 
   public static LookTo(eye: Vector3, dir: Vector3, up: Vector3) {
-    const z = dir.normalize();
-    const x = up.cross(z).normalize();
-    const y = z.cross(x).normalize();
+    const z = dir.normalized();
+    const x = up.cross(z).normalized();
+    const y = z.cross(x).normalized();
 
     const m = Matrix4.Identity();
     m.m[0] = x.x;
@@ -96,24 +96,7 @@ export class Matrix4 {
   }
 
   public static LookAt(eye: Vector3, target: Vector3, up: Vector3 = Vector3.Up) {
-    const z = target.subtract(eye).normalize();
-    const x = up.cross(z).normalize();
-    const y = z.cross(x).normalize();
-
-    const m = Matrix4.Identity();
-    m.m[0] = x.x;
-    m.m[1] = y.x;
-    m.m[2] = z.x;
-    m.m[4] = x.y;
-    m.m[5] = y.y;
-    m.m[6] = z.y;
-    m.m[8] = x.z;
-    m.m[9] = y.z;
-    m.m[10] = z.z;
-    m.m[12] = -x.dot(eye);
-    m.m[13] = -y.dot(eye);
-    m.m[14] = -z.dot(eye);
-    return m;
+    return Matrix4.LookTo(eye, target.subtract(eye), up);
   }
 
   static Ortho(orthoSize: number, aspectRatio: number, near = 0.1, far = 100) {
@@ -141,27 +124,12 @@ export class Matrix4 {
     return perspectiveMat;
   }
 
-  public toArray() {
-    return this.m;
-  }
-
   private multiplyVector3(v: Vector3, w: number) {
     return new Vector3(
       this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12] * w,
       this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z + this.m[13] * w,
       this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z + this.m[14] * w,
     );
-  }
-
-  // prettier-ignore
-  public multiplyVector4(v: Vector4) {
-    const result = new Vector4();
-    result.x = this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12] * v.w;
-    result.y = this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z + this.m[13] * v.w;
-    result.z = this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z + this.m[14] * v.w;
-    result.w = this.m[3] * v.x + this.m[7] * v.y + this.m[11] * v.z + this.m[15] * v.w;
-
-    return result;
   }
 
   public multiplyVector4InPlace(v: Vector4) {
@@ -336,21 +304,5 @@ export class Matrix4 {
       result.m[15] *= invDet;
      
       return result;
-  }
-
-  public lerp(to: Matrix4, t: number) {
-    const result = new Matrix4();
-    for (let i = 0; i < 16; i++) {
-      result.m[i] = this.m[i] + (to.m[i] - this.m[i]) * t;
-    }
-    return result;
-  }
-
-  // prettier-ignore
-  public print() {
-    console.log(this.m[0].toFixed(2), this.m[4].toFixed(2), this.m[8].toFixed(2), this.m[12].toFixed(2));
-    console.log(this.m[1].toFixed(2), this.m[5].toFixed(2), this.m[9].toFixed(2), this.m[13].toFixed(2));
-    console.log(this.m[2].toFixed(2), this.m[6].toFixed(2), this.m[10].toFixed(2), this.m[14].toFixed(2));
-    console.log(this.m[3].toFixed(2), this.m[7].toFixed(2), this.m[11].toFixed(2), this.m[15].toFixed(2));
   }
 }

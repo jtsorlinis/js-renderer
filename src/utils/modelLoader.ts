@@ -102,12 +102,13 @@ export const loadCustomGlb = async (file: File, normalize = true, scale = 1) => 
 };
 
 export const prefetchRemainingModels = async (initialModelKey: ModelKey) => {
-  for (const modelKey of MODEL_KEYS) {
-    if (modelKey === initialModelKey) continue;
-    try {
-      await prefetchModelAssets(modelKey);
-    } catch (error) {
-      console.error(`Failed to prefetch model "${modelKey}"`, error);
-    }
-  }
+  await Promise.all(
+    MODEL_KEYS.filter((modelKey) => modelKey !== initialModelKey).map(async (modelKey) => {
+      try {
+        await prefetchModelAssets(modelKey);
+      } catch (error) {
+        console.error(`Failed to prefetch model "${modelKey}"`, error);
+      }
+    }),
+  );
 };

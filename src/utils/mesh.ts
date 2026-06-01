@@ -119,13 +119,13 @@ export const getModelRadius = (mesh: Mesh) => {
 
 export const buildLoadedModel = (source: MeshSource, normalize = false, scale = 1): Mesh => {
   const vertices = source.vertices.map((vertex) => vertex.clone());
-  const uvs = source.uvs?.map((uv) => uv.clone()) ?? [];
+  const sourceUvs = source.uvs?.map((uv) => uv.clone()) ?? [];
 
   if (source.normals && source.normals.length !== vertices.length) {
     throw new Error("Mesh normals must match the expanded vertex count");
   }
 
-  if (uvs.length !== 0 && uvs.length !== vertices.length) {
+  if (sourceUvs.length !== 0 && sourceUvs.length !== vertices.length) {
     throw new Error("Mesh UVs must match the expanded vertex count");
   }
 
@@ -141,6 +141,7 @@ export const buildLoadedModel = (source: MeshSource, normalize = false, scale = 
 
   const faceNormals = getFaceNormals(vertices);
   const normals = source.normals?.map((normal) => normal.normalized()) ?? faceNormals.slice();
+  const uvs = sourceUvs.length ? sourceUvs : vertices.map(() => new Vector2(0, 0));
 
   return {
     vertices,
