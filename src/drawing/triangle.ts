@@ -80,10 +80,12 @@ export const triangle = (
     let v = vRow;
     let w = wRow;
     let index = minX + y * buffer.width;
+    let insideRow = false;
 
     for (let x = minX; x <= maxX; x++) {
       // Check if pixel is inside triangle
       if (u >= 0 && v >= 0 && w >= 0) {
+        insideRow = true;
         // Interpolate depth to get z value at pixel
         const z = v0.z * u + v1.z * v + v2.z * w;
 
@@ -113,6 +115,8 @@ export const triangle = (
             }
           }
         }
+      } else if (insideRow) {
+        break;
       }
       // Step to next pixel
       u += uStepX;
