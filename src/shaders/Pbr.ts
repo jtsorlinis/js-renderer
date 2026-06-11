@@ -117,7 +117,9 @@ export class PbrShader extends BaseShader<Uniforms> {
         const halfDir = worldViewDir.add(worldLightDir).normalize();
         const nDotH = saturate(normal.dot(halfDir));
         const vDotH = saturate(worldViewDir.dot(halfDir));
-        const fresnelFactor = Math.pow(1 - saturate(vDotH), 5);
+        const fresnelBase = 1 - vDotH;
+        const fresnelBaseSq = fresnelBase * fresnelBase;
+        const fresnelFactor = fresnelBaseSq * fresnelBaseSq * fresnelBase;
         const fresnelX = f0x + (1 - f0x) * fresnelFactor;
         const fresnelY = f0y + (1 - f0y) * fresnelFactor;
         const fresnelZ = f0z + (1 - f0z) * fresnelFactor;
