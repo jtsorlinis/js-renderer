@@ -34,7 +34,8 @@ export const triangle = (
   if (v0.z > 1 || v1.z > 1 || v2.z > 1) return;
 
   // Scale from [-1, 1] to [0, width] and [0, height]
-  const halfWidth = buffer.width * 0.5;
+  const width = buffer.width;
+  const halfWidth = width * 0.5;
   const halfHeight = buffer.height * 0.5;
   const p0x = (v0.x + 1) * halfWidth;
   const p0y = (-v0.y + 1) * halfHeight;
@@ -50,7 +51,7 @@ export const triangle = (
   // Calculate bounding box
   const minX = ~~Math.max(0, Math.min(p0x, p1x, p2x));
   const minY = ~~Math.max(0, Math.min(p0y, p1y, p2y));
-  const maxX = ~~Math.min(buffer.width - 1, Math.max(p0x, p1x, p2x));
+  const maxX = ~~Math.min(width - 1, Math.max(p0x, p1x, p2x));
   const maxY = ~~Math.min(buffer.height - 1, Math.max(p0y, p1y, p2y));
 
   // Calculate barycentric coordinates for first pixel
@@ -76,6 +77,12 @@ export const triangle = (
   const writePixel = tonemap ? buffer.setPixelTonemapped : buffer.setPixel;
   shader.bc = bcClip;
 
+  // Locals so the pixel loop avoids re-reading these fields across fragment() calls
+  const depthData = depthBuffer.data;
+  const w0 = v0.w;
+  const w1 = v1.w;
+  const w2 = v2.w;
+
   // Loop over pixels in bounding box
   for (let y = minY; y <= maxY; y++) {
     // Reset barycentric coordinates for this row
@@ -83,7 +90,7 @@ export const triangle = (
     let v = vRow;
     let w = wRow;
     let z = zRow;
-    let index = minX + y * buffer.width;
+    let index = minX + y * width;
     let insideRow = false;
 
     for (let x = minX; x <= maxX; x++) {
@@ -91,17 +98,17 @@ export const triangle = (
       if (u >= 0 && v >= 0 && w >= 0) {
         insideRow = true;
         // Check pixel's depth against z buffer, if pixel is closer, draw it
-        if (z < depthBuffer.data[index]) {
+        if (z < depthData[index]) {
           // Update z buffer with new depth
-          depthBuffer.data[index] = z;
+          depthData[index] = z;
 
           // Skip if no fragment shader is defined (e.g. depth pass)
           if (fragment) {
             // Get perspective-correct barycentric coordinates
-            const invW = 1 / (v0.w * u + v1.w * v + v2.w * w);
-            bcClip.u = u * invW * v0.w;
-            bcClip.v = v * invW * v1.w;
-            bcClip.w = w * invW * v2.w;
+            const invW = 1 / (w0 * u + w1 * v + w2 * w);
+            bcClip.u = u * invW * w0;
+            bcClip.v = v * invW * w1;
+            bcClip.w = w * invW * w2;
 
             const frag = fragment();
 
