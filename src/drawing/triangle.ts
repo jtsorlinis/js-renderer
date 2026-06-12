@@ -1,5 +1,5 @@
 import { DepthTexture, Framebuffer } from ".";
-import { Vector3, Vector4 } from "../maths";
+import { Vector4 } from "../maths";
 import { BaseShader } from "../shaders/BaseShader";
 
 export interface Barycentric {
@@ -16,7 +16,6 @@ export const edgeFunction = (a: Vector4, b: Vector4, c: Vector4) => {
 
 // Only instantiate these once and reuse them
 const bcClip: Barycentric = { u: 0, v: 0, w: 0 };
-const fragPos = new Vector3();
 
 // Draw a triangle in screen space (pixels)
 export const triangle = (
@@ -29,6 +28,10 @@ export const triangle = (
   const v0 = verts[0];
   const v1 = verts[1];
   const v2 = verts[2];
+
+  // Clip near and far planes [0,1]
+  if (v0.z < 0 || v1.z < 0 || v2.z < 0) return;
+  if (v0.z > 1 || v1.z > 1 || v2.z > 1) return;
 
   // Scale from [-1, 1] to [0, width] and [0, height]
   const halfWidth = buffer.width * 0.5;
@@ -43,10 +46,6 @@ export const triangle = (
   // Treat counter-clockwise triangles in NDC as front-facing.
   const area = (p2x - p0x) * (p1y - p0y) - (p2y - p0y) * (p1x - p0x);
   if (area <= 0) return;
-
-  // Clip near and far planes [0,1]
-  if (v0.z < 0 || v1.z < 0 || v2.z < 0) return;
-  if (v0.z > 1 || v1.z > 1 || v2.z > 1) return;
 
   // Calculate bounding box
   const minX = ~~Math.max(0, Math.min(p0x, p1x, p2x));
@@ -68,10 +67,14 @@ export const triangle = (
   const wStepX = (p1y - p0y) * invArea;
   const wStepY = (p0x - p1x) * invArea;
 
+  // Depth is affine in screen space, so step it incrementally like the barycentrics
+  let zRow = v0.z * uRow + v1.z * vRow + v2.z * wRow;
+  const zStepX = v0.z * uStepX + v1.z * vStepX + v2.z * wStepX;
+  const zStepY = v0.z * uStepY + v1.z * vStepY + v2.z * wStepY;
+
   const fragment = shader.fragment;
   const writePixel = tonemap ? buffer.setPixelTonemapped : buffer.setPixel;
   shader.bc = bcClip;
-  shader.fragPos = fragPos;
 
   // Loop over pixels in bounding box
   for (let y = minY; y <= maxY; y++) {
@@ -79,6 +82,7 @@ export const triangle = (
     let u = uRow;
     let v = vRow;
     let w = wRow;
+    let z = zRow;
     let index = minX + y * buffer.width;
     let insideRow = false;
 
@@ -86,9 +90,6 @@ export const triangle = (
       // Check if pixel is inside triangle
       if (u >= 0 && v >= 0 && w >= 0) {
         insideRow = true;
-        // Interpolate depth to get z value at pixel
-        const z = v0.z * u + v1.z * v + v2.z * w;
-
         // Check pixel's depth against z buffer, if pixel is closer, draw it
         if (z < depthBuffer.data[index]) {
           // Update z buffer with new depth
@@ -102,16 +103,11 @@ export const triangle = (
             bcClip.v = v * invW * v1.w;
             bcClip.w = w * invW * v2.w;
 
-            // Pass fragment screen position to fragment shader
-            fragPos.x = x;
-            fragPos.y = y;
-            fragPos.z = z;
-
             const frag = fragment();
 
             // Skip if fragment shader discarded the pixel by returning undefined
             if (frag) {
-              writePixel(x, y, frag);
+              writePixel(index, frag);
             }
           }
         }
@@ -122,11 +118,13 @@ export const triangle = (
       u += uStepX;
       v += vStepX;
       w += wStepX;
+      z += zStepX;
       index++;
     }
     // Step to next row
     uRow += uStepY;
     vRow += vStepY;
     wRow += wStepY;
+    zRow += zStepY;
   }
 };

@@ -85,6 +85,7 @@ export const rebuildEnvironmentBackdrop = (
   for (let y = 0; y < targetBuffer.height; y++) {
     const ndcY = 1 - ((y + 0.5) / targetBuffer.height) * 2;
     const viewY = ndcY * tanHalfFov;
+    const rowStart = y * targetBuffer.width;
 
     for (let x = 0; x < targetBuffer.width; x++) {
       const ndcX = ((x + 0.5) / targetBuffer.width) * 2 - 1;
@@ -107,7 +108,7 @@ export const rebuildEnvironmentBackdrop = (
         roughnessLayer,
         iblData.specularPrefilterLayerStride,
       );
-      writePixel(x, y, backgroundEnvSample);
+      writePixel(rowStart + x, backgroundEnvSample);
     }
   }
 };
