@@ -28,17 +28,17 @@ const tonemapKhronosPbrNeutral = (color: Vector3) => {
 
   const x = Math.min(color.x, Math.min(color.y, color.z));
   const offset = x < 0.08 ? x - 6.25 * x * x : 0.04;
-  color = color.subtract(new Vector3(offset, offset, offset));
+  color.addScalarInPlace(-offset);
 
   const peak = Math.max(color.x, Math.max(color.y, color.z));
   if (peak < startCompression) return color;
 
   const d = 1 - startCompression;
   const newPeak = 1 - (d * d) / (peak + d - startCompression);
-  color = color.scale(newPeak / peak);
+  color.scaleInPlace(newPeak / peak);
 
   const g = 1 - 1 / (desaturation * (peak - newPeak) + 1);
-  return color.scale(1 - g).add(new Vector3(g * newPeak, g * newPeak, g * newPeak));
+  return color.scaleInPlace(1 - g).addScalarInPlace(g * newPeak);
 };
 
 export class Framebuffer {
@@ -56,21 +56,21 @@ export class Framebuffer {
     this.data = this.imageData.data;
   }
 
-  setPixelTonemapped = (x: number, y: number, color: Vector3) => {
-    const index = (x + y * this.width) * 4;
+  setPixelTonemapped = (index: number, color: Vector3) => {
+    const base = index * 4;
     const tmColor = tonemapKhronosPbrNeutral(color);
-    this.data[index + 0] = linearToSrgb8(tmColor.x);
-    this.data[index + 1] = linearToSrgb8(tmColor.y);
-    this.data[index + 2] = linearToSrgb8(tmColor.z);
-    this.data[index + 3] = 255;
+    this.data[base + 0] = linearToSrgb8(tmColor.x);
+    this.data[base + 1] = linearToSrgb8(tmColor.y);
+    this.data[base + 2] = linearToSrgb8(tmColor.z);
+    this.data[base + 3] = 255;
   };
 
-  setPixel = (x: number, y: number, color: Vector3) => {
-    const index = (x + y * this.width) * 4;
-    this.data[index + 0] = linearToSrgb8(color.x);
-    this.data[index + 1] = linearToSrgb8(color.y);
-    this.data[index + 2] = linearToSrgb8(color.z);
-    this.data[index + 3] = 255;
+  setPixel = (index: number, color: Vector3) => {
+    const base = index * 4;
+    this.data[base + 0] = linearToSrgb8(color.x);
+    this.data[base + 1] = linearToSrgb8(color.y);
+    this.data[base + 2] = linearToSrgb8(color.z);
+    this.data[base + 3] = 255;
   };
 
   clear = () => {

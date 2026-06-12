@@ -269,7 +269,6 @@ const draw = () => {
     frameBuffer.clear();
   }
   depthBuffer.clear(1000);
-  shadowMap.clear(1000);
 
   // 2) Build model and world-space transforms.
   const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
@@ -313,6 +312,7 @@ const draw = () => {
 
   // Optional shadow pass first
   if (useShadows) {
+    shadowMap.clear(1000);
     shaders.depth.uniforms.clipMat = worldLightSpaceMat.multiply(modelMat);
     renderMesh(shaders.depth, shadowMap, "filled", shadowBuffer);
   }
