@@ -35,7 +35,7 @@ const specularBrdfLutSize = 128;
 const specularBrdfSampleCount = 96;
 const SUN_LUMINANCE_THRESHOLD = 0.98;
 
-export const sampleLatLongMap = (
+export const sampleEnvironmentMap = (
   data: Float32Array,
   width: number,
   height: number,
@@ -83,6 +83,7 @@ export const rebuildEnvironmentBackdrop = (
   for (let y = 0; y < targetBuffer.height; y++) {
     const ndcY = 1 - ((y + 0.5) / targetBuffer.height) * 2;
     const viewY = ndcY * tanHalfFov;
+    const rowStart = y * targetBuffer.width;
 
     for (let x = 0; x < targetBuffer.width; x++) {
       const ndcX = ((x + 0.5) / targetBuffer.width) * 2 - 1;
@@ -96,7 +97,7 @@ export const rebuildEnvironmentBackdrop = (
       const u = (Math.atan2(rotatedX, rotatedZ) / TAU + 1.5) % 1;
       const v = Math.acos(clamp(dirY, -1, 1)) / Math.PI;
 
-      const backgroundEnvSample = sampleLatLongMap(
+      const backgroundEnvSample = sampleEnvironmentMap(
         iblData.specularPrefilterMap,
         iblData.specularPrefilterMapWidth,
         iblData.specularPrefilterMapHeight,
@@ -155,7 +156,7 @@ const buildBasis = (nx: number, ny: number, nz: number) => {
 
 const sampleEnvironment = (texture: Texture, x: number, y: number, z: number) => {
   const uv = directionToLatLongUv(x, y, z);
-  return sampleLatLongMap(texture.data, texture.width, texture.height, uv.u, uv.v);
+  return sampleEnvironmentMap(texture.data, texture.width, texture.height, uv.u, uv.v);
 };
 
 const wrapAngle = (angle: number) => {
@@ -284,9 +285,9 @@ const buildDiffuseIrradianceLut = (
         const sampleWeight = cosTheta * sinTheta * thetaStep * phiStep * INV_PI;
 
         for (let phiIndex = 0; phiIndex < phiSamples; phiIndex++) {
-          const phi = (phiIndex + 0.5) * phiStep;
-          const sinThetaCosPhi = sinTheta * Math.cos(phi);
-          const sinThetaSinPhi = sinTheta * Math.sin(phi);
+          const samplePhi = (phiIndex + 0.5) * phiStep;
+          const sinThetaCosPhi = sinTheta * Math.cos(samplePhi);
+          const sinThetaSinPhi = sinTheta * Math.sin(samplePhi);
           const sampleX =
             basis.tx * sinThetaCosPhi + basis.bx * sinThetaSinPhi + normal.x * cosTheta;
           const sampleY =
@@ -435,6 +436,8 @@ export const buildEnvironmentIbl = (environmentTexture: Texture): IblData => {
       diffuseIrradianceThetaSamples,
       diffuseIrradiancePhiSamples,
     ),
+    diffuseIrradianceMapWidth,
+    diffuseIrradianceMapHeight,
     specularPrefilterMap: buildSpecularPrefilterLut(
       environmentTexture,
       specularPrefilterMapWidth,
@@ -443,8 +446,6 @@ export const buildEnvironmentIbl = (environmentTexture: Texture): IblData => {
       specularPrefilterSampleCount,
     ),
     specularBrdfLut: buildSpecularBrdfLut(specularBrdfLutSize, specularBrdfSampleCount),
-    diffuseIrradianceMapWidth,
-    diffuseIrradianceMapHeight,
     specularPrefilterMapWidth,
     specularPrefilterMapHeight,
     specularPrefilterLayerStride: specularPrefilterMapWidth * specularPrefilterMapHeight * 3,

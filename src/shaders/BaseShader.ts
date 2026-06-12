@@ -10,7 +10,6 @@ export abstract class BaseShader<TUniforms = unknown> {
   vertexId = 0;
   nthVert = 0;
   bc = { u: 0, v: 0, w: 0 };
-  fragPos = new Vector3();
 
   v2f = <T>(varying: Array<T>, value: T) => {
     varying[this.nthVert] = value;
@@ -62,31 +61,36 @@ export abstract class BaseShader<TUniforms = unknown> {
   };
 
   sampleFiltered = (texture: Texture, uv: Vector2): Vector3 => {
-    const xCoord = uv.x * texture.width - 0.5;
-    const yCoord = (1 - uv.y) * texture.height - 0.5;
+    const data = texture.data;
+    const width = texture.width;
+    const height = texture.height;
+    const xCoord = uv.x * width - 0.5;
+    const yCoord = (1 - uv.y) * height - 0.5;
     const x0 = Math.floor(xCoord);
     const y0 = Math.floor(yCoord);
     const xBlend = xCoord - x0;
     const yBlend = yCoord - y0;
-    const xIndex0 = clamp(x0, 0, texture.width - 1);
-    const yIndex0 = clamp(y0, 0, texture.height - 1);
-    const xIndex1 = clamp(x0 + 1, 0, texture.width - 1);
-    const yIndex1 = clamp(y0 + 1, 0, texture.height - 1);
-    const rowStride = texture.width * 3;
-    const base00 = yIndex0 * rowStride + xIndex0 * 3;
-    const base10 = yIndex0 * rowStride + xIndex1 * 3;
-    const base01 = yIndex1 * rowStride + xIndex0 * 3;
-    const base11 = yIndex1 * rowStride + xIndex1 * 3;
-    const r0 = texture.data[base00] + (texture.data[base10] - texture.data[base00]) * xBlend;
-    const r1 = texture.data[base01] + (texture.data[base11] - texture.data[base01]) * xBlend;
-    const g0 =
-      texture.data[base00 + 1] + (texture.data[base10 + 1] - texture.data[base00 + 1]) * xBlend;
-    const g1 =
-      texture.data[base01 + 1] + (texture.data[base11 + 1] - texture.data[base01 + 1]) * xBlend;
-    const b0 =
-      texture.data[base00 + 2] + (texture.data[base10 + 2] - texture.data[base00 + 2]) * xBlend;
-    const b1 =
-      texture.data[base01 + 2] + (texture.data[base11 + 2] - texture.data[base01 + 2]) * xBlend;
+    const rowStride = width * 3;
+    const xOffset0 = clamp(x0, 0, width - 1) * 3;
+    const xOffset1 = clamp(x0 + 1, 0, width - 1) * 3;
+    const rowOffset0 = clamp(y0, 0, height - 1) * rowStride;
+    const rowOffset1 = clamp(y0 + 1, 0, height - 1) * rowStride;
+    const base00 = rowOffset0 + xOffset0;
+    const base10 = rowOffset0 + xOffset1;
+    const base01 = rowOffset1 + xOffset0;
+    const base11 = rowOffset1 + xOffset1;
+    const r00 = data[base00];
+    const g00 = data[base00 + 1];
+    const b00 = data[base00 + 2];
+    const r01 = data[base01];
+    const g01 = data[base01 + 1];
+    const b01 = data[base01 + 2];
+    const r0 = r00 + (data[base10] - r00) * xBlend;
+    const r1 = r01 + (data[base11] - r01) * xBlend;
+    const g0 = g00 + (data[base10 + 1] - g00) * xBlend;
+    const g1 = g01 + (data[base11 + 1] - g01) * xBlend;
+    const b0 = b00 + (data[base10 + 2] - b00) * xBlend;
+    const b1 = b01 + (data[base11 + 2] - b01) * xBlend;
     return new Vector3(r0 + (r1 - r0) * yBlend, g0 + (g1 - g0) * yBlend, b0 + (b1 - b0) * yBlend);
   };
 
@@ -96,17 +100,23 @@ export abstract class BaseShader<TUniforms = unknown> {
   };
 
   sampleShadow = (depthTexture: DepthTexture, lightSpacePos: Vector3, bias: number) => {
+    const data = depthTexture.data;
+    const width = depthTexture.width;
     const compareDepth = lightSpacePos.z - bias;
-    const centerX = Math.floor(lightSpacePos.x * depthTexture.width);
+    const centerX = Math.floor(lightSpacePos.x * width);
     const centerY = Math.floor((1 - lightSpacePos.y) * depthTexture.height);
+
+    const x0 = Math.max(0, Math.min(width - 1, centerX - 1));
+    const x1 = Math.max(0, Math.min(width - 1, centerX));
+    const x2 = Math.max(0, Math.min(width - 1, centerX + 1));
 
     let litSamples = 0;
     for (let offsetY = -1; offsetY <= 1; offsetY++) {
       const iy = Math.max(0, Math.min(depthTexture.height - 1, centerY + offsetY));
-      for (let offsetX = -1; offsetX <= 1; offsetX++) {
-        const ix = Math.max(0, Math.min(depthTexture.width - 1, centerX + offsetX));
-        litSamples += compareDepth <= depthTexture.data[ix + iy * depthTexture.width] ? 1 : 0;
-      }
+      const rowBase = iy * width;
+      litSamples += compareDepth <= data[rowBase + x0] ? 1 : 0;
+      litSamples += compareDepth <= data[rowBase + x1] ? 1 : 0;
+      litSamples += compareDepth <= data[rowBase + x2] ? 1 : 0;
     }
 
     return litSamples / 9;

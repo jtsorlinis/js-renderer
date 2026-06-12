@@ -18,7 +18,7 @@ for (let i = 0; i < SRGB8_LUT_SIZE; i += 1) {
 
 const linearToSrgb8 = (value: number) => {
   const clamped = saturate(value);
-  const index = Math.round(clamped * SRGB8_LUT_MAX_INDEX);
+  const index = (clamped * SRGB8_LUT_MAX_INDEX + 0.5) | 0;
   return srgb8Lut[index];
 };
 
@@ -41,12 +41,14 @@ export class Framebuffer {
   height: number;
   totalPixels: number;
   imageData: ImageData;
+  data: Uint8ClampedArray;
 
   constructor(width: number, height: number) {
     this.imageData = new ImageData(width, height);
     this.width = this.imageData.width;
     this.height = this.imageData.height;
     this.totalPixels = this.width * this.height;
+    this.data = this.imageData.data;
   }
 
   setPixelTonemapped = (x: number, y: number, color: Vector3) => {
@@ -75,14 +77,14 @@ export class Framebuffer {
 
   setPixel = (x: number, y: number, color: Vector3) => {
     const index = (x + y * this.width) * 4;
-    this.imageData.data[index + 0] = linearToSrgb8(color.x);
-    this.imageData.data[index + 1] = linearToSrgb8(color.y);
-    this.imageData.data[index + 2] = linearToSrgb8(color.z);
-    this.imageData.data[index + 3] = 255;
+    this.data[index + 0] = linearToSrgb8(color.x);
+    this.data[index + 1] = linearToSrgb8(color.y);
+    this.data[index + 2] = linearToSrgb8(color.z);
+    this.data[index + 3] = 255;
   };
 
   clear = () => {
-    this.imageData.data.fill(0);
+    this.data.fill(0);
   };
 
   fadeToBlack = (amount: number) => {
@@ -94,7 +96,7 @@ export class Framebuffer {
   };
 
   copyFrom = (src: Framebuffer) => {
-    this.imageData.data.set(src.imageData.data);
+    this.data.set(src.data);
   };
 
   viewportTransform = (v: Vector4) => {
