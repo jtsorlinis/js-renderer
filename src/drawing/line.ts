@@ -44,7 +44,7 @@ export const line = (
     if (buffer.contains(s.x, s.y)) {
       const index = depthBuffer ? depthBuffer.indexAt(s.x, s.y) : 0;
       if (!depthBuffer || z <= depthBuffer.data[index] + depthEpsilon) {
-        buffer.setPixel(s.x, s.y, WHITE);
+        buffer.setPixel(index, WHITE);
       }
     }
 
