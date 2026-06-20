@@ -124,38 +124,29 @@ export class Matrix4 {
     return perspectiveMat;
   }
 
-  private multiplyVector3(v: Vector3, w: number) {
+  public transformPoint(v: Vector3) {
     return new Vector3(
-      this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12] * w,
-      this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z + this.m[13] * w,
-      this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z + this.m[14] * w,
+      this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12],
+      this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z + this.m[13],
+      this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z + this.m[14],
     );
   }
 
-  public multiplyVector4InPlace(v: Vector4) {
-    const x = v.x;
-    const y = v.y;
-    const z = v.z;
-    const w = v.w;
-
-    v.x = this.m[0] * x + this.m[4] * y + this.m[8] * z + this.m[12] * w;
-    v.y = this.m[1] * x + this.m[5] * y + this.m[9] * z + this.m[13] * w;
-    v.z = this.m[2] * x + this.m[6] * y + this.m[10] * z + this.m[14] * w;
-    v.w = this.m[3] * x + this.m[7] * y + this.m[11] * z + this.m[15] * w;
-
-    return v;
-  }
-
-  public transformPoint(v: Vector3) {
-    return this.multiplyVector3(v, 1);
-  }
-
   public transformPoint4(v: Vector3) {
-    return this.multiplyVector4InPlace(v.extend(1));
+    return new Vector4(
+      this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z + this.m[12],
+      this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z + this.m[13],
+      this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z + this.m[14],
+      this.m[3] * v.x + this.m[7] * v.y + this.m[11] * v.z + this.m[15],
+    );
   }
 
   public transformDirection(v: Vector3) {
-    return this.multiplyVector3(v, 0);
+    return new Vector3(
+      this.m[0] * v.x + this.m[4] * v.y + this.m[8] * v.z,
+      this.m[1] * v.x + this.m[5] * v.y + this.m[9] * v.z,
+      this.m[2] * v.x + this.m[6] * v.y + this.m[10] * v.z,
+    );
   }
 
   public transformDirection4(v: Vector4) {
@@ -167,64 +158,29 @@ export class Matrix4 {
     );
   }
 
+  //prettier-ignore
   public multiply(m: Matrix4) {
-    const a = this.m;
-    const b = m.m;
     const result = new Matrix4();
-    const r = result.m;
 
-    const a00 = a[0];
-    const a01 = a[1];
-    const a02 = a[2];
-    const a03 = a[3];
-    const a10 = a[4];
-    const a11 = a[5];
-    const a12 = a[6];
-    const a13 = a[7];
-    const a20 = a[8];
-    const a21 = a[9];
-    const a22 = a[10];
-    const a23 = a[11];
-    const a30 = a[12];
-    const a31 = a[13];
-    const a32 = a[14];
-    const a33 = a[15];
+    result.m[0] = m.m[0] * this.m[0] + m.m[1] * this.m[4] + m.m[2] * this.m[8] + m.m[3] * this.m[12];
+    result.m[1] = m.m[0] * this.m[1] + m.m[1] * this.m[5] + m.m[2] * this.m[9] + m.m[3] * this.m[13];
+    result.m[2] = m.m[0] * this.m[2] + m.m[1] * this.m[6] + m.m[2] * this.m[10] + m.m[3] * this.m[14];
+    result.m[3] = m.m[0] * this.m[3] + m.m[1] * this.m[7] + m.m[2] * this.m[11] + m.m[3] * this.m[15];
 
-    let b0 = b[0];
-    let b1 = b[1];
-    let b2 = b[2];
-    let b3 = b[3];
-    r[0] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
-    r[1] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
-    r[2] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
-    r[3] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+    result.m[4] = m.m[4] * this.m[0] + m.m[5] * this.m[4] + m.m[6] * this.m[8] + m.m[7] * this.m[12];
+    result.m[5] = m.m[4] * this.m[1] + m.m[5] * this.m[5] + m.m[6] * this.m[9] + m.m[7] * this.m[13];
+    result.m[6] = m.m[4] * this.m[2] + m.m[5] * this.m[6] + m.m[6] * this.m[10] + m.m[7] * this.m[14];
+    result.m[7] = m.m[4] * this.m[3] + m.m[5] * this.m[7] + m.m[6] * this.m[11] + m.m[7] * this.m[15];
 
-    b0 = b[4];
-    b1 = b[5];
-    b2 = b[6];
-    b3 = b[7];
-    r[4] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
-    r[5] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
-    r[6] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
-    r[7] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+    result.m[8] = m.m[8] * this.m[0] + m.m[9] * this.m[4] + m.m[10] * this.m[8] + m.m[11] * this.m[12];
+    result.m[9] = m.m[8] * this.m[1] + m.m[9] * this.m[5] + m.m[10] * this.m[9] + m.m[11] * this.m[13];
+    result.m[10] = m.m[8] * this.m[2] + m.m[9] * this.m[6] + m.m[10] * this.m[10] + m.m[11] * this.m[14];
+    result.m[11] = m.m[8] * this.m[3] + m.m[9] * this.m[7] + m.m[10] * this.m[11] + m.m[11] * this.m[15];
 
-    b0 = b[8];
-    b1 = b[9];
-    b2 = b[10];
-    b3 = b[11];
-    r[8] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
-    r[9] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
-    r[10] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
-    r[11] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
-
-    b0 = b[12];
-    b1 = b[13];
-    b2 = b[14];
-    b3 = b[15];
-    r[12] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
-    r[13] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
-    r[14] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
-    r[15] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+    result.m[12] = m.m[12] * this.m[0] + m.m[13] * this.m[4] + m.m[14] * this.m[8] + m.m[15] * this.m[12];
+    result.m[13] = m.m[12] * this.m[1] + m.m[13] * this.m[5] + m.m[14] * this.m[9] + m.m[15] * this.m[13];
+    result.m[14] = m.m[12] * this.m[2] + m.m[13] * this.m[6] + m.m[14] * this.m[10] + m.m[15] * this.m[14];
+    result.m[15] = m.m[12] * this.m[3] + m.m[13] * this.m[7] + m.m[14] * this.m[11] + m.m[15] * this.m[15];
 
     return result;
   }
