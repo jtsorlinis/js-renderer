@@ -79,6 +79,11 @@ type GltfScene = {
 };
 
 type GltfTexture = {
+  extensions?: {
+    EXT_texture_webp?: {
+      source: number;
+    };
+  };
   source?: number;
 };
 
@@ -597,7 +602,7 @@ const getTextureSourceIndex = (gltf: Gltf, textureIndex: number | undefined) => 
   }
 
   const texture = requireValue(gltf.textures?.[textureIndex], `Missing texture ${textureIndex}`);
-  return texture.source;
+  return texture.extensions?.EXT_texture_webp?.source ?? texture.source;
 };
 
 const loadTextureFromSource = async (
