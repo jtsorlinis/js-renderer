@@ -1,6 +1,7 @@
 # TypeScript CPU Software Renderer
 
-<img width="1004" height="754" alt="image" src="https://github.com/user-attachments/assets/379dec50-9b94-4ca1-914f-96d4cc8ef7cc" />
+<img width="1720" height="1287" alt="image" src="https://github.com/user-attachments/assets/3a675256-0883-4035-bdba-e11a637b72d0" />
+
 
 
 **Experience it here: [jtsorlinis.github.io/js-renderer](https://jtsorlinis.github.io/js-renderer/)**
