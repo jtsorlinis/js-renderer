@@ -25,6 +25,7 @@ import { PbrShader } from "./shaders/Pbr";
 import { IblShader } from "./shaders/Ibl";
 import { RenderSelectionPreset, resolveShadingSelection, type RenderMode } from "./renderSettings";
 import { loadHdrTexture } from "./utils/hdrLoader";
+import { TiledWorkerRenderer } from "./workers/TiledWorkerRenderer";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
@@ -45,6 +46,7 @@ const getDefaultOrthoSize = () => -INITIAL_CAMERA_Z * Math.tan((FOV * Math.PI) /
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
 const orthoCb = document.getElementById("orthoCb") as HTMLInputElement;
+const workersCb = document.getElementById("workersCb") as HTMLInputElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
 const shadingSlider = document.getElementById("shadingSlider") as HTMLInputElement;
@@ -107,10 +109,27 @@ let shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
 let shadowBuffer = new Framebuffer(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
 let bgBuffer = new Framebuffer(CANVAS_WIDTH, CANVAS_HEIGHT);
 let bgBufferTonemapped = new Framebuffer(CANVAS_WIDTH, CANVAS_HEIGHT);
+// Set while the multithreaded renderer (src/workers) is in use
+let workerRenderer: TiledWorkerRenderer | undefined;
+
+// The multithreaded renderer shares memory between workers, which browsers only allow on
+// cross-origin isolated pages (see public/coi-serviceworker.js)
+if (!crossOriginIsolated) {
+  workersCb.checked = false;
+  workersCb.disabled = true;
+}
+
+const selectRenderer = () => {
+  workerRenderer?.dispose();
+  workerRenderer = workersCb.checked ? new TiledWorkerRenderer() : undefined;
+};
+selectRenderer();
 
 const setRenderResolution = () => {
-  const width = CANVAS_WIDTH;
-  const height = CANVAS_HEIGHT;
+  // The multithreaded renderer draws at double resolution
+  const scale = workerRenderer ? 2 : 1;
+  const width = CANVAS_WIDTH * scale;
+  const height = CANVAS_HEIGHT * scale;
   const shadowMapSize = SHADOW_MAP_SIZE;
 
   canvas.width = width;
@@ -140,8 +159,11 @@ const cameraLookDir = Vector3.Forward;
 const viewDir = cameraLookDir.scale(-1);
 const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
-rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw, false);
-rebuildEnvironmentBackdrop(bgBufferTonemapped, iblData, aspectRatio, FOV, envYaw, true);
+const rebuildBackdrops = () => {
+  rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw, false);
+  rebuildEnvironmentBackdrop(bgBufferTonemapped, iblData, aspectRatio, FOV, envYaw, true);
+};
+rebuildBackdrops();
 
 const initialModelOption = await ensureModelOption(INITIAL_MODEL);
 modelDd.value = INITIAL_MODEL;
@@ -327,15 +349,59 @@ const draw = () => {
   ctx.putImageData(frameBuffer.imageData, 0, 0);
 };
 
+// The same frame as draw(), split across Web Workers by src/workers
+const drawWithWorkers = async (renderer: TiledWorkerRenderer) => {
+  await renderer.draw({
+    settings: getRenderSettings(),
+    model,
+    material,
+    iblData,
+    envYaw,
+    lightDir,
+    shadowOrthoSize,
+    modelPos,
+    modelRotation,
+    modelScale,
+    camPos,
+    viewDir,
+    isOrtho: orthoCb.checked,
+    orthoSize,
+    aspectRatio,
+    fov: FOV,
+    frameBuffer,
+    background: bgBuffer,
+    backgroundTonemapped: bgBufferTonemapped,
+    shadowMapSize: SHADOW_MAP_SIZE,
+  });
+  ctx.putImageData(frameBuffer.imageData, 0, 0);
+};
+
+// Switches between draw() and drawWithWorkers()
+const toggleWorkers = () => {
+  selectRenderer();
+  setRenderResolution();
+  rebuildBackdrops();
+};
+
 let prevTime = performance.now();
 let lastFpsUiUpdate = prevTime;
-const loop = () => {
+const loop = async () => {
+  // Ask for the next vsync up front, so a frame that overruns one starts the next straight away
+  const nextDisplayFrame = new Promise((resolve) => requestAnimationFrame(resolve));
+  // Switch renderers between frames, never while the workers are drawing one
+  if (workersCb.checked !== (workerRenderer !== undefined)) {
+    toggleWorkers();
+  }
   const now = performance.now();
   const frameIntervalMs = now - prevTime;
   const deltaTime = frameIntervalMs / 1000;
   prevTime = now;
   update(deltaTime);
-  draw();
+  if (workerRenderer) {
+    await drawWithWorkers(workerRenderer);
+  } else {
+    draw();
+  }
   const actualFrameTime = performance.now() - now;
 
   if (now - lastFpsUiUpdate >= FPS_UPDATE_INTERVAL_MS) {
@@ -344,7 +410,8 @@ const loop = () => {
     lastFpsUiUpdate = now;
   }
 
-  requestAnimationFrame(loop);
+  await nextDisplayFrame;
+  loop();
 };
 
 canvas.onpointerdown = (e) => {
