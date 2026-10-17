@@ -25,6 +25,7 @@ import {
   type RenderMode,
 } from "./renderSettings";
 import { loadHdrTexture } from "./utils/hdrLoader";
+import { TiledWorkerRenderer } from "./workers/TiledWorkerRenderer";
 
 const FOV = 50;
 const INITIAL_CAMERA_Z = -3;
@@ -48,6 +49,7 @@ if (!DEFAULT_MODEL_URL) {
 // UI handles
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
+const workersCb = document.getElementById("workersCb") as HTMLInputElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
 const resolutionText = document.getElementById("resolution") as HTMLSpanElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
@@ -131,13 +133,26 @@ let depthBuffer = new DepthTexture(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_
 let shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
 let shadowBuffer = new Framebuffer(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
 let bgBuffer = new Framebuffer(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
+// Set while the multithreaded renderer (src/workers) is in use
+let workerRenderer: TiledWorkerRenderer | undefined;
+
+// The multithreaded renderer shares memory between workers, which browsers only allow on
+// cross-origin isolated pages (see public/coi-serviceworker.js)
+if (!crossOriginIsolated) {
+  workersCb.checked = false;
+  workersCb.disabled = true;
+}
+
+const selectRenderer = () => {
+  workerRenderer?.dispose();
+  workerRenderer = workersCb.checked ? new TiledWorkerRenderer() : undefined;
+};
+selectRenderer();
 
 const setRenderResolution = (resolutionHeight: number) => {
   const height = resolutionHeight;
   const width = Math.round(height * RENDER_ASPECT_RATIO);
 
-  canvas.width = width;
-  canvas.height = height;
   frameBuffer = new Framebuffer(width, height);
   depthBuffer = new DepthTexture(width, height);
   shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
@@ -380,17 +395,63 @@ const draw = (dt: number) => {
     snapVertices,
     pixelFn,
   );
-  ctx.putImageData(frameBuffer.imageData, 0, 0);
+  present(frameBuffer);
+};
+
+// The same frame as draw(), split across Web Workers by src/workers
+const drawWithWorkers = async (renderer: TiledWorkerRenderer, dt: number) => {
+  // A preset change can swap the framebuffer while the workers draw, so present the one they drew
+  const targetBuffer = frameBuffer;
+  await renderer.draw({
+    settings: activeRenderSettings,
+    dt,
+    model,
+    material,
+    iblData,
+    envYaw,
+    lightDir,
+    shadowOrthoSize,
+    modelPos,
+    modelRotation,
+    modelScale,
+    camPos,
+    aspectRatio: RENDER_ASPECT_RATIO,
+    fov: FOV,
+    frameBuffer: targetBuffer,
+    background: bgBuffer,
+    shadowMapSize: SHADOW_MAP_SIZE,
+  });
+  present(targetBuffer);
+};
+
+// Resizing the canvas clears it, so it waits until a frame of the new size is ready. Otherwise a
+// preset change made while the workers draw would leave the canvas blank until their next frame.
+const present = (buffer: Framebuffer) => {
+  if (canvas.width !== buffer.width || canvas.height !== buffer.height) {
+    canvas.width = buffer.width;
+    canvas.height = buffer.height;
+  }
+  ctx.putImageData(buffer.imageData, 0, 0);
 };
 
 let prevTime = performance.now();
 let lastFpsUiUpdate = prevTime;
-const loop = () => {
+const loop = async () => {
+  // Ask for the next vsync up front, so a frame that overruns one starts the next straight away
+  const nextDisplayFrame = new Promise((resolve) => requestAnimationFrame(resolve));
+  // Switch renderers between frames, never while the workers are drawing one
+  if (workersCb.checked !== (workerRenderer !== undefined)) {
+    selectRenderer();
+  }
   const now = performance.now();
   const dt = (now - prevTime) / 1000;
   prevTime = now;
   update();
-  draw(dt);
+  if (workerRenderer) {
+    await drawWithWorkers(workerRenderer, dt);
+  } else {
+    draw(dt);
+  }
   const actualFrameTime = performance.now() - now;
 
   if (now - lastFpsUiUpdate >= FPS_UPDATE_INTERVAL_MS) {
@@ -399,7 +460,8 @@ const loop = () => {
     lastFpsUiUpdate = now;
   }
 
-  requestAnimationFrame(loop);
+  await nextDisplayFrame;
+  loop();
 };
 
 canvas.onpointerdown = (e) => {
