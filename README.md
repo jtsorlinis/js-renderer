@@ -37,11 +37,11 @@ Then open the local Vite URL, usually `http://localhost:5173`.
 - Image based lighting (IBL)
 - Multiple built-in demo models
 - Interactive rotate, pan, and zoom controls
-- Optional multithreaded rendering with Web Workers
+- Multithreaded rendering with Web Workers
 
 ## Multithreaded Rendering
 
-The **Multithreaded** checkbox (on by default) splits each frame across Web Workers. Each preset still renders at its own resolution and looks the same either way. It's an optional layer on top of the renderer: everything it adds lives in `src/workers/`, and the workers draw with the same `triangle()`, `line()` and shaders as the single-threaded path. If you're here to learn how the rasteriser works, start with `draw()` in `src/main.ts` and `src/drawing/`, and come back to this later.
+Each frame is split across Web Workers. It's a layer on top of the renderer: everything it adds lives in `src/workers/`, and the workers draw with the same `triangle()`, `line()` and shaders as the single-threaded path. If you're here to learn how the rasteriser works, start with `draw()` in `src/main.ts` and `src/drawing/`, and come back to this later.
 
 It works a bit like the tile-based GPUs in most phones:
 
@@ -57,4 +57,4 @@ The files:
 - `src/workers/renderWorker.ts`: draws bands until none are left.
 - `src/workers/renderProtocol.ts`: the messages between them. The scene is packed into typed arrays in shared memory, so every worker reads the same copy.
 
-Sharing memory between workers needs `SharedArrayBuffer`, which browsers only allow on cross-origin isolated pages (served with `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` headers). `npm run dev` and `npm run preview` send these headers (see `vite.config.js`). GitHub Pages can't set headers, so the deployed site uses [coi-serviceworker](https://github.com/gzuidhof/coi-serviceworker) (`public/coi-serviceworker.js`), a small service worker that adds them. On a first visit it installs itself and reloads the page once. Where cross-origin isolation isn't available, the checkbox is disabled and the single-threaded renderer is used.
+Sharing memory between workers needs `SharedArrayBuffer`, which browsers only allow on cross-origin isolated pages (served with `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` headers). `npm run dev` and `npm run preview` send these headers (see `vite.config.js`). GitHub Pages can't set headers, so the deployed site uses [coi-serviceworker](https://github.com/gzuidhof/coi-serviceworker) (`public/coi-serviceworker.js`), a small service worker that adds them. On a first visit it installs itself and reloads the page once. Where cross-origin isolation isn't available, frames are rendered single-threaded instead.

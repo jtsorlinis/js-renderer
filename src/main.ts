@@ -49,7 +49,6 @@ if (!DEFAULT_MODEL_URL) {
 // UI handles
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
-const workersCb = document.getElementById("workersCb") as HTMLInputElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
 const resolutionText = document.getElementById("resolution") as HTMLSpanElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
@@ -133,21 +132,10 @@ let depthBuffer = new DepthTexture(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_
 let shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
 let shadowBuffer = new Framebuffer(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
 let bgBuffer = new Framebuffer(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
-// Set while the multithreaded renderer (src/workers) is in use
-let workerRenderer: TiledWorkerRenderer | undefined;
-
-// The multithreaded renderer shares memory between workers, which browsers only allow on
-// cross-origin isolated pages (see public/coi-serviceworker.js)
-if (!crossOriginIsolated) {
-  workersCb.checked = false;
-  workersCb.disabled = true;
-}
-
-const selectRenderer = () => {
-  workerRenderer?.dispose();
-  workerRenderer = workersCb.checked ? new TiledWorkerRenderer() : undefined;
-};
-selectRenderer();
+// Frames are drawn by the multithreaded renderer (src/workers). It shares memory between workers,
+// which browsers only allow on cross-origin isolated pages (see public/coi-serviceworker.js), so
+// without that draw() renders them on the main thread instead.
+const workerRenderer = crossOriginIsolated ? new TiledWorkerRenderer() : undefined;
 
 const setRenderResolution = (resolutionHeight: number) => {
   const height = resolutionHeight;
@@ -246,7 +234,10 @@ const applyRenderSettings = async (selection: RenderSelection) => {
 
   activeRenderSettings = selection;
   applyRenderResolution(selection.resolution);
-  rebuildEnvironmentBackdrop(bgBuffer, iblData, RENDER_ASPECT_RATIO, FOV, envYaw);
+  // Only presets that show the environment need its backdrop, which is slow to build at high res
+  if (selection.showEnvironmentBackground) {
+    rebuildEnvironmentBackdrop(bgBuffer, iblData, RENDER_ASPECT_RATIO, FOV, envYaw);
+  }
   updateModelStats();
 };
 
@@ -439,10 +430,6 @@ let lastFpsUiUpdate = prevTime;
 const loop = async () => {
   // Ask for the next vsync up front, so a frame that overruns one starts the next straight away
   const nextDisplayFrame = new Promise((resolve) => requestAnimationFrame(resolve));
-  // Switch renderers between frames, never while the workers are drawing one
-  if (workersCb.checked !== (workerRenderer !== undefined)) {
-    selectRenderer();
-  }
   const now = performance.now();
   const dt = (now - prevTime) / 1000;
   prevTime = now;
