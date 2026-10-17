@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
+    <!-- Adds the cross-origin isolation headers GitHub Pages can't send, so SharedArrayBuffer works -->
+    <script src="%BASE_URL%coi-serviceworker.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Software Renderer</title>
   </head>
@@ -177,6 +179,7 @@
 
       <div class="section options">
         <label><input type="checkbox" id="orthoCb" /> Orthographic</label>
+        <label><input type="checkbox" id="workersCb" checked /> Multithreaded</label>
       </div>
 
       <div class="stats">
