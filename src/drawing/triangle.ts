@@ -14,7 +14,7 @@ export const edgeFunction = (a: Vector4, b: Vector4, c: Vector4) => {
   return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
 };
 
-// Only instantiate these once and reuse them
+// Only instantiate this once and reuse it
 const bcClip: Barycentric = { u: 0, v: 0, w: 0 };
 
 // Draw a triangle in screen space (pixels)
@@ -29,7 +29,7 @@ export const triangle = (
   const v1 = verts[1];
   const v2 = verts[2];
 
-  // Clip near and far planes [0,1]
+  // Skip triangles that aren't fully between the near and far planes [0,1]
   if (v0.z < 0 || v1.z < 0 || v2.z < 0) return;
   if (v0.z > 1 || v1.z > 1 || v2.z > 1) return;
 
@@ -95,7 +95,7 @@ export const triangle = (
 
     for (let x = minX; x <= maxX; x++) {
       // Check if pixel is inside triangle
-      if (u >= 0 && v >= 0 && w >= 0) {
+      if (Math.min(u, v, w) >= 0) {
         insideRow = true;
         // Check pixel's depth against z buffer, if pixel is closer, draw it
         if (z < depthData[index]) {

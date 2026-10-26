@@ -1,7 +1,7 @@
 import "./style.css";
 import { Matrix4, Vector3, Vector4 } from "./maths";
 import { DepthTexture, Framebuffer, edgeFunction, line, triangle } from "./drawing";
-import { getModelRadius } from "./utils/mesh";
+import { facesAway, getModelRadius } from "./utils/mesh";
 import {
   ensureModelOption,
   loadCustomGlb,
@@ -247,11 +247,15 @@ const getRenderSettings = (): RenderSelectionPreset => {
 const renderMesh = (
   activeShader: BaseShader,
   depthBuffer: DepthTexture,
+  viewpoint: Vector4,
   renderMode: RenderMode = "filled",
   targetBuffer: Framebuffer = frameBuffer,
   tonemap?: boolean,
 ) => {
+  const skipBackFaces = renderMode === "filled";
   for (let i = 0; i < model.vertices.length; i += 3) {
+    if (skipBackFaces && facesAway(model, i, viewpoint)) continue;
+
     // Vertex stage for one triangle.
     for (let j = 0; j < 3; j++) {
       activeShader.vertexId = i + j;
@@ -311,6 +315,11 @@ const draw = () => {
     : Matrix4.Perspective(FOV, aspectRatio);
   const mvp = projMat.multiply(viewMat).multiply(modelMat);
 
+  const modelCamera = isOrtho
+    ? invModelMat.transformDirection(viewDir).extend(0)
+    : invModelMat.transformPoint(camPos).extend(1);
+  const modelLight = invModelMat.transformDirection(lightDir).extend(0);
+
   // 5) Select active material shader and update uniforms.
   const shader = shaders[renderSettings.material];
 
@@ -336,16 +345,17 @@ const draw = () => {
   if (useShadows) {
     shadowMap.clear(1000);
     shaders.depth.uniforms.clipMat = worldLightSpaceMat.multiply(modelMat);
-    renderMesh(shaders.depth, shadowMap, "filled", shadowBuffer);
+    renderMesh(shaders.depth, shadowMap, modelLight, "filled", shadowBuffer);
   }
 
   // We need a depth prepass for wireframe culling
   if (renderSettings.renderMode === "depthWireframe") {
-    renderMesh(shaders.depth, depthBuffer, "filled");
+    renderMesh(shaders.depth, depthBuffer, modelCamera);
   }
 
   // 6) Main render pass
-  renderMesh(shader, depthBuffer, renderSettings.renderMode, frameBuffer, renderSettings.tonemap);
+  const { renderMode, tonemap } = renderSettings;
+  renderMesh(shader, depthBuffer, modelCamera, renderMode, frameBuffer, tonemap);
   ctx.putImageData(frameBuffer.imageData, 0, 0);
 };
 

@@ -12,7 +12,7 @@ export const line = (
   buffer: Framebuffer,
   depthBuffer?: DepthTexture,
 ) => {
-  // Clip near and far planes
+  // Skip lines that aren't fully between the near and far planes
   if (start.z < 0 || end.z < 0) return;
   if (start.z > 1 || end.z > 1) return;
 
@@ -26,7 +26,7 @@ export const line = (
   start = buffer.viewportTransform(start);
   end = buffer.viewportTransform(end);
 
-  // Round to nearest pixel
+  // Truncate to whole pixels (toward zero)
   let s = start.truncate();
   let e = end.truncate();
 

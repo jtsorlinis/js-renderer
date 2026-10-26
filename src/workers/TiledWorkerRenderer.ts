@@ -1,10 +1,10 @@
 import { DepthTexture, Framebuffer, triangle } from "../drawing";
 import { Matrix4, Vector3, Vector4 } from "../maths";
 import type { Material } from "../materials/Material";
-import type { RenderSelectionPreset } from "../renderSettings";
+import type { RenderMode, RenderSelectionPreset } from "../renderSettings";
 import { DepthShader } from "../shaders/Depth";
 import type { IblData } from "../shaders/shaderHelpers";
-import type { Mesh } from "../utils/mesh";
+import { facesAway, type Mesh } from "../utils/mesh";
 import {
   serializeScene,
   shareMemory,
@@ -14,7 +14,7 @@ import {
   type RenderMessage,
 } from "./renderProtocol";
 
-// Opt-in multithreaded version of main.ts draw(). The frame is cut into thin full-width bands, and
+// Multithreaded version of main.ts draw(). The frame is cut into thin full-width bands, and
 // workers take them one at a time from a shared counter until none are left, so the load stays
 // balanced wherever the model is and however fast each worker's core happens to be. The main thread
 // bins triangles by band and renders the shadow map once, then the workers draw the bands. The
@@ -166,11 +166,16 @@ export class TiledWorkerRenderer {
       : Matrix4.Perspective(frame.fov, frame.aspectRatio);
     const mvp = projMat.multiply(viewMat).multiply(modelMat);
 
-    this.binTriangles(model, mvp, frameBuffer, settings.renderMode !== "wireframe");
+    const modelCamera = frame.isOrtho
+      ? invModelMat.transformDirection(frame.viewDir).extend(0)
+      : invModelMat.transformPoint(frame.camPos).extend(1);
+    const modelLight = invModelMat.transformDirection(frame.lightDir).extend(0);
+
+    this.binTriangles(model, mvp, modelCamera, frameBuffer, settings.renderMode ?? "filled");
 
     // Shadow pass once on the main thread, into the shadow map the workers share
     if (settings.useShadows) {
-      this.renderShadowMap(model, worldLightSpaceMat.multiply(modelMat));
+      this.renderShadowMap(model, worldLightSpaceMat.multiply(modelMat), modelLight);
     }
 
     const matrices = {
@@ -204,19 +209,30 @@ export class TiledWorkerRenderer {
   }
 
   // Lists the triangles that land in each band, packed band by band into shared memory
-  private binTriangles(model: Mesh, mvp: Matrix4, buffer: Framebuffer, cullBackfaces: boolean) {
+  private binTriangles(
+    model: Mesh,
+    mvp: Matrix4,
+    modelCamera: Vector4,
+    buffer: Framebuffer,
+    renderMode: RenderMode,
+  ) {
     const { width, height } = buffer;
+    const filled = renderMode === "filled";
+    const cullBackfaces = renderMode !== "wireframe";
     const bins = this.bands.map(() => [] as number[]);
     const halfWidth = width * 0.5;
     const halfHeight = height * 0.5;
 
     for (let i = 0; i < model.vertices.length; i += 3) {
+      if (filled && facesAway(model, i, modelCamera)) continue;
       const v0 = mvp.transformPoint4(model.vertices[i]).perspectiveDivide();
       const v1 = mvp.transformPoint4(model.vertices[i + 1]).perspectiveDivide();
       const v2 = mvp.transformPoint4(model.vertices[i + 2]).perspectiveDivide();
 
-      if (v0.z < 0 || v1.z < 0 || v2.z < 0) continue;
-      if (v0.z > 1 || v1.z > 1 || v2.z > 1) continue;
+      if (filled) {
+        if (v0.z < 0 || v1.z < 0 || v2.z < 0) continue;
+        if (v0.z > 1 || v1.z > 1 || v2.z > 1) continue;
+      }
 
       const p0x = (v0.x + 1) * halfWidth;
       const p0y = (-v0.y + 1) * halfHeight;
@@ -266,12 +282,13 @@ export class TiledWorkerRenderer {
   }
 
   // Same as the shadow pass in main.ts draw()
-  private renderShadowMap(model: Mesh, clipMat: Matrix4) {
+  private renderShadowMap(model: Mesh, clipMat: Matrix4, modelLight: Vector4) {
     const { shadowMap, shadowBuffer } = this;
     const shader = this.depthShader;
     shadowMap.clear(1000);
     shader.uniforms = { model, clipMat };
     for (let i = 0; i < model.vertices.length; i += 3) {
+      if (facesAway(model, i, modelLight)) continue;
       for (let j = 0; j < 3; j++) {
         shader.vertexId = i + j;
         shader.nthVert = j;
