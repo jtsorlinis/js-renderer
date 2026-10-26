@@ -44,13 +44,15 @@ const getDefaultOrthoSize = () => -INITIAL_CAMERA_Z * Math.tan((FOV * Math.PI) /
 
 // UI handles
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+const frameTimeText = document.getElementById("frameTime") as HTMLSpanElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
 const orthoCb = document.getElementById("orthoCb") as HTMLInputElement;
 const workersCb = document.getElementById("workersCb") as HTMLInputElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
 const shadingSlider = document.getElementById("shadingSlider") as HTMLInputElement;
-const modelDd = document.getElementById("modelDd") as HTMLSelectElement;
+const modelGrid = document.getElementById("modelGrid") as HTMLDivElement;
+const modelTiles = [...modelGrid.querySelectorAll<HTMLButtonElement>(".model-tile")];
 const loadGlbBtn = document.getElementById("loadGlbBtn") as HTMLButtonElement;
 const glbInput = document.getElementById("glbInput") as HTMLInputElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
@@ -87,6 +89,18 @@ shadingList.addEventListener("click", (event) => {
 });
 
 shadingSlider.addEventListener("input", syncShadingButtons);
+
+// The model whose tile is highlighted; undefined while a loaded GLB is shown
+let selectedModel: ModelKey | undefined;
+
+const selectModelTile = (modelKey: ModelKey | undefined) => {
+  selectedModel = modelKey;
+  for (const tile of modelTiles) {
+    const isActive = tile.dataset.model === modelKey;
+    tile.classList.toggle("is-active", isActive);
+    tile.setAttribute("aria-pressed", String(isActive));
+  }
+};
 
 let aspectRatio = CANVAS_WIDTH / CANVAS_HEIGHT;
 
@@ -166,7 +180,7 @@ const rebuildBackdrops = () => {
 rebuildBackdrops();
 
 const initialModelOption = await ensureModelOption(INITIAL_MODEL);
-modelDd.value = INITIAL_MODEL;
+selectModelTile(INITIAL_MODEL);
 prefetchRemainingModels(INITIAL_MODEL);
 
 let model = initialModelOption.mesh;
@@ -192,7 +206,7 @@ const shaders = {
 const triVerts: Vector4[] = [];
 
 const updateModelStats = () => {
-  trisText.innerText = (model.vertices.length / 3).toFixed(0);
+  trisText.innerText = (model.vertices.length / 3).toLocaleString();
 };
 
 const resetModelTransform = () => {
@@ -223,11 +237,15 @@ const loadAndApplyModel = async (loadModel: () => Promise<ModelOption>, resetTra
   }
 };
 
-const setModel = (modelKey: ModelKey, resetTransform = true) =>
-  loadAndApplyModel(() => ensureModelOption(modelKey), resetTransform);
+const setModel = (modelKey: ModelKey, resetTransform = true) => {
+  selectModelTile(modelKey);
+  return loadAndApplyModel(() => ensureModelOption(modelKey), resetTransform);
+};
 
-const loadSelectedGlb = (file: File, resetTransform = true) =>
-  loadAndApplyModel(() => loadCustomGlb(file), resetTransform);
+const loadSelectedGlb = (file: File, resetTransform = true) => {
+  selectModelTile(undefined);
+  return loadAndApplyModel(() => loadCustomGlb(file), resetTransform);
+};
 
 const getRenderSettings = (): RenderSelectionPreset => {
   const shadingValue = getShadingButton()?.dataset.shadingValue || "wireframe";
@@ -416,7 +434,8 @@ const loop = async () => {
 
   if (now - lastFpsUiUpdate >= FPS_UPDATE_INTERVAL_MS) {
     const fps = 1000 / actualFrameTime;
-    fpsText.innerText = `${actualFrameTime.toFixed(0)} ms (${fps.toFixed(0)} fps)`;
+    frameTimeText.innerText = actualFrameTime.toFixed(0);
+    fpsText.innerText = fps.toFixed(0);
     lastFpsUiUpdate = now;
   }
 
@@ -461,9 +480,8 @@ canvas.onwheel = (e) => {
 canvas.oncontextmenu = (e) => e.preventDefault();
 
 window.addEventListener("keydown", (event) => {
-  if (modelDd.value !== "nyxy" && event.key.toLowerCase() === "n") {
-    modelDd.value = "nyxy";
-    modelDd.dispatchEvent(new Event("change"));
+  if (selectedModel !== "nyxy" && event.key.toLowerCase() === "n") {
+    setModel("nyxy");
     return;
   }
 
@@ -471,12 +489,11 @@ window.addEventListener("keydown", (event) => {
     if (!event.repeat) rotationPaused = !rotationPaused;
     event.preventDefault();
   } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-    const models = [...modelDd.options].filter((option) => !option.hidden);
-    const index = models.findIndex((option) => option.value === modelDd.value);
+    const models = modelTiles.map((tile) => tile.dataset.model as ModelKey);
+    const index = models.findIndex((model) => model === selectedModel);
     const nextIndex =
       (index + (event.key === "ArrowRight" ? 1 : -1) + models.length) % models.length;
-    modelDd.value = models[nextIndex].value;
-    modelDd.dispatchEvent(new Event("change"));
+    setModel(models[nextIndex]);
     event.preventDefault();
   } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
     shadingSlider.value = String(
@@ -487,9 +504,13 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
-modelDd.onchange = () => {
-  setModel(modelDd.value as ModelKey);
-};
+modelGrid.addEventListener("click", (event) => {
+  const tile = (event.target as HTMLElement).closest<HTMLButtonElement>(".model-tile");
+  const modelKey = tile?.dataset.model as ModelKey | undefined;
+  if (modelKey && modelKey !== selectedModel) {
+    setModel(modelKey);
+  }
+});
 
 loadGlbBtn.addEventListener("click", () => {
   glbInput.click();
