@@ -14,7 +14,7 @@ export const edgeFunction = (a: Vector4, b: Vector4, c: Vector4) => {
   return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
 };
 
-// Only instantiate these once and reuse them
+// Only instantiate this once and reuse it
 const bcClip: Barycentric = { u: 0, v: 0, w: 0 };
 const edgeEpsilon = -1e-6;
 
@@ -31,7 +31,7 @@ export const triangle = (
   const v1 = verts[1];
   const v2 = verts[2];
 
-  // Clip near and far planes [0,1]
+  // Skip triangles that aren't fully between the near and far planes [0,1]
   if (v0.z < 0 || v1.z < 0 || v2.z < 0) return;
   if (v0.z > 1 || v1.z > 1 || v2.z > 1) return;
 
@@ -80,6 +80,9 @@ export const triangle = (
 
   // Locals so the pixel loop avoids re-reading these fields across fragment() calls
   const depthData = depthBuffer.data;
+  const w0 = v0.w;
+  const w1 = v1.w;
+  const w2 = v2.w;
 
   // Loop over pixels in bounding box
   for (let y = minY; y <= maxY; y++) {
@@ -93,10 +96,8 @@ export const triangle = (
 
     for (let x = minX; x <= maxX; x++) {
       // Check if pixel is inside triangle
-      if (u >= edgeEpsilon && v >= edgeEpsilon && w >= edgeEpsilon) {
-        // Interpolate depth to get z value at pixel
-        const z = v0.z * u + v1.z * v + v2.z * w;
-
+      if (Math.min(u, v, w) >= edgeEpsilon) {
+        insideRow = true;
         // Check pixel's depth against z buffer, if pixel is closer, draw it
         if (z < depthData[index]) {
           // Update z buffer with new depth
@@ -108,10 +109,10 @@ export const triangle = (
             bcClip.v = v;
             bcClip.w = w;
             if (perspectiveCorrect) {
-              const invW = 1 / (v0.w * u + v1.w * v + v2.w * w);
-              bcClip.u = u * invW * v0.w;
-              bcClip.v = v * invW * v1.w;
-              bcClip.w = w * invW * v2.w;
+              const invW = 1 / (w0 * u + w1 * v + w2 * w);
+              bcClip.u = u * invW * w0;
+              bcClip.v = v * invW * w1;
+              bcClip.w = w * invW * w2;
             }
 
             const frag = fragment();

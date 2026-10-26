@@ -30,7 +30,6 @@ export class NormalMappedShader extends BaseShader<Uniforms> {
   vWorldPos = this.varying<Vector3>();
   vWorldNormal = this.varying<Vector3>();
   vWorldTangent = this.varying<Vector4>();
-  vLightSpacePos = this.varying<Vector3>();
 
   vertex = () => {
     // Read the source vertex attributes from the active mesh.
@@ -46,14 +45,6 @@ export class NormalMappedShader extends BaseShader<Uniforms> {
     this.v2f(this.vWorldNormal, worldNormal);
     this.v2f(this.vWorldTangent, worldTangent);
     this.v2f(this.vWorldPos, worldPos);
-
-    // Shadow mapping if enabled
-    if (this.uniforms.receiveShadows) {
-      const lightSpacePos = this.uniforms.worldLightSpaceMat.transformPoint(worldPos);
-      lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
-      lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
-      this.v2f(this.vLightSpacePos, lightSpacePos);
-    }
 
     // Final clip-space position for rasterization.
     return this.uniforms.mvp.transformPoint4(modelPos);
@@ -95,7 +86,9 @@ export class NormalMappedShader extends BaseShader<Uniforms> {
     // Shadow mapping if enabled
     let shadow = 1;
     if (this.uniforms.receiveShadows) {
-      const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
+      const lightSpacePos = this.uniforms.worldLightSpaceMat.transformPoint(worldPos);
+      lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
+      lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
       const nDotL = Math.max(normal.dot(this.uniforms.worldLightDir), 0.0);
       const bias = minBias + (maxBias - minBias) * (1 - nDotL);
       shadow = this.sampleShadow(this.uniforms.shadowMap, lightSpacePos, bias);

@@ -117,6 +117,16 @@ export const getModelRadius = (mesh: Mesh) => {
   return mesh.vertices.reduce((max, vertex) => Math.max(max, vertex.length()), 0);
 };
 
+export const facesAway = (mesh: Mesh, i: number, viewpoint: Vector4) => {
+  const n = mesh.faceNormals[i];
+  const v = mesh.vertices[i];
+  const facing =
+    n.x * (viewpoint.x - v.x * viewpoint.w) +
+    n.y * (viewpoint.y - v.y * viewpoint.w) +
+    n.z * (viewpoint.z - v.z * viewpoint.w);
+  return facing < 0;
+};
+
 export const buildLoadedModel = (source: MeshSource, normalize = false, scale = 1): Mesh => {
   const vertices = source.vertices.map((vertex) => vertex.clone());
   const sourceUvs = source.uvs?.map((uv) => uv.clone()) ?? [];

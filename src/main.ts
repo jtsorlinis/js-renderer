@@ -1,7 +1,7 @@
 import "./style.css";
 import { Matrix4, Vector3, Vector4 } from "./maths";
 import { DepthTexture, Framebuffer, edgeFunction, line, triangle } from "./drawing";
-import { getModelRadius } from "./utils/mesh";
+import { facesAway, getModelRadius } from "./utils/mesh";
 import { ensureModelUrlOption, type ModelOption } from "./utils/modelLoader";
 import { SmoothShader } from "./shaders/Smooth";
 import { TexturedShader } from "./shaders/Textured";
@@ -48,6 +48,7 @@ if (!DEFAULT_MODEL_URL) {
 
 // UI handles
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+const frameTimeText = document.getElementById("frameTime") as HTMLSpanElement;
 const fpsText = document.getElementById("fps") as HTMLSpanElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
 const resolutionText = document.getElementById("resolution") as HTMLSpanElement;
@@ -194,7 +195,7 @@ const triVerts: Vector4[] = [];
 let activeRenderSettings = DEFAULT_RENDER_SELECTION;
 
 const updateModelStats = () => {
-  trisText.innerText = (model.vertices.length / 3).toFixed(0);
+  trisText.innerText = (model.vertices.length / 3).toLocaleString();
   resolutionText.innerText = `${activeRenderSettings.resolution}p`;
 };
 
@@ -269,13 +270,18 @@ shadingSlider.addEventListener("input", () => {
 const renderMesh = (
   activeShader: BaseShader,
   depthBuffer: DepthTexture,
+  viewpoint: Vector4,
   renderMode: RenderMode = "filled",
   targetBuffer: Framebuffer = frameBuffer,
   perspectiveCorrect: boolean = true,
   snapVertices: boolean = false,
   pixelFn = targetBuffer.setPixel,
 ) => {
+  // Snapping can turn a nearly edge-on back face towards the camera, and triangle() draws those
+  const skipBackFaces = renderMode === "filled" && !snapVertices;
   for (let i = 0; i < model.vertices.length; i += 3) {
+    if (skipBackFaces && facesAway(model, i, viewpoint)) continue;
+
     // Vertex stage for one triangle.
     for (let j = 0; j < 3; j++) {
       activeShader.vertexId = i + j;
@@ -340,6 +346,9 @@ const draw = (dt: number) => {
   const projMat = Matrix4.Perspective(FOV, RENDER_ASPECT_RATIO);
   const mvp = projMat.multiply(viewMat).multiply(modelMat);
 
+  const modelCamera = invModelMat.transformPoint(camPos).extend(1);
+  const modelLight = invModelMat.transformDirection(lightDir).extend(0);
+
   // 5) Select active material shader and update uniforms.
   const shader = shaders[renderSettings.material];
 
@@ -366,12 +375,12 @@ const draw = (dt: number) => {
   if (useShadows) {
     shadowMap.clear(1000);
     shaders.depth.uniforms.clipMat = worldLightSpaceMat.multiply(modelMat);
-    renderMesh(shaders.depth, shadowMap, "filled", shadowBuffer);
+    renderMesh(shaders.depth, shadowMap, modelLight, "filled", shadowBuffer);
   }
 
   // We need a depth prepass for wireframe culling
   if (renderSettings.renderMode === "depthWireframe") {
-    renderMesh(shaders.depth, depthBuffer, "filled");
+    renderMesh(shaders.depth, depthBuffer, modelCamera);
   }
 
   const pixelFn = frameBuffer[renderSettings.setPixelFn ?? "setPixel"];
@@ -380,6 +389,7 @@ const draw = (dt: number) => {
   renderMesh(
     shader,
     depthBuffer,
+    modelCamera,
     renderSettings.renderMode,
     frameBuffer,
     perspectiveCorrect,
@@ -443,7 +453,8 @@ const loop = async () => {
 
   if (now - lastFpsUiUpdate >= FPS_UPDATE_INTERVAL_MS) {
     const fps = 1000 / actualFrameTime;
-    fpsText.innerText = `${actualFrameTime.toFixed(0)} ms (${fps.toFixed(0)} fps)`;
+    frameTimeText.innerText = actualFrameTime.toFixed(0);
+    fpsText.innerText = fps.toFixed(0);
     lastFpsUiUpdate = now;
   }
 

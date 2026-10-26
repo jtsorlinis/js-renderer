@@ -19,33 +19,37 @@ export abstract class BaseShader<TUniforms = unknown> {
     return Array<T>(3);
   };
 
-  interpolate = (a: number, b: number, c: number) => {
-    return a * this.bc.u + b * this.bc.v + c * this.bc.w;
-  };
-
-  interpolateFloat = (vals: number[]) => {
-    return vals[0] * this.bc.u + vals[1] * this.bc.v + vals[2] * this.bc.w;
-  };
-
   interpolateVec2 = (vals: Vector2[]) => {
-    const x = this.interpolate(vals[0].x, vals[1].x, vals[2].x);
-    const y = this.interpolate(vals[0].y, vals[1].y, vals[2].y);
-    return new Vector2(x, y);
+    const { u, v, w } = this.bc;
+    const a = vals[0];
+    const b = vals[1];
+    const c = vals[2];
+    return new Vector2(a.x * u + b.x * v + c.x * w, a.y * u + b.y * v + c.y * w);
   };
 
   interpolateVec3 = (vals: Vector3[]) => {
-    const x = this.interpolate(vals[0].x, vals[1].x, vals[2].x);
-    const y = this.interpolate(vals[0].y, vals[1].y, vals[2].y);
-    const z = this.interpolate(vals[0].z, vals[1].z, vals[2].z);
-    return new Vector3(x, y, z);
+    const { u, v, w } = this.bc;
+    const a = vals[0];
+    const b = vals[1];
+    const c = vals[2];
+    return new Vector3(
+      a.x * u + b.x * v + c.x * w,
+      a.y * u + b.y * v + c.y * w,
+      a.z * u + b.z * v + c.z * w,
+    );
   };
 
   interpolateVec4 = (vals: Vector4[]) => {
-    const x = this.interpolate(vals[0].x, vals[1].x, vals[2].x);
-    const y = this.interpolate(vals[0].y, vals[1].y, vals[2].y);
-    const z = this.interpolate(vals[0].z, vals[1].z, vals[2].z);
-    const w = this.interpolate(vals[0].w, vals[1].w, vals[2].w);
-    return new Vector4(x, y, z, w);
+    const { u, v, w } = this.bc;
+    const a = vals[0];
+    const b = vals[1];
+    const c = vals[2];
+    return new Vector4(
+      a.x * u + b.x * v + c.x * w,
+      a.y * u + b.y * v + c.y * w,
+      a.z * u + b.z * v + c.z * w,
+      a.w * u + b.w * v + c.w * w,
+    );
   };
 
   private toTexelIndex = (uv: Vector2 | Vector3 | Vector4, width: number, height: number) => {

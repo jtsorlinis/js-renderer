@@ -42,7 +42,6 @@ export class IblShader extends BaseShader<Uniforms> {
   vWorldPos = this.varying<Vector3>();
   vWorldNormal = this.varying<Vector3>();
   vWorldTangent = this.varying<Vector4>();
-  vLightSpacePos = this.varying<Vector3>();
 
   vertex = () => {
     const model = this.uniforms.model;
@@ -56,13 +55,6 @@ export class IblShader extends BaseShader<Uniforms> {
     this.v2f(this.vWorldPos, worldPos);
     this.v2f(this.vWorldNormal, worldNormal);
     this.v2f(this.vWorldTangent, worldTangent);
-
-    if (this.uniforms.receiveShadows) {
-      const lightSpacePos = this.uniforms.worldLightSpaceMat.transformPoint(worldPos);
-      lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
-      lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
-      this.v2f(this.vLightSpacePos, lightSpacePos);
-    }
 
     return this.uniforms.mvp.transformPoint4(modelPos);
   };
@@ -118,7 +110,9 @@ export class IblShader extends BaseShader<Uniforms> {
     if (nDotL > 0 && nDotV > 0) {
       let shadow = 1;
       if (this.uniforms.receiveShadows) {
-        const lightSpacePos = this.interpolateVec3(this.vLightSpacePos);
+        const lightSpacePos = this.uniforms.worldLightSpaceMat.transformPoint(worldPos);
+        lightSpacePos.x = lightSpacePos.x * 0.5 + 0.5;
+        lightSpacePos.y = lightSpacePos.y * 0.5 + 0.5;
         const bias = minBias + (maxBias - minBias) * (1 - nDotL);
         shadow = this.sampleShadow(this.uniforms.shadowMap, lightSpacePos, bias);
       }

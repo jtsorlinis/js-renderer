@@ -1,25 +1,38 @@
 :root {
-  --bg: #1a1a2e;
-  --surface: #16213e;
-  --surface-alt: #0f3460;
+  --bg: #0b0c0f;
+  --surface: #131418;
+  --surface-raised: #1a1c21;
+  --surface-hover: #23252c;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.12);
   --accent: #e94560;
-  --text: #eee;
-  --text-muted: #8892a4;
-  --radius: 6px;
-  --sidebar-width: 220px;
+  --accent-soft: rgba(233, 69, 96, 0.14);
+  --accent-ring: rgba(233, 69, 96, 0.3);
+  --text: #ecedf0;
+  --text-dim: #b4b8c2;
+  --text-muted: #7d828e;
+  --radius: 9px;
+  --radius-lg: 16px;
+  --gutter: 12px;
+  --sidebar-width: 308px;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
 
   font-family:
     "Inter",
-    "Segoe UI",
     system-ui,
     -apple-system,
+    "Segoe UI",
     sans-serif;
+  font-size: 15px;
   color: var(--text);
   background: var(--bg);
-  margin: 0;
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
 }
 
-* {
+*,
+::before,
+::after {
   box-sizing: border-box;
 }
 
@@ -27,220 +40,9 @@ body {
   margin: 0;
   height: 100dvh;
   display: flex;
+  gap: var(--gutter);
+  padding: var(--gutter);
   overflow: hidden;
-}
-
-/* ── Sidebar ── */
-
-.sidebar {
-  width: var(--sidebar-width);
-  flex-shrink: 0;
-  background: var(--surface);
-  border-left: 1px solid rgba(255, 255, 255, 0.06);
-  display: flex;
-  flex-direction: column;
-  padding: 1rem;
-  gap: 1rem;
-  overflow: auto;
-}
-
-.section {
-  display: flex;
-  flex-direction: column;
-}
-
-.title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: 0.5px;
-  margin-bottom: 16px;
-}
-
-.section label,
-.section-heading {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
-  user-select: none;
-}
-
-.section label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  cursor: pointer;
-}
-
-.section-heading {
-  display: block;
-  margin-bottom: 8px;
-}
-
-/* checkbox label stays horizontal */
-.section label:has(input[type="checkbox"]) {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-}
-
-.shading-picker {
-  display: flex;
-  align-items: stretch;
-  gap: 10px;
-}
-
-.shading-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 6px;
-  counter-reset: shading-step var(--shading-count, 10);
-}
-
-.shading-list li {
-  counter-increment: shading-step -1;
-}
-
-.shading-option {
-  width: 100%;
-  padding: 8px 10px 8px 6px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius);
-  background: rgba(15, 52, 96, 0.55);
-  color: var(--text);
-  text-align: left;
-  font-size: 13px;
-  cursor: pointer;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  transition:
-    border-color 0.15s,
-    background 0.15s,
-    transform 0.15s;
-}
-
-.shading-list .shading-option::before {
-  width: 14px;
-  content: counter(shading-step);
-  color: rgba(255, 255, 255, 0.48);
-  font-size: 12px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  width: 14px;
-}
-
-.shading-list li:has(.is-active) .shading-option::before {
-  color: var(--accent);
-}
-
-.shading-option:hover {
-  border-color: rgba(233, 69, 96, 0.55);
-  background: rgba(15, 52, 96, 0.9);
-}
-
-.shading-list li:has(.is-active) ~ li .shading-option {
-  border-color: rgba(233, 69, 96, 0.34);
-  background: linear-gradient(135deg, rgba(233, 69, 96, 0.14), rgba(15, 52, 96, 0.82));
-  box-shadow: 0 0 0 1px rgba(233, 69, 96, 0.08);
-}
-
-.shading-option.is-active {
-  border-color: var(--accent);
-  background: linear-gradient(135deg, rgba(233, 69, 96, 0.28), rgba(15, 52, 96, 0.95));
-  box-shadow: 0 0 0 1px rgba(233, 69, 96, 0.2);
-  transform: translateX(2px);
-}
-
-.shading-option:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.25);
-}
-
-.shading-slider {
-  margin: 0;
-  width: 18px;
-  min-height: 242px;
-  accent-color: var(--accent);
-  cursor: pointer;
-  writing-mode: vertical-lr;
-  direction: rtl;
-}
-
-.shading-slider:focus-visible {
-  outline: none;
-}
-
-/* custom checkbox */
-.section input[type="checkbox"] {
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
-  background: var(--surface-alt);
-  cursor: pointer;
-  position: relative;
-  flex-shrink: 0;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
-}
-
-.section input[type="checkbox"]:checked {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.section input[type="checkbox"]:checked::after {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 1px;
-  width: 5px;
-  height: 9px;
-  border: solid #fff;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-
-.spacer {
-  flex: 1;
-}
-
-/* ── Stats ── */
-.stats {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  font-variant-numeric: tabular-nums;
-}
-
-.stat {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.stat-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
-}
-
-.stat-value {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
 }
 
 /* ── Viewport ── */
@@ -248,28 +50,363 @@ body {
 .viewport {
   flex: 1;
   min-width: 0;
-  height: 100dvh;
-  background: #000;
-  overflow: hidden;
   position: relative;
 }
 
+/* JS sets the CSS size to fit the viewport; the canvas floats centred inside it.
+   The framebuffer clears to transparent, so the background shows behind empty pixels. */
 canvas {
   display: block;
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  background: #000;
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 24px 64px rgba(0, 0, 0, 0.45);
   cursor: grab;
   touch-action: none;
   image-rendering: pixelated;
 }
 
-/* JS sets the actual CSS size; these are fallbacks */
-
 canvas:active {
   cursor: grabbing;
 }
+
+/* ── Sidebar ── */
+
+.sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-logo {
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+
+.brand-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.brand-subtitle {
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.section-heading,
+.stat-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+/* ── Stats ── */
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 13px;
+}
+
+.stat:nth-child(even) {
+  border-left: 1px solid var(--border);
+}
+
+.stat:nth-child(n + 3) {
+  border-top: 1px solid var(--border);
+}
+
+.stat-label {
+  font-size: 11.5px;
+}
+
+.stat-value {
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.stat-unit {
+  margin-left: 4px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+/* ── Shading pipeline ──
+   Each stage builds on the ones below it, so the rail is filled from the selected stage down.
+   The range input sits invisibly over the rail, so it can still be dragged to scrub stages. */
+
+.shading-picker {
+  position: relative;
+}
+
+.shading-list {
+  --step-h: 34px;
+  --step-gap: 2px;
+  --rail-x: 10px;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--step-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: shading-step var(--shading-count, 10);
+}
+
+.shading-list::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--step-h) / 2);
+  bottom: calc(var(--step-h) / 2);
+  left: calc(var(--rail-x) - 1px);
+  width: 2px;
+  background: var(--border-strong);
+}
+
+.shading-list li {
+  position: relative;
+  padding-left: 25px;
+  counter-increment: shading-step -1;
+}
+
+/* Stage dot */
+.shading-list li::before {
+  --dot: 10px;
+
+  content: "";
+  position: absolute;
+  z-index: 1;
+  top: calc(50% - var(--dot) / 2);
+  left: calc(var(--rail-x) - var(--dot) / 2);
+  width: var(--dot);
+  height: var(--dot);
+  border: 2px solid #3b3e47;
+  border-radius: 50%;
+  background: var(--surface);
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+/* Rail segment joining a stage to the one above it */
+.shading-list li:has(.is-active) ~ li::after {
+  content: "";
+  position: absolute;
+  bottom: 50%;
+  left: calc(var(--rail-x) - 1px);
+  width: 2px;
+  height: calc(var(--step-h) + var(--step-gap));
+  background: var(--accent);
+}
+
+.shading-list li:has(.is-active) ~ li::before {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.shading-list li:has(.is-active)::before {
+  --dot: 16px;
+
+  border: 3px solid var(--accent);
+  background: var(--text);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.shading-picker:has(.shading-slider:focus-visible) li:has(.is-active)::before {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.shading-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  width: 100%;
+  height: var(--step-h);
+  padding: 0 12px;
+  font: inherit;
+  text-align: left;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+
+.shading-option::after {
+  content: counter(shading-step);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.shading-list li:has(.is-active) ~ li .shading-option {
+  color: var(--text-dim);
+}
+
+.shading-option:hover,
+.shading-list li:has(.is-active) ~ li .shading-option:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.shading-option.is-active {
+  font-weight: 600;
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.shading-option.is-active::after {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.shading-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.shading-slider {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  width: 23px;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  writing-mode: vertical-lr;
+  direction: rtl;
+}
+
+/* ── Footer ── */
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.controls div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+}
+
+.controls dt {
+  color: var(--text-muted);
+}
+
+.controls dd {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+}
+
+kbd {
+  min-width: 21px;
+  padding: 1px 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: center;
+  color: var(--text-dim);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+}
+
+/* ── Short windows ──
+   Drop the shortcut list, then tighten the spacing, so the main controls fit without scrolling.
+   The heights are roughly what the sidebar needs with and without the list. */
+
+@media (max-height: 800px) {
+  .sidebar-footer {
+    display: none;
+  }
+}
+
+@media (max-height: 720px) {
+  .sidebar {
+    gap: 14px;
+    padding: 14px 18px;
+  }
+
+  .section {
+    gap: 7px;
+  }
+
+  .stat {
+    padding: 8px 13px;
+  }
+
+  .shading-list {
+    --step-h: 30px;
+  }
+}
+
+/* ── Mobile ── */
 
 @media (max-width: 576px) {
   .hideMobile {
@@ -278,23 +415,50 @@ canvas:active {
 
   body {
     flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .viewport {
+    min-height: 0;
   }
 
   .sidebar {
-    width: 100%;
-    max-height: 50dvh;
+    width: auto;
+    max-height: 60dvh;
+    gap: 18px;
+    padding: 16px;
   }
 
+  /* Bleed to the panel edges so the chips scroll under them */
   .shading-list {
     flex-direction: row-reverse;
-    overflow: auto;
+    gap: 7px;
+    margin: 0 -16px;
+    padding: 0 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .shading-list::before,
+  .shading-list li::before,
+  .shading-list li::after {
+    display: none;
   }
 
   .shading-list li {
-    min-width: 110px;
+    flex-shrink: 0;
+    padding-left: 0;
+  }
+
+  .shading-option {
+    padding: 0 14px;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 999px;
   }
 
   .shading-option.is-active {
-    transform: none;
+    border-color: var(--accent);
   }
 }
