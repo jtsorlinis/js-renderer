@@ -7,35 +7,90 @@
     <script src="/js-renderer/coi-serviceworker.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Software Renderer</title>
-    <script type="module" crossorigin src="/js-renderer/assets/index-C7UEtEZn.js"></script>
-    <link rel="stylesheet" crossorigin href="/js-renderer/assets/index-BWRE32Y1.css">
+    <script type="module" crossorigin src="/js-renderer/assets/index-DCMJl3rA.js"></script>
+    <link rel="stylesheet" crossorigin href="/js-renderer/assets/index-DcpHtBMS.css">
   </head>
   <body>
-    <div id="app"></div>
-
     <div class="viewport">
       <canvas id="canvas"></canvas>
     </div>
 
     <aside class="sidebar">
-      <span class="title hideMobile">Software Renderer</span>
+      <header class="brand hideMobile">
+        <img class="brand-logo" src="/js-renderer/favicon.svg" alt="" width="32" height="32" />
+        <div>
+          <h1 class="brand-title">Software Renderer</h1>
+          <p class="brand-subtitle">CPU rasterizer in TypeScript</p>
+        </div>
+      </header>
 
-      <div class="section">
-        <span class="section-heading">Model (Faces)</span>
-        <select id="modelDd">
-          <option value="dice">Dice (20)</option>
-          <option value="can">Can (500)</option>
-          <option value="hydrant">Hydrant (3k)</option>
-          <option value="head">Head (10k)</option>
-          <option value="dragon">Dragon (30k)</option>
-          <option value="demon">Demon (100k)</option>
-          <option value="nyxy" hidden>Nyxy (10k)</option>
-        </select>
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-label">Frame</span>
+          <span class="stat-value"><span id="frameTime">0</span><span class="stat-unit">ms</span></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">FPS</span>
+          <span class="stat-value" id="fps">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Triangles</span>
+          <span class="stat-value" id="tris">0</span>
+        </div>
       </div>
 
       <div class="section">
-        <span class="section-heading">Frame</span>
-        <span class="stat-value" id="fps">0 (0.0 ms)</span>
+        <div class="section-header">
+          <span class="section-heading">Model</span>
+          <button type="button" class="text-button hideMobile" id="loadGlbBtn">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+            </svg>
+            Load GLB
+          </button>
+          <input id="glbInput" type="file" accept=".glb,model/gltf-binary" hidden />
+        </div>
+
+        <div class="model-grid" id="modelGrid">
+          <button type="button" class="model-tile" data-model="dice" aria-pressed="false">
+            <img src="/js-renderer/thumbnails/dice.webp" alt="" width="160" height="160" />
+            <span class="model-name">Dice</span>
+            <span class="model-faces">20 faces</span>
+          </button>
+          <button type="button" class="model-tile" data-model="can" aria-pressed="false">
+            <img src="/js-renderer/thumbnails/can.webp" alt="" width="160" height="160" />
+            <span class="model-name">Can</span>
+            <span class="model-faces">500 faces</span>
+          </button>
+          <button type="button" class="model-tile" data-model="hydrant" aria-pressed="false">
+            <img src="/js-renderer/thumbnails/hydrant.webp" alt="" width="160" height="160" />
+            <span class="model-name">Hydrant</span>
+            <span class="model-faces">3k faces</span>
+          </button>
+          <button type="button" class="model-tile" data-model="head" aria-pressed="false">
+            <img src="/js-renderer/thumbnails/head.webp" alt="" width="160" height="160" />
+            <span class="model-name">Head</span>
+            <span class="model-faces">10k faces</span>
+          </button>
+          <button type="button" class="model-tile" data-model="dragon" aria-pressed="false">
+            <img src="/js-renderer/thumbnails/dragon.webp" alt="" width="160" height="160" />
+            <span class="model-name">Dragon</span>
+            <span class="model-faces">30k faces</span>
+          </button>
+          <button type="button" class="model-tile" data-model="demon" aria-pressed="false">
+            <img src="/js-renderer/thumbnails/demon.webp" alt="" width="160" height="160" />
+            <span class="model-name">Demon</span>
+            <span class="model-faces">100k faces</span>
+          </button>
+        </div>
       </div>
 
       <div class="section">
@@ -179,22 +234,30 @@
         </div>
       </div>
 
-      <div class="section options">
-        <label><input type="checkbox" id="orthoCb" /> Orthographic</label>
-        <label><input type="checkbox" id="workersCb" checked /> Multithreaded</label>
-      </div>
-
-      <div class="stats">
-        <div class="stat">
-          <span class="stat-label">Triangles</span>
-          <span class="stat-value" id="tris">0</span>
+      <div class="section">
+        <span class="section-heading">Options</span>
+        <div class="toggles">
+          <label class="toggle">
+            Orthographic
+            <input type="checkbox" role="switch" id="orthoCb" />
+          </label>
+          <label class="toggle">
+            Multithreaded
+            <input type="checkbox" role="switch" id="workersCb" checked />
+          </label>
         </div>
       </div>
 
-      <div class="section load-glb hideMobile">
-        <button type="button" class="shading-option" id="loadGlbBtn">Load GLB</button>
-        <input id="glbInput" type="file" accept=".glb,model/gltf-binary" hidden />
-      </div>
+      <footer class="sidebar-footer hideMobile">
+        <dl class="controls">
+          <div><dt>Rotate</dt><dd><kbd>Drag</kbd></dd></div>
+          <div><dt>Pause</dt><dd><kbd>Space</kbd></dd></div>
+          <div><dt>Pan</dt><dd><kbd>Right-drag</kbd></dd></div>
+          <div><dt>Model</dt><dd><kbd>←</kbd><kbd>→</kbd></dd></div>
+          <div><dt>Zoom</dt><dd><kbd>Scroll</kbd></dd></div>
+          <div><dt>Shading</dt><dd><kbd>↑</kbd><kbd>↓</kbd></dd></div>
+        </dl>
+      </footer>
     </aside>
 
   </body>
