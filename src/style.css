@@ -11,10 +11,10 @@
   --text: #ecedf0;
   --text-dim: #b4b8c2;
   --text-muted: #7d828e;
-  --radius: 8px;
-  --radius-lg: 14px;
+  --radius: 9px;
+  --radius-lg: 16px;
   --gutter: 12px;
-  --sidebar-width: 268px;
+  --sidebar-width: 308px;
   --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
 
   font-family:
@@ -23,7 +23,7 @@
     -apple-system,
     "Segoe UI",
     sans-serif;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--text);
   background: var(--bg);
   color-scheme: dark;
@@ -81,8 +81,8 @@ canvas:active {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 16px;
+  gap: 22px;
+  padding: 18px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -93,36 +93,36 @@ canvas:active {
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .brand-logo {
   flex-shrink: 0;
-  border-radius: 7px;
+  border-radius: 8px;
 }
 
 .brand-title {
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 650;
   letter-spacing: -0.01em;
 }
 
 .brand-subtitle {
   margin: 2px 0 0;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-muted);
 }
 
 .section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 9px;
 }
 
 .section-heading,
 .stat-label {
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -143,9 +143,9 @@ canvas:active {
 .stat {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
-  padding: 9px 11px;
+  padding: 10px 13px;
 }
 
 .stat + .stat {
@@ -153,21 +153,21 @@ canvas:active {
 }
 
 .stat-label {
-  font-size: 10px;
+  font-size: 11.5px;
 }
 
 .stat-value {
   overflow: hidden;
   font-family: var(--mono);
-  font-size: 14px;
+  font-size: 16px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .stat-unit {
-  margin-left: 3px;
-  font-size: 11px;
+  margin-left: 4px;
+  font-size: 12.5px;
   color: var(--text-muted);
 }
 
@@ -182,15 +182,15 @@ canvas:active {
 .text-button {
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin: -4px -6px -4px 0;
-  padding: 4px 6px;
+  gap: 6px;
+  margin: -5px -7px -5px 0;
+  padding: 5px 7px;
   font: inherit;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-muted);
   background: none;
   border: 0;
-  border-radius: 5px;
+  border-radius: 6px;
   cursor: pointer;
   transition:
     background-color 0.15s,
@@ -208,23 +208,23 @@ canvas:active {
 }
 
 .text-button svg {
-  width: 13px;
-  height: 13px;
+  width: 15px;
+  height: 15px;
 }
 
 .model-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  gap: 7px;
 }
 
 .model-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
-  padding: 4px 4px 6px;
+  padding: 5px 5px 7px;
   font: inherit;
   color: var(--text-dim);
   background: var(--surface-raised);
@@ -268,13 +268,13 @@ canvas:active {
 }
 
 .model-name {
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .model-faces {
   margin-top: -2px;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 400;
   color: var(--text-muted);
 }
@@ -292,9 +292,9 @@ canvas:active {
 }
 
 .shading-list {
-  --step-h: 30px;
+  --step-h: 34px;
   --step-gap: 2px;
-  --rail-x: 9px;
+  --rail-x: 10px;
 
   position: relative;
   display: flex;
@@ -318,13 +318,13 @@ canvas:active {
 
 .shading-list li {
   position: relative;
-  padding-left: 22px;
+  padding-left: 25px;
   counter-increment: shading-step -1;
 }
 
 /* Stage dot */
 .shading-list li::before {
-  --dot: 8px;
+  --dot: 10px;
 
   content: "";
   position: absolute;
@@ -358,7 +358,7 @@ canvas:active {
 }
 
 .shading-list li:has(.is-active)::before {
-  --dot: 14px;
+  --dot: 16px;
 
   border: 3px solid var(--accent);
   background: var(--text);
@@ -374,16 +374,16 @@ canvas:active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 9px;
   width: 100%;
   height: var(--step-h);
-  padding: 0 10px;
+  padding: 0 12px;
   font: inherit;
   text-align: left;
   color: var(--text-muted);
   background: transparent;
   border: 0;
-  border-radius: 6px;
+  border-radius: 7px;
   cursor: pointer;
   transition:
     background-color 0.15s,
@@ -393,7 +393,7 @@ canvas:active {
 .shading-option::after {
   content: counter(shading-step);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--text-muted);
   opacity: 0.6;
 }
@@ -429,7 +429,7 @@ canvas:active {
   z-index: 2;
   top: 0;
   left: 0;
-  width: 20px;
+  width: 23px;
   height: 100%;
   margin: 0;
   opacity: 0;
@@ -450,8 +450,8 @@ canvas:active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 9px 11px;
+  gap: 14px;
+  padding: 11px 13px;
   cursor: pointer;
   user-select: none;
 }
@@ -469,10 +469,10 @@ canvas:active {
   appearance: none;
   position: relative;
   flex-shrink: 0;
-  width: 30px;
-  height: 18px;
+  width: 34px;
+  height: 20px;
   margin: 0;
-  border-radius: 9px;
+  border-radius: 10px;
   background: #363943;
   cursor: inherit;
   transition: background-color 0.2s;
@@ -483,8 +483,8 @@ canvas:active {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -496,7 +496,7 @@ canvas:active {
 }
 
 .toggle input:checked::after {
-  transform: translateX(12px);
+  transform: translateX(14px);
 }
 
 .toggle input:disabled {
@@ -512,23 +512,23 @@ canvas:active {
 
 .sidebar-footer {
   margin-top: auto;
-  padding-top: 16px;
+  padding-top: 18px;
   border-top: 1px solid var(--border);
 }
 
 .controls {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 7px 14px;
+  gap: 8px 16px;
   margin: 0;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .controls div {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: 7px;
 }
 
 .controls dt {
@@ -537,21 +537,54 @@ canvas:active {
 
 .controls dd {
   display: flex;
-  gap: 3px;
+  gap: 4px;
   margin: 0;
 }
 
 kbd {
-  min-width: 18px;
-  padding: 1px 5px;
+  min-width: 21px;
+  padding: 1px 6px;
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: 12px;
   text-align: center;
   color: var(--text-dim);
   background: var(--surface-raised);
   border: 1px solid var(--border-strong);
   border-bottom-width: 2px;
-  border-radius: 4px;
+  border-radius: 5px;
+}
+
+/* ── Short windows ──
+   Drop the shortcut list, then tighten the spacing, so the main controls fit without scrolling.
+   The heights are roughly what the sidebar needs with and without the list. */
+
+@media (max-height: 1140px) {
+  .sidebar-footer {
+    display: none;
+  }
+}
+
+@media (max-height: 1030px) {
+  .sidebar {
+    gap: 14px;
+    padding: 14px 18px;
+  }
+
+  .section {
+    gap: 7px;
+  }
+
+  .stat {
+    padding: 8px 13px;
+  }
+
+  .shading-list {
+    --step-h: 30px;
+  }
+
+  .toggle {
+    padding: 9px 13px;
+  }
 }
 
 /* ── Mobile ── */
@@ -574,26 +607,26 @@ kbd {
   .sidebar {
     width: auto;
     max-height: 60dvh;
-    gap: 16px;
-    padding: 14px;
+    gap: 18px;
+    padding: 16px;
   }
 
   /* Bleed to the panel edges so the tiles and chips scroll under them */
   .model-grid {
     grid-template-columns: none;
     grid-auto-flow: column;
-    grid-auto-columns: 76px;
-    margin: 0 -14px;
-    padding: 0 14px;
+    grid-auto-columns: 88px;
+    margin: 0 -16px;
+    padding: 0 16px;
     overflow-x: auto;
     scrollbar-width: none;
   }
 
   .shading-list {
     flex-direction: row-reverse;
-    gap: 6px;
-    margin: 0 -14px;
-    padding: 0 14px;
+    gap: 7px;
+    margin: 0 -16px;
+    padding: 0 16px;
     overflow-x: auto;
     scrollbar-width: none;
   }
@@ -610,7 +643,7 @@ kbd {
   }
 
   .shading-option {
-    padding: 0 12px;
+    padding: 0 14px;
     background: var(--surface-raised);
     border: 1px solid var(--border);
     border-radius: 999px;
