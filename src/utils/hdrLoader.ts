@@ -127,15 +127,8 @@ export const loadHdrTexture = async (imageURL: string) => {
       const scanlineBase = x * 4;
       const exponent = decoded.scanline[scanlineBase + 3];
       const outputBase = (y * width + x) * 3;
+      // An exponent of 0 means black, and its scale is 0
       const scale = rgbeScales[exponent];
-
-      if (scale === 0) {
-        data[outputBase] = 0;
-        data[outputBase + 1] = 0;
-        data[outputBase + 2] = 0;
-        continue;
-      }
-
       data[outputBase] = decoded.scanline[scanlineBase] * scale;
       data[outputBase + 1] = decoded.scanline[scanlineBase + 1] * scale;
       data[outputBase + 2] = decoded.scanline[scanlineBase + 2] * scale;

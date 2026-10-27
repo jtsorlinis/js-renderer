@@ -10,24 +10,15 @@ export type MaterialMode =
 
 export type RenderMode = "filled" | "depthWireframe" | "wireframe";
 
-export type RenderSelection = {
+export type RenderSelectionPreset = {
   material: MaterialMode;
-  normalizedValue: string;
   renderMode?: RenderMode;
   useShadows?: boolean;
   showEnvironmentBackground?: boolean;
   tonemap?: boolean;
 };
 
-export type RenderSelectionPreset = Omit<RenderSelection, "normalizedValue">;
-
-const DEFAULT_SHADING_SELECTION: RenderSelection = {
-  material: "depth",
-  renderMode: "wireframe",
-  normalizedValue: "wireframe",
-};
-
-const SHADING_SELECTIONS: Partial<Record<string, RenderSelectionPreset>> = {
+const SHADING_SELECTIONS: Record<string, RenderSelectionPreset> = {
   "tonemapped-ibl": {
     material: "ibl",
     useShadows: true,
@@ -66,9 +57,12 @@ const SHADING_SELECTIONS: Partial<Record<string, RenderSelectionPreset>> = {
     material: "depth",
     renderMode: "depthWireframe",
   },
+  wireframe: {
+    material: "depth",
+    renderMode: "wireframe",
+  },
 };
 
-export const resolveShadingSelection = (value: string): RenderSelection => {
-  const selection = SHADING_SELECTIONS[value];
-  return selection ? { ...selection, normalizedValue: value } : DEFAULT_SHADING_SELECTION;
+export const resolveShadingSelection = (value: string) => {
+  return SHADING_SELECTIONS[value] ?? SHADING_SELECTIONS.wireframe;
 };

@@ -3,15 +3,8 @@
 import { DepthTexture, Framebuffer, edgeFunction, line, triangle } from "../drawing";
 import { Matrix4, Vector3, Vector4 } from "../maths";
 import type { RenderMode } from "../renderSettings";
+import { createShaders } from "../shaders";
 import { BaseShader } from "../shaders/BaseShader";
-import { DepthShader } from "../shaders/Depth";
-import { FlatShader } from "../shaders/Flat";
-import { IblShader } from "../shaders/Ibl";
-import { NormalMappedShader } from "../shaders/NormalMapped";
-import { PbrShader } from "../shaders/Pbr";
-import { SmoothShader } from "../shaders/Smooth";
-import { TexturedShader } from "../shaders/Textured";
-import { UnlitShader } from "../shaders/Unlit";
 import {
   deserializeScene,
   type Band,
@@ -26,16 +19,7 @@ import {
 
 const workerScope = self as DedicatedWorkerGlobalScope;
 
-const shaders = {
-  ibl: new IblShader(),
-  pbr: new PbrShader(),
-  normalMapped: new NormalMappedShader(),
-  textured: new TexturedShader(),
-  smooth: new SmoothShader(),
-  flat: new FlatShader(),
-  unlit: new UnlitShader(),
-  depth: new DepthShader(),
-};
+const shaders = createShaders();
 
 type BandTarget = { frameBuffer: Framebuffer; depthBuffer: DepthTexture };
 

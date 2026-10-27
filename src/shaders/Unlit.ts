@@ -15,12 +15,10 @@ export class UnlitShader extends BaseShader<Uniforms> {
 
   vertex = () => {
     const model = this.uniforms.model;
-    const faceId = Math.floor(this.vertexId / 3);
-    const i = faceId * 3;
 
-    // Give each face a random color
+    // Give each face a random color, seeded by its first vertex
     if (this.nthVert === 0) {
-      this.color = hash3(i, minColor, 1);
+      this.color = hash3(this.vertexId, minColor, 1);
     }
 
     // Return clip-space position.

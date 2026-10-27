@@ -14,23 +14,20 @@ import {
   estimateEnvironmentYaw,
   rebuildEnvironmentBackdrop,
 } from "./shaders/shaderHelpers";
-import { SmoothShader } from "./shaders/Smooth";
-import { TexturedShader } from "./shaders/Textured";
-import { FlatShader } from "./shaders/Flat";
-import { UnlitShader } from "./shaders/Unlit";
+import { createShaders } from "./shaders";
 import { BaseShader } from "./shaders/BaseShader";
-import { DepthShader } from "./shaders/Depth";
-import { NormalMappedShader } from "./shaders/NormalMapped";
-import { PbrShader } from "./shaders/Pbr";
-import { IblShader } from "./shaders/Ibl";
-import { RenderSelectionPreset, resolveShadingSelection, type RenderMode } from "./renderSettings";
+import { resolveShadingSelection, type RenderMode } from "./renderSettings";
 import { loadHdrTexture } from "./utils/hdrLoader";
-import { TiledWorkerRenderer } from "./workers/TiledWorkerRenderer";
+import { TiledWorkerRenderer, type FrameTransforms } from "./workers/TiledWorkerRenderer";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
+// The multithreaded renderer draws at double resolution, so the aspect ratio is the same
+const ASPECT_RATIO = CANVAS_WIDTH / CANVAS_HEIGHT;
 const FOV = 50;
+const TAN_HALF_FOV = Math.tan((FOV * Math.PI) / 360);
 const INITIAL_CAMERA_Z = -3;
+const DEFAULT_ORTHO_SIZE = -INITIAL_CAMERA_Z * TAN_HALF_FOV;
 const SHADOW_MAP_SIZE = 512;
 const INITIAL_ROTATION = Math.PI / 3;
 const ROTATION_SPEED = 0.2;
@@ -40,8 +37,6 @@ const ZOOM_SENSITIVITY = 100;
 const FPS_UPDATE_INTERVAL_MS = 250;
 const INITIAL_MODEL: ModelKey = "dice";
 
-const getDefaultOrthoSize = () => -INITIAL_CAMERA_Z * Math.tan((FOV * Math.PI) / 180 / 2);
-
 // UI handles
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const frameTimeText = document.getElementById("frameTime") as HTMLSpanElement;
@@ -50,6 +45,7 @@ const orthoCb = document.getElementById("orthoCb") as HTMLInputElement;
 const workersCb = document.getElementById("workersCb") as HTMLInputElement;
 const trisText = document.getElementById("tris") as HTMLSpanElement;
 const shadingList = document.getElementById("shadingList") as HTMLUListElement;
+const shadingButtons = [...shadingList.querySelectorAll<HTMLButtonElement>(".shading-option")];
 const shadingSlider = document.getElementById("shadingSlider") as HTMLInputElement;
 const modelGrid = document.getElementById("modelGrid") as HTMLDivElement;
 const modelTiles = [...modelGrid.querySelectorAll<HTMLButtonElement>(".model-tile")];
@@ -58,25 +54,19 @@ const glbInput = document.getElementById("glbInput") as HTMLInputElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 let mouseButtonState = 0;
 
-const getShadingButton = () => {
-  return shadingList.querySelector<HTMLButtonElement>(
-    `[data-shading-index="${shadingSlider.value}"]`,
-  );
+const setActive = (button: HTMLButtonElement, isActive: boolean) => {
+  button.classList.toggle("is-active", isActive);
+  button.setAttribute("aria-pressed", String(isActive));
 };
 
-const setShadingValue = (value: string) => {
-  const button = shadingList.querySelector<HTMLButtonElement>(`[data-shading-value="${value}"]`);
-  shadingSlider.value = button?.dataset.shadingIndex || "0";
-  syncShadingButtons();
+const getShadingButton = () => {
+  return shadingButtons.find((button) => button.dataset.shadingIndex === shadingSlider.value);
 };
 
 const syncShadingButtons = () => {
-  const activeButton = getShadingButton();
-  const previousButton = shadingList.querySelector<HTMLButtonElement>(".is-active");
-  previousButton?.classList.remove("is-active");
-  previousButton?.setAttribute("aria-pressed", "false");
-  activeButton?.classList.add("is-active");
-  activeButton?.setAttribute("aria-pressed", "true");
+  for (const button of shadingButtons) {
+    setActive(button, button.dataset.shadingIndex === shadingSlider.value);
+  }
 };
 
 syncShadingButtons();
@@ -96,33 +86,30 @@ let selectedModel: ModelKey | undefined;
 const selectModelTile = (modelKey: ModelKey | undefined) => {
   selectedModel = modelKey;
   for (const tile of modelTiles) {
-    const isActive = tile.dataset.model === modelKey;
-    tile.classList.toggle("is-active", isActive);
-    tile.setAttribute("aria-pressed", String(isActive));
+    setActive(tile, tile.dataset.model === modelKey);
   }
 };
-
-let aspectRatio = CANVAS_WIDTH / CANVAS_HEIGHT;
 
 const viewport = canvas.parentElement!;
 const fitCanvas = () => {
   const vw = viewport.clientWidth;
   const vh = viewport.clientHeight;
   let w = vw;
-  let h = w / aspectRatio;
+  let h = w / ASPECT_RATIO;
   if (h > vh) {
     h = vh;
-    w = h * aspectRatio;
+    w = h * ASPECT_RATIO;
   }
   canvas.style.width = `${Math.floor(w)}px`;
   canvas.style.height = `${Math.floor(h)}px`;
 };
-let frameBuffer = new Framebuffer(CANVAS_WIDTH, CANVAS_HEIGHT);
-let depthBuffer = new DepthTexture(CANVAS_WIDTH, CANVAS_HEIGHT);
-let shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-let shadowBuffer = new Framebuffer(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-let bgBuffer = new Framebuffer(CANVAS_WIDTH, CANVAS_HEIGHT);
-let bgBufferTonemapped = new Framebuffer(CANVAS_WIDTH, CANVAS_HEIGHT);
+const shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+const shadowBuffer = new Framebuffer(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+// Sized by setRenderResolution()
+let frameBuffer: Framebuffer;
+let depthBuffer: DepthTexture;
+let bgBuffer: Framebuffer;
+let bgBufferTonemapped: Framebuffer;
 // Set while the multithreaded renderer (src/workers) is in use
 let workerRenderer: TiledWorkerRenderer | undefined;
 
@@ -144,15 +131,11 @@ const setRenderResolution = () => {
   const scale = workerRenderer ? 2 : 1;
   const width = CANVAS_WIDTH * scale;
   const height = CANVAS_HEIGHT * scale;
-  const shadowMapSize = SHADOW_MAP_SIZE;
 
   canvas.width = width;
   canvas.height = height;
-  aspectRatio = width / height;
   frameBuffer = new Framebuffer(width, height);
   depthBuffer = new DepthTexture(width, height);
-  shadowMap = new DepthTexture(shadowMapSize, shadowMapSize);
-  shadowBuffer = new Framebuffer(shadowMapSize, shadowMapSize);
   bgBuffer = new Framebuffer(width, height);
   bgBufferTonemapped = new Framebuffer(width, height);
   fitCanvas();
@@ -161,12 +144,14 @@ const setRenderResolution = () => {
 setRenderResolution();
 window.addEventListener("resize", fitCanvas);
 
+// The first model downloads while the environment's lighting is built
+const initialModelRequest = ensureModelOption(INITIAL_MODEL);
 const hdrEnvironment = await loadHdrTexture(`${import.meta.env.BASE_URL}environments/sunny.hdr`);
 
 // Scene and camera
 const lightDir = new Vector3(1, -1, 1).scale(-1).normalize();
 const camPos = new Vector3(0, 0, INITIAL_CAMERA_Z);
-let orthoSize = getDefaultOrthoSize();
+let orthoSize = DEFAULT_ORTHO_SIZE;
 
 // Derived scene data
 const cameraLookDir = Vector3.Forward;
@@ -174,12 +159,11 @@ const viewDir = cameraLookDir.scale(-1);
 const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
 const rebuildBackdrops = () => {
-  rebuildEnvironmentBackdrop(bgBuffer, iblData, aspectRatio, FOV, envYaw, false);
-  rebuildEnvironmentBackdrop(bgBufferTonemapped, iblData, aspectRatio, FOV, envYaw, true);
+  rebuildEnvironmentBackdrop(bgBuffer, iblData, ASPECT_RATIO, FOV, envYaw, bgBufferTonemapped);
 };
 rebuildBackdrops();
 
-const initialModelOption = await ensureModelOption(INITIAL_MODEL);
+const initialModelOption = await initialModelRequest;
 selectModelTile(INITIAL_MODEL);
 prefetchRemainingModels(INITIAL_MODEL);
 
@@ -187,21 +171,12 @@ let model = initialModelOption.mesh;
 let material = initialModelOption.material;
 let shadowOrthoSize = getModelRadius(model);
 
-let modelPos = new Vector3(0, 0, 0);
-let modelRotation = new Vector3(0, INITIAL_ROTATION, 0);
-let modelScale = new Vector3(1, 1, 1);
+const modelPos = new Vector3(0, 0, 0);
+const modelRotation = new Vector3(0, INITIAL_ROTATION, 0);
+const modelScale = new Vector3(1, 1, 1);
 let rotationPaused = false;
 
-const shaders = {
-  ibl: new IblShader(),
-  pbr: new PbrShader(),
-  normalMapped: new NormalMappedShader(),
-  textured: new TexturedShader(),
-  smooth: new SmoothShader(),
-  flat: new FlatShader(),
-  unlit: new UnlitShader(),
-  depth: new DepthShader(),
-};
+const shaders = createShaders();
 
 const triVerts: Vector4[] = [];
 
@@ -212,54 +187,55 @@ const updateModelStats = () => {
 const resetModelTransform = () => {
   modelRotation.set(0, INITIAL_ROTATION, 0);
   camPos.set(0, 0, INITIAL_CAMERA_Z);
-  orthoSize = getDefaultOrthoSize();
+  orthoSize = DEFAULT_ORTHO_SIZE;
 };
 
 let activeModelRequest = 0;
+// The model being drawn; undefined while a loaded GLB is shown
+let shownModel: ModelKey | undefined = INITIAL_MODEL;
 
-const applyModelOption = (selectedModel: ModelOption) => {
-  model = selectedModel.mesh;
-  material = selectedModel.material;
+const applyModelOption = (option: ModelOption) => {
+  model = option.mesh;
+  material = option.material;
   shadowOrthoSize = getModelRadius(model);
   updateModelStats();
 };
 
-const loadAndApplyModel = async (loadModel: () => Promise<ModelOption>, resetTransform = true) => {
+const loadAndApplyModel = async (
+  modelKey: ModelKey | undefined,
+  loadModel: () => Promise<ModelOption>,
+) => {
   const requestId = ++activeModelRequest;
-  const selectedModel = await loadModel();
-  if (requestId !== activeModelRequest) {
-    return;
-  }
-
-  applyModelOption(selectedModel);
-  if (resetTransform) {
-    resetModelTransform();
-  }
-};
-
-const setModel = (modelKey: ModelKey, resetTransform = true) => {
   selectModelTile(modelKey);
-  return loadAndApplyModel(() => ensureModelOption(modelKey), resetTransform);
-};
+  try {
+    const option = await loadModel();
+    if (requestId !== activeModelRequest) {
+      return;
+    }
 
-const loadSelectedGlb = (file: File, resetTransform = true) => {
-  selectModelTile(undefined);
-  return loadAndApplyModel(() => loadCustomGlb(file), resetTransform);
-};
-
-const getRenderSettings = (): RenderSelectionPreset => {
-  const shadingValue = getShadingButton()?.dataset.shadingValue || "wireframe";
-  const selection = resolveShadingSelection(shadingValue);
-  if (selection.normalizedValue !== shadingValue) {
-    setShadingValue(selection.normalizedValue);
+    shownModel = modelKey;
+    applyModelOption(option);
+    resetModelTransform();
+  } catch (error) {
+    if (requestId === activeModelRequest) {
+      selectModelTile(shownModel);
+    }
+    throw error;
   }
-  return {
-    material: selection.material,
-    renderMode: selection.renderMode,
-    useShadows: selection.useShadows,
-    showEnvironmentBackground: selection.showEnvironmentBackground,
-    tonemap: selection.tonemap,
-  };
+};
+
+const setModel = (modelKey: ModelKey) => {
+  loadAndApplyModel(modelKey, () => ensureModelOption(modelKey)).catch((error) => {
+    console.error(`Failed to load model "${modelKey}"`, error);
+  });
+};
+
+const loadSelectedGlb = (file: File) => {
+  return loadAndApplyModel(undefined, () => loadCustomGlb(file));
+};
+
+const getRenderSettings = () => {
+  return resolveShadingSelection(getShadingButton()?.dataset.shadingValue ?? "wireframe");
 };
 
 const renderMesh = (
@@ -282,9 +258,9 @@ const renderMesh = (
     }
 
     if (renderMode !== "filled") {
-      const isDepthWireframe = renderMode === "depthWireframe";
-      const area = edgeFunction(triVerts[0], triVerts[1], triVerts[2]);
-      if (isDepthWireframe && area <= 0) continue;
+      if (renderMode === "depthWireframe") {
+        if (edgeFunction(triVerts[0], triVerts[1], triVerts[2]) <= 0) continue;
+      }
 
       line(triVerts[0], triVerts[1], targetBuffer, depthBuffer);
       line(triVerts[1], triVerts[2], targetBuffer, depthBuffer);
@@ -303,6 +279,32 @@ const update = (dt: number) => {
   }
 };
 
+const buildTransforms = (isOrtho: boolean): FrameTransforms => {
+  // 2) Build model and world-space transforms.
+  const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
+  const invModelMat = modelMat.invert();
+  const normalMat = invModelMat.transpose();
+
+  // 3) Build light-space transform (for shadow mapping).
+  const lightViewMat = Matrix4.LookAt(lightDir.scale(5), Vector3.Zero);
+  const lightProjMat = Matrix4.Ortho(shadowOrthoSize, 1, 1, 10);
+  const worldLightSpaceMat = lightProjMat.multiply(lightViewMat);
+
+  // 4) Build camera transform and final clip transform.
+  const viewMat = Matrix4.LookTo(camPos, cameraLookDir, Vector3.Up);
+  const projMat = isOrtho
+    ? Matrix4.Ortho(orthoSize, ASPECT_RATIO)
+    : Matrix4.Perspective(FOV, ASPECT_RATIO);
+  const mvp = projMat.multiply(viewMat).multiply(modelMat);
+
+  const modelCamera = isOrtho
+    ? invModelMat.transformDirection(viewDir).extend(0)
+    : invModelMat.transformPoint(camPos).extend(1);
+  const modelLight = invModelMat.transformDirection(lightDir).extend(0);
+
+  return { modelMat, normalMat, worldLightSpaceMat, mvp, modelCamera, modelLight };
+};
+
 const draw = () => {
   const renderSettings = getRenderSettings();
 
@@ -314,29 +316,11 @@ const draw = () => {
   }
   depthBuffer.clear(1000);
 
-  // 2) Build model and world-space transforms.
-  const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
-  const invModelMat = modelMat.invert();
-  const normalMat = invModelMat.transpose();
-  const useShadows = renderSettings.useShadows === true;
-
-  // 3) Build light-space transform (for shadow mapping).
-  const lightViewMat = Matrix4.LookAt(lightDir.scale(5), Vector3.Zero);
-  const lightProjMat = Matrix4.Ortho(shadowOrthoSize, 1, 1, 10);
-  const worldLightSpaceMat = lightProjMat.multiply(lightViewMat);
-
-  // 4) Build camera transform and final clip transform.
+  // 2-4) Build the model, light and camera transforms.
   const isOrtho = orthoCb.checked;
-  const viewMat = Matrix4.LookTo(camPos, cameraLookDir, Vector3.Up);
-  const projMat = isOrtho
-    ? Matrix4.Ortho(orthoSize, aspectRatio)
-    : Matrix4.Perspective(FOV, aspectRatio);
-  const mvp = projMat.multiply(viewMat).multiply(modelMat);
-
-  const modelCamera = isOrtho
-    ? invModelMat.transformDirection(viewDir).extend(0)
-    : invModelMat.transformPoint(camPos).extend(1);
-  const modelLight = invModelMat.transformDirection(lightDir).extend(0);
+  const { modelMat, normalMat, worldLightSpaceMat, mvp, modelCamera, modelLight } =
+    buildTransforms(isOrtho);
+  const useShadows = renderSettings.useShadows === true;
 
   // 5) Select active material shader and update uniforms.
   const shader = shaders[renderSettings.material];
@@ -357,14 +341,15 @@ const draw = () => {
     shadowMap,
     receiveShadows: useShadows,
   };
-  shaders.depth.uniforms = { model, clipMat: mvp };
 
   // Optional shadow pass first
   if (useShadows) {
     shadowMap.clear(1000);
-    shaders.depth.uniforms.clipMat = worldLightSpaceMat.multiply(modelMat);
+    shaders.depth.uniforms = { model, clipMat: worldLightSpaceMat.multiply(modelMat) };
     renderMesh(shaders.depth, shadowMap, modelLight, "filled", shadowBuffer);
   }
+  // The camera's depth shader, for the wireframe modes and their depth prepass
+  shaders.depth.uniforms = { model, clipMat: mvp };
 
   // We need a depth prepass for wireframe culling
   if (renderSettings.renderMode === "depthWireframe") {
@@ -379,6 +364,7 @@ const draw = () => {
 
 // The same frame as draw(), split across Web Workers by src/workers
 const drawWithWorkers = async (renderer: TiledWorkerRenderer) => {
+  const isOrtho = orthoCb.checked;
   await renderer.draw({
     settings: getRenderSettings(),
     model,
@@ -386,16 +372,10 @@ const drawWithWorkers = async (renderer: TiledWorkerRenderer) => {
     iblData,
     envYaw,
     lightDir,
-    shadowOrthoSize,
-    modelPos,
-    modelRotation,
-    modelScale,
     camPos,
     viewDir,
-    isOrtho: orthoCb.checked,
-    orthoSize,
-    aspectRatio,
-    fov: FOV,
+    isOrtho,
+    transforms: buildTransforms(isOrtho),
     frameBuffer,
     background: bgBuffer,
     backgroundTonemapped: bgBufferTonemapped,
@@ -472,8 +452,7 @@ canvas.onpointermove = (e) => {
 
 canvas.onwheel = (e) => {
   e.preventDefault();
-  const scale = Math.tan((FOV * 0.5 * Math.PI) / 180);
-  orthoSize += (e.deltaY * scale) / ZOOM_SENSITIVITY;
+  orthoSize += (e.deltaY * TAN_HALF_FOV) / ZOOM_SENSITIVITY;
   camPos.z -= e.deltaY / ZOOM_SENSITIVITY;
 };
 
@@ -496,9 +475,11 @@ window.addEventListener("keydown", (event) => {
     setModel(models[nextIndex]);
     event.preventDefault();
   } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-    shadingSlider.value = String(
-      Math.min(10, Math.max(0, Number(shadingSlider.value) + (event.key === "ArrowUp" ? 1 : -1))),
-    );
+    if (event.key === "ArrowUp") {
+      shadingSlider.stepUp();
+    } else {
+      shadingSlider.stepDown();
+    }
     syncShadingButtons();
     event.preventDefault();
   }

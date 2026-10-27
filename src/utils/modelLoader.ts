@@ -36,7 +36,7 @@ const modelAssets: Record<string, ModelAssetSource> = {
   },
 };
 
-export const MODEL_KEYS = Object.keys(modelAssets) as (keyof typeof modelAssets)[];
+const MODEL_KEYS = Object.keys(modelAssets) as (keyof typeof modelAssets)[];
 
 export type ModelKey = keyof typeof modelAssets;
 
@@ -47,11 +47,8 @@ export type ModelOption = {
 
 type ModelAssetSource = {
   glbUrl: string;
-  normalize?: boolean;
-  scale?: number;
-  loaded?: ModelOption;
-  pending?: Promise<ModelOption>;
-  prefetched?: Promise<void>;
+  scale: number;
+  request?: Promise<ModelOption>;
 };
 
 const prefetchAsset = async (url: string) => {
@@ -62,40 +59,21 @@ const prefetchAsset = async (url: string) => {
   await response.blob();
 };
 
-const prefetchModelAssets = (modelKey: ModelKey) => {
-  const modelAsset = modelAssets[modelKey];
-  modelAsset.prefetched ??= (async () => {
-    await prefetchAsset(modelAsset.glbUrl);
-  })();
-
-  return modelAsset.prefetched;
-};
-
+// Loads each model once; later calls get the same promise, or try again if it failed
 export const ensureModelOption = (modelKey: ModelKey) => {
   const modelAsset = modelAssets[modelKey];
-  if (modelAsset.loaded) {
-    return Promise.resolve(modelAsset.loaded);
-  }
-
-  modelAsset.pending ??= (async () => {
-    const loadedModel = await loadGlbAsset(
-      modelAsset.glbUrl,
-      modelAsset.normalize,
-      modelAsset.scale,
-    );
-
-    modelAsset.loaded = loadedModel;
-    return loadedModel;
-  })();
-
-  return modelAsset.pending;
+  modelAsset.request ??= loadGlbAsset(modelAsset.glbUrl, modelAsset.scale).catch((error) => {
+    modelAsset.request = undefined;
+    throw error;
+  });
+  return modelAsset.request;
 };
 
-export const loadCustomGlb = async (file: File, normalize = true, scale = 1) => {
+export const loadCustomGlb = async (file: File) => {
   const objectUrl = URL.createObjectURL(file);
 
   try {
-    return await loadGlbAsset(objectUrl, normalize, scale);
+    return await loadGlbAsset(objectUrl);
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
@@ -105,7 +83,7 @@ export const prefetchRemainingModels = async (initialModelKey: ModelKey) => {
   await Promise.all(
     MODEL_KEYS.filter((modelKey) => modelKey !== initialModelKey).map(async (modelKey) => {
       try {
-        await prefetchModelAssets(modelKey);
+        await prefetchAsset(modelAssets[modelKey].glbUrl);
       } catch (error) {
         console.error(`Failed to prefetch model "${modelKey}"`, error);
       }

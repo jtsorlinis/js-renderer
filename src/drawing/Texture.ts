@@ -69,28 +69,25 @@ export class Texture {
     offScreenCtx.imageSmoothingEnabled = true;
     offScreenCtx.imageSmoothingQuality = "high";
     offScreenCtx.drawImage(img, 0, 0, targetWidth, targetHeight);
-    const imageData = offScreenCtx.getImageData(0, 0, targetWidth, targetHeight);
-    const data = new Float32Array((imageData.data.length / 4) * 3);
-    let dataIndex = 0;
-    for (let i = 0; i < imageData.data.length; i += 4) {
-      if (descriptor.type === "normal") {
-        data[dataIndex++] = (imageData.data[i] / 255) * 2 - 1;
-        data[dataIndex++] = (imageData.data[i + 1] / 255) * 2 - 1;
-        data[dataIndex++] = (imageData.data[i + 2] / 255) * 2 - 1;
-      } else {
-        let r = imageData.data[i] / 255;
-        let g = imageData.data[i + 1] / 255;
-        let b = imageData.data[i + 2] / 255;
-        if (descriptor.colorSpace === "srgb") {
-          r = srgbToLinear(r);
-          g = srgbToLinear(g);
-          b = srgbToLinear(b);
-        }
+    const pixels = offScreenCtx.getImageData(0, 0, targetWidth, targetHeight).data;
 
-        data[dataIndex++] = r;
-        data[dataIndex++] = g;
-        data[dataIndex++] = b;
+    // Channels are bytes, so decode each of the 256 values once
+    const decoded = new Float32Array(256);
+    for (let byte = 0; byte < 256; byte++) {
+      const value = byte / 255;
+      if (descriptor.type === "normal") {
+        decoded[byte] = value * 2 - 1;
+      } else {
+        decoded[byte] = descriptor.colorSpace === "srgb" ? srgbToLinear(value) : value;
       }
+    }
+
+    const data = new Float32Array((pixels.length / 4) * 3);
+    let dataIndex = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      data[dataIndex++] = decoded[pixels[i]];
+      data[dataIndex++] = decoded[pixels[i + 1]];
+      data[dataIndex++] = decoded[pixels[i + 2]];
     }
     return new Texture(data, targetWidth, targetHeight);
   };

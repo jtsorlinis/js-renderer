@@ -44,7 +44,6 @@ const tonemapKhronosPbrNeutral = (color: Vector3) => {
 export class Framebuffer {
   width: number;
   height: number;
-  totalPixels: number;
   imageData: ImageData;
   data: Uint8ClampedArray;
 
@@ -52,7 +51,6 @@ export class Framebuffer {
     this.imageData = new ImageData(width, height);
     this.width = this.imageData.width;
     this.height = this.imageData.height;
-    this.totalPixels = this.width * this.height;
     this.data = this.imageData.data;
   }
 

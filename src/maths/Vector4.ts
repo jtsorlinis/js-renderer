@@ -6,10 +6,6 @@ export class Vector4 {
   z: number;
   w: number;
 
-  static get Zero() {
-    return new Vector4(0, 0, 0, 0);
-  }
-
   constructor(x: number = 0, y: number = 0, z: number = 0, w: number = 0) {
     this.x = x;
     this.y = y;
@@ -46,5 +42,4 @@ export class Vector4 {
     this.w = invW;
     return this;
   }
-
 }

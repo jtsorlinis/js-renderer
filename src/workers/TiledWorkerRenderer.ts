@@ -23,6 +23,17 @@ import {
 const MAX_WORKERS = 16;
 const BANDS_PER_WORKER = 8;
 
+// The transforms main.ts builds for each frame (draw() steps 2-4)
+export interface FrameTransforms {
+  modelMat: Matrix4;
+  normalMat: Matrix4;
+  worldLightSpaceMat: Matrix4;
+  mvp: Matrix4;
+  // The camera and light in model space, for skipping back faces
+  modelCamera: Vector4;
+  modelLight: Vector4;
+}
+
 // Everything main.ts draw() reads, plus the render targets
 export interface TiledFrame {
   settings: RenderSelectionPreset;
@@ -31,16 +42,10 @@ export interface TiledFrame {
   iblData: IblData;
   envYaw: { sin: number; cos: number };
   lightDir: Vector3;
-  shadowOrthoSize: number;
-  modelPos: Vector3;
-  modelRotation: Vector3;
-  modelScale: Vector3;
   camPos: Vector3;
   viewDir: Vector3;
   isOrtho: boolean;
-  orthoSize: number;
-  aspectRatio: number;
-  fov: number;
+  transforms: FrameTransforms;
   frameBuffer: Framebuffer;
   background: Framebuffer;
   backgroundTonemapped: Framebuffer;
@@ -51,8 +56,6 @@ export interface TiledFrame {
 const defaultWorkerCount = () => {
   return Math.max(1, Math.min(MAX_WORKERS, (navigator.hardwareConcurrency || 4) - 1));
 };
-
-const cameraLookDir = Vector3.Forward;
 
 export class TiledWorkerRenderer {
   private workers: Worker[];
@@ -151,26 +154,8 @@ export class TiledWorkerRenderer {
       this.configure(frame);
     }
 
-    // Same transforms as main.ts draw() steps 2-4
-    const modelMat = Matrix4.TRS(frame.modelPos, frame.modelRotation, frame.modelScale);
-    const invModelMat = modelMat.invert();
-    const normalMat = invModelMat.transpose();
-
-    const lightViewMat = Matrix4.LookAt(frame.lightDir.scale(5), Vector3.Zero);
-    const lightProjMat = Matrix4.Ortho(frame.shadowOrthoSize, 1, 1, 10);
-    const worldLightSpaceMat = lightProjMat.multiply(lightViewMat);
-
-    const viewMat = Matrix4.LookTo(frame.camPos, cameraLookDir, Vector3.Up);
-    const projMat = frame.isOrtho
-      ? Matrix4.Ortho(frame.orthoSize, frame.aspectRatio)
-      : Matrix4.Perspective(frame.fov, frame.aspectRatio);
-    const mvp = projMat.multiply(viewMat).multiply(modelMat);
-
-    const modelCamera = frame.isOrtho
-      ? invModelMat.transformDirection(frame.viewDir).extend(0)
-      : invModelMat.transformPoint(frame.camPos).extend(1);
-    const modelLight = invModelMat.transformDirection(frame.lightDir).extend(0);
-
+    const { modelMat, normalMat, worldLightSpaceMat, mvp, modelCamera, modelLight } =
+      frame.transforms;
     this.binTriangles(model, mvp, modelCamera, frameBuffer, settings.renderMode ?? "filled");
 
     // Shadow pass once on the main thread, into the shadow map the workers share

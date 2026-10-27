@@ -39,9 +39,10 @@ const getFaceNormals = (vertices: Vector3[]) => {
   return faceNormals;
 };
 
-const normalizeVertices = (vertices: Vector3[]) => {
-  const maxPos = new Vector3(0, 0, 0);
-  const minPos = new Vector3(0, 0, 0);
+// Centres the vertices on the origin and fits them inside a sphere of radius scale
+const normalizeVertices = (vertices: Vector3[], scale: number) => {
+  const maxPos = new Vector3(-Infinity, -Infinity, -Infinity);
+  const minPos = new Vector3(Infinity, Infinity, Infinity);
 
   for (const vertex of vertices) {
     if (vertex.x > maxPos.x) maxPos.x = vertex.x;
@@ -55,19 +56,12 @@ const normalizeVertices = (vertices: Vector3[]) => {
   const translate = maxPos.add(minPos).scale(0.5);
   let maxRadiusSq = 0;
 
-  for (let i = 0; i < vertices.length; i++) {
-    vertices[i] = vertices[i].subtract(translate);
-    maxRadiusSq = Math.max(maxRadiusSq, vertices[i].lengthSq());
+  for (const vertex of vertices) {
+    maxRadiusSq = Math.max(maxRadiusSq, vertex.subtract(translate).lengthSq());
   }
 
-  if (maxRadiusSq <= 0) {
-    return;
-  }
-
-  const scaleFactor = 1 / Math.sqrt(maxRadiusSq);
-  for (let i = 0; i < vertices.length; i++) {
-    vertices[i] = vertices[i].scale(scaleFactor);
-  }
+  const fitScale = maxRadiusSq <= 0 ? 1 : 1 / Math.sqrt(maxRadiusSq);
+  return vertices.map((vertex) => vertex.subtract(translate).scale(fitScale).scale(scale));
 };
 
 const getTangents = (vertices: Vector3[], normals: Vector3[], uvs: Vector2[]) => {
@@ -127,31 +121,12 @@ export const facesAway = (mesh: Mesh, i: number, viewpoint: Vector4) => {
   return facing < 0;
 };
 
-export const buildLoadedModel = (source: MeshSource, normalize = false, scale = 1): Mesh => {
-  const vertices = source.vertices.map((vertex) => vertex.clone());
-  const sourceUvs = source.uvs?.map((uv) => uv.clone()) ?? [];
-
-  if (source.normals && source.normals.length !== vertices.length) {
-    throw new Error("Mesh normals must match the expanded vertex count");
-  }
-
-  if (sourceUvs.length !== 0 && sourceUvs.length !== vertices.length) {
-    throw new Error("Mesh UVs must match the expanded vertex count");
-  }
-
-  if (normalize) {
-    normalizeVertices(vertices);
-  }
-
-  if (scale !== 1) {
-    for (let i = 0; i < vertices.length; i++) {
-      vertices[i] = vertices[i].scale(scale);
-    }
-  }
-
+// source holds three entries per triangle in each attribute
+export const buildLoadedModel = (source: MeshSource, scale: number): Mesh => {
+  const vertices = normalizeVertices(source.vertices, scale);
   const faceNormals = getFaceNormals(vertices);
   const normals = source.normals?.map((normal) => normal.normalized()) ?? faceNormals.slice();
-  const uvs = sourceUvs.length ? sourceUvs : vertices.map(() => new Vector2(0, 0));
+  const uvs = source.uvs ?? vertices.map(() => new Vector2(0, 0));
 
   return {
     vertices,
