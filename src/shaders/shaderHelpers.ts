@@ -14,7 +14,6 @@ export interface IblData {
   specularPrefilterMapWidth: number;
   specularPrefilterMapHeight: number;
   specularPrefilterLayerStride: number;
-  specularPrefilterRoughnessLutSize: number;
   specularPrefilterRoughnessMaxIndex: number;
   specularBrdfLut: Float32Array;
   specularBrdfLutSize: number;
@@ -69,6 +68,7 @@ export const sampleEnvironmentMap = (
   return new Vector3(r0 + (r1 - r0) * yBlend, g0 + (g1 - g0) * yBlend, b0 + (b1 - b0) * yBlend);
 };
 
+// Draws the blurred, tonemapped environment behind the model into targetBuffer
 export const rebuildEnvironmentBackdrop = (
   targetBuffer: Framebuffer,
   iblData: IblData,
@@ -170,13 +170,15 @@ const wrapAngle = (angle: number) => {
   return angle;
 };
 
+const luminanceAt = (data: Float32Array, base: number) => {
+  return data[base] * 0.2126 + data[base + 1] * 0.7152 + data[base + 2] * 0.0722;
+};
+
 export const estimateEnvironmentSunDirection = (texture: Texture) => {
   let maxLuminance = 0;
 
   for (let i = 0; i < texture.data.length; i += 3) {
-    const luminance =
-      texture.data[i] * 0.2126 + texture.data[i + 1] * 0.7152 + texture.data[i + 2] * 0.0722;
-    maxLuminance = Math.max(maxLuminance, luminance);
+    maxLuminance = Math.max(maxLuminance, luminanceAt(texture.data, i));
   }
 
   if (maxLuminance <= 0) {
@@ -196,11 +198,7 @@ export const estimateEnvironmentSunDirection = (texture: Texture) => {
     const dirY = Math.cos(theta);
 
     for (let x = 0; x < texture.width; x++) {
-      const base = (y * texture.width + x) * 3;
-      const luminance =
-        texture.data[base] * 0.2126 +
-        texture.data[base + 1] * 0.7152 +
-        texture.data[base + 2] * 0.0722;
+      const luminance = luminanceAt(texture.data, (y * texture.width + x) * 3);
       if (luminance < luminanceThreshold) {
         continue;
       }
@@ -229,21 +227,13 @@ export const estimateEnvironmentYaw = (texture: Texture, lightDir: Vector3) => {
   const lightLengthSq = lightDir.x * lightDir.x + lightDir.z * lightDir.z;
 
   if (sunLengthSq <= Number.EPSILON || lightLengthSq <= Number.EPSILON) {
-    return {
-      angle: 0,
-      sin: 0,
-      cos: 1,
-    };
+    return { sin: 0, cos: 1 };
   }
 
   const angle = wrapAngle(
     Math.atan2(lightDir.x, lightDir.z) - Math.atan2(sunDirection.x, sunDirection.z),
   );
-  return {
-    angle,
-    sin: Math.sin(angle),
-    cos: Math.cos(angle),
-  };
+  return { sin: Math.sin(angle), cos: Math.cos(angle) };
 };
 
 const radicalInverseVdc = (bits: number) => {
@@ -256,6 +246,27 @@ const radicalInverseVdc = (bits: number) => {
   return value * 2.3283064365386963e-10;
 };
 
+// GGX importance-sampled half vectors around +Z for one roughness: (hx, hy, hz) per sample. They
+// don't depend on the texel, so the LUT builders work them out once per roughness.
+const buildGgxSamples = (alphaSq: number, sampleCount: number) => {
+  const hx = new Float64Array(sampleCount);
+  const hy = new Float64Array(sampleCount);
+  const hz = new Float64Array(sampleCount);
+
+  for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
+    const xiX = sampleIndex / sampleCount;
+    const xiY = radicalInverseVdc(sampleIndex);
+    const phi = TAU * xiX;
+    const cosTheta = Math.sqrt((1 - xiY) / Math.max(1 + (alphaSq - 1) * xiY, EPSILON));
+    const sinTheta = Math.sqrt(Math.max(0, 1 - cosTheta * cosTheta));
+    hx[sampleIndex] = Math.cos(phi) * sinTheta;
+    hy[sampleIndex] = Math.sin(phi) * sinTheta;
+    hz[sampleIndex] = cosTheta;
+  }
+
+  return { hx, hy, hz };
+};
+
 const buildDiffuseIrradianceLut = (
   texture: Texture,
   width: number,
@@ -265,7 +276,7 @@ const buildDiffuseIrradianceLut = (
 ) => {
   const map = new Float32Array(width * height * 3);
   const thetaStep = (Math.PI * 0.5) / thetaSamples;
-  const phiStep = (Math.PI * 2) / phiSamples;
+  const phiStep = TAU / phiSamples;
 
   for (let y = 0; y < height; y++) {
     const v = (y + 0.5) / height;
@@ -322,7 +333,7 @@ const buildSpecularPrefilterLut = (
   for (let roughnessIndex = 0; roughnessIndex < roughnessLutSize; roughnessIndex++) {
     const roughness = Math.max(0.045, roughnessIndex / (roughnessLutSize - 1));
     const alpha = roughness * roughness;
-    const alphaSq = alpha * alpha;
+    const samples = buildGgxSamples(alpha * alpha, sampleCount);
 
     for (let y = 0; y < height; y++) {
       const v = (y + 0.5) / height;
@@ -337,13 +348,9 @@ const buildSpecularPrefilterLut = (
         let totalWeight = 0;
 
         for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
-          const xiX = sampleIndex / sampleCount;
-          const xiY = radicalInverseVdc(sampleIndex);
-          const phi = Math.PI * 2 * xiX;
-          const cosTheta = Math.sqrt((1 - xiY) / Math.max(1 + (alphaSq - 1) * xiY, EPSILON));
-          const sinTheta = Math.sqrt(Math.max(0, 1 - cosTheta * cosTheta));
-          const hLocalX = Math.cos(phi) * sinTheta;
-          const hLocalY = Math.sin(phi) * sinTheta;
+          const hLocalX = samples.hx[sampleIndex];
+          const hLocalY = samples.hy[sampleIndex];
+          const cosTheta = samples.hz[sampleIndex];
           const hx = basis.tx * hLocalX + basis.bx * hLocalY + reflection.x * cosTheta;
           const hy = basis.ty * hLocalX + basis.by * hLocalY + reflection.y * cosTheta;
           const hz = basis.tz * hLocalX + basis.bz * hLocalY + reflection.z * cosTheta;
@@ -381,7 +388,7 @@ const buildSpecularBrdfLut = (lutSize: number, sampleCount: number) => {
   for (let roughnessIndex = 0; roughnessIndex < lutSize; roughnessIndex++) {
     const roughness = Math.max(0.045, roughnessIndex / (lutSize - 1));
     const alpha = roughness * roughness;
-    const alphaSq = alpha * alpha;
+    const samples = buildGgxSamples(alpha * alpha, sampleCount);
     const geometryK = roughness * roughness * 0.5;
 
     for (let viewIndex = 0; viewIndex < lutSize; viewIndex++) {
@@ -393,13 +400,8 @@ const buildSpecularBrdfLut = (lutSize: number, sampleCount: number) => {
       let brdfB = 0;
 
       for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
-        const xiX = sampleIndex / sampleCount;
-        const xiY = radicalInverseVdc(sampleIndex);
-        const phi = Math.PI * 2 * xiX;
-        const cosTheta = Math.sqrt((1 - xiY) / Math.max(1 + (alphaSq - 1) * xiY, EPSILON));
-        const sinTheta = Math.sqrt(Math.max(0, 1 - cosTheta * cosTheta));
-        const hx = Math.cos(phi) * sinTheta;
-        const hz = cosTheta;
+        const hx = samples.hx[sampleIndex];
+        const hz = samples.hz[sampleIndex];
         const vDotH = Math.max(vx * hx + vz * hz, 0);
         const lz = 2 * vDotH * hz - vz;
         const nDotL = Math.max(lz, 0);
@@ -448,7 +450,6 @@ export const buildEnvironmentIbl = (environmentTexture: Texture): IblData => {
     specularPrefilterMapWidth,
     specularPrefilterMapHeight,
     specularPrefilterLayerStride: specularPrefilterMapWidth * specularPrefilterMapHeight * 3,
-    specularPrefilterRoughnessLutSize,
     specularPrefilterRoughnessMaxIndex: specularPrefilterRoughnessLutSize - 1,
     specularBrdfLutSize,
     specularBrdfLutMaxIndex: specularBrdfLutSize - 1,

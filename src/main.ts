@@ -3,21 +3,13 @@ import { Matrix4, Vector3, Vector4 } from "./maths";
 import { DepthTexture, Framebuffer, edgeFunction, line, triangle } from "./drawing";
 import { facesAway, getModelRadius } from "./utils/mesh";
 import { ensureModelUrlOption, type ModelOption } from "./utils/modelLoader";
-import { SmoothShader } from "./shaders/Smooth";
-import { TexturedShader } from "./shaders/Textured";
-import { GouraudShader } from "./shaders/Gouraud";
-import { FlatShader } from "./shaders/Flat";
-import { UnlitShader } from "./shaders/Unlit";
-import { BaseShader } from "./shaders/BaseShader";
-import { DepthShader } from "./shaders/Depth";
-import { NormalMappedShader } from "./shaders/NormalMapped";
-import { PbrShader } from "./shaders/Pbr";
-import { IblShader } from "./shaders/Ibl";
 import {
   buildEnvironmentIbl,
   estimateEnvironmentYaw,
   rebuildEnvironmentBackdrop,
 } from "./shaders/shaderHelpers";
+import { createShaders } from "./shaders";
+import { BaseShader } from "./shaders/BaseShader";
 import {
   SHADING_PRESETS,
   type RenderSelection,
@@ -25,7 +17,7 @@ import {
   type RenderMode,
 } from "./renderSettings";
 import { loadHdrTexture } from "./utils/hdrLoader";
-import { TiledWorkerRenderer } from "./workers/TiledWorkerRenderer";
+import { TiledWorkerRenderer, type FrameTransforms } from "./workers/TiledWorkerRenderer";
 
 const FOV = 50;
 const INITIAL_CAMERA_Z = -3;
@@ -39,7 +31,6 @@ const RENDER_ASPECT_RATIO = 4 / 3;
 const DEFAULT_SHADING_VALUE = "wireframe";
 const DEFAULT_RENDER_SELECTION = resolveShadingSelection(DEFAULT_SHADING_VALUE);
 const DEFAULT_RESOLUTION_HEIGHT = DEFAULT_RENDER_SELECTION.resolution ?? 600;
-const DEFAULT_RESOLUTION_WIDTH = Math.round(DEFAULT_RESOLUTION_HEIGHT * RENDER_ASPECT_RATIO);
 const DEFAULT_MODEL_URL = DEFAULT_RENDER_SELECTION.model;
 
 if (!DEFAULT_MODEL_URL) {
@@ -80,16 +71,16 @@ const renderShadingOptions = () => {
 };
 
 renderShadingOptions();
+const shadingButtons = [...shadingList.querySelectorAll<HTMLButtonElement>(".shading-option")];
 
 const getPresetIndex = () => {
   const maxShadingIndex = Math.max(0, SHADING_PRESETS.length - 1);
   return maxShadingIndex - Number(shadingSlider.value);
 };
 
-const getShadingButton = () => {
-  return shadingList.querySelector<HTMLButtonElement>(
-    `[data-shading-index="${shadingSlider.value}"]`,
-  );
+const setActive = (button: HTMLButtonElement, isActive: boolean) => {
+  button.classList.toggle("is-active", isActive);
+  button.setAttribute("aria-pressed", String(isActive));
 };
 
 const getShadingValue = () => {
@@ -105,12 +96,9 @@ const setShadingValue = (value: string) => {
 };
 
 const syncShadingButtons = () => {
-  const activeButton = getShadingButton();
-  const previousButton = shadingList.querySelector<HTMLButtonElement>(".is-active");
-  previousButton?.classList.remove("is-active");
-  previousButton?.setAttribute("aria-pressed", "false");
-  activeButton?.classList.add("is-active");
-  activeButton?.setAttribute("aria-pressed", "true");
+  for (const button of shadingButtons) {
+    setActive(button, button.dataset.shadingIndex === shadingSlider.value);
+  }
 };
 
 setShadingValue(DEFAULT_SHADING_VALUE);
@@ -128,11 +116,12 @@ const fitCanvas = () => {
   canvas.style.width = `${Math.floor(w)}px`;
   canvas.style.height = `${Math.floor(h)}px`;
 };
-let frameBuffer = new Framebuffer(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
-let depthBuffer = new DepthTexture(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
-let shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-let shadowBuffer = new Framebuffer(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-let bgBuffer = new Framebuffer(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
+const shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+const shadowBuffer = new Framebuffer(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+// Sized by setRenderResolution()
+let frameBuffer: Framebuffer;
+let depthBuffer: DepthTexture;
+let bgBuffer: Framebuffer;
 // Frames are drawn by the multithreaded renderer (src/workers). It shares memory between workers,
 // which browsers only allow on cross-origin isolated pages (see public/coi-serviceworker.js), so
 // without that draw() renders them on the main thread instead.
@@ -144,8 +133,6 @@ const setRenderResolution = (resolutionHeight: number) => {
 
   frameBuffer = new Framebuffer(width, height);
   depthBuffer = new DepthTexture(width, height);
-  shadowMap = new DepthTexture(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-  shadowBuffer = new Framebuffer(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
   bgBuffer = new Framebuffer(width, height);
   fitCanvas();
 };
@@ -157,6 +144,8 @@ const applyRenderResolution = (resolution?: number) => {
 applyRenderResolution(DEFAULT_RENDER_SELECTION.resolution);
 window.addEventListener("resize", fitCanvas);
 
+// The first model downloads while the environment's lighting is built
+const initialModelRequest = ensureModelUrlOption(DEFAULT_MODEL_URL);
 const hdrEnvironment = await loadHdrTexture(`${import.meta.env.BASE_URL}environments/sunny.hdr`);
 
 // Scene and camera
@@ -167,29 +156,21 @@ const camPos = new Vector3(0, 0, INITIAL_CAMERA_Z);
 const cameraLookDir = Vector3.Forward;
 const envYaw = estimateEnvironmentYaw(hdrEnvironment, lightDir);
 const iblData = buildEnvironmentIbl(hdrEnvironment);
-rebuildEnvironmentBackdrop(bgBuffer, iblData, RENDER_ASPECT_RATIO, FOV, envYaw);
+const rebuildBackdrop = () => {
+  rebuildEnvironmentBackdrop(bgBuffer, iblData, RENDER_ASPECT_RATIO, FOV, envYaw);
+};
+rebuildBackdrop();
 
-const initialModelOption = await ensureModelUrlOption(DEFAULT_MODEL_URL);
+const initialModelOption = await initialModelRequest;
 
 let model = initialModelOption.mesh;
 let material = initialModelOption.material;
 let shadowOrthoSize = getModelRadius(model);
-let modelPos = new Vector3(0, 0, 0);
-let modelRotation = new Vector3(0, Math.PI / 2, 0);
-let modelScale = Vector3.One.scaleInPlace(1.15);
+const modelPos = new Vector3(0, 0, 0);
+const modelRotation = new Vector3(0, Math.PI / 2, 0);
+const modelScale = Vector3.One.scaleInPlace(1.15);
 
-const shaders = {
-  ibl: new IblShader(),
-  pbr: new PbrShader(),
-  normalMapped: new NormalMappedShader(),
-  textured: new TexturedShader(),
-  gouraudTextured: new GouraudShader(),
-  gouraud: new GouraudShader(),
-  smooth: new SmoothShader(),
-  flat: new FlatShader(),
-  unlit: new UnlitShader(),
-  depth: new DepthShader(),
-};
+const shaders = createShaders();
 
 const triVerts: Vector4[] = [];
 let activeRenderSettings = DEFAULT_RENDER_SELECTION;
@@ -237,7 +218,7 @@ const applyRenderSettings = async (selection: RenderSelection) => {
   applyRenderResolution(selection.resolution);
   // Only presets that show the environment need its backdrop, which is slow to build at high res
   if (selection.showEnvironmentBackground) {
-    rebuildEnvironmentBackdrop(bgBuffer, iblData, RENDER_ASPECT_RATIO, FOV, envYaw);
+    rebuildBackdrop();
   }
   updateModelStats();
 };
@@ -293,9 +274,9 @@ const renderMesh = (
     }
 
     if (renderMode !== "filled") {
-      const isDepthWireframe = renderMode === "depthWireframe";
-      const area = edgeFunction(triVerts[0], triVerts[1], triVerts[2]);
-      if (isDepthWireframe && area <= 0) continue;
+      if (renderMode === "depthWireframe") {
+        if (edgeFunction(triVerts[0], triVerts[1], triVerts[2]) <= 0) continue;
+      }
 
       line(triVerts[0], triVerts[1], targetBuffer, depthBuffer);
       line(triVerts[1], triVerts[2], targetBuffer, depthBuffer);
@@ -315,6 +296,28 @@ const update = () => {
   }
 };
 
+const buildTransforms = (): FrameTransforms => {
+  // 2) Build model and world-space transforms.
+  const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
+  const invModelMat = modelMat.invert();
+  const normalMat = invModelMat.transpose();
+
+  // 3) Build light-space transform (for shadow mapping).
+  const lightViewMat = Matrix4.LookAt(lightDir.scale(5), Vector3.Zero);
+  const lightProjMat = Matrix4.Ortho(shadowOrthoSize, 1, 1, 10);
+  const worldLightSpaceMat = lightProjMat.multiply(lightViewMat);
+
+  // 4) Build camera transform and final clip transform.
+  const viewMat = Matrix4.LookTo(camPos, cameraLookDir, Vector3.Up);
+  const projMat = Matrix4.Perspective(FOV, RENDER_ASPECT_RATIO);
+  const mvp = projMat.multiply(viewMat).multiply(modelMat);
+
+  const modelCamera = invModelMat.transformPoint(camPos).extend(1);
+  const modelLight = invModelMat.transformDirection(lightDir).extend(0);
+
+  return { modelMat, normalMat, worldLightSpaceMat, mvp, modelCamera, modelLight };
+};
+
 const draw = (dt: number) => {
   const renderSettings = activeRenderSettings;
   const perspectiveCorrect = renderSettings.perspectiveCorrect ?? true;
@@ -330,24 +333,10 @@ const draw = (dt: number) => {
   }
   depthBuffer.clear(1000);
 
-  // 2) Build model and world-space transforms.
-  const modelMat = Matrix4.TRS(modelPos, modelRotation, modelScale);
-  const invModelMat = modelMat.invert();
-  const normalMat = invModelMat.transpose();
+  // 2-4) Build the model, light and camera transforms.
+  const { modelMat, normalMat, worldLightSpaceMat, mvp, modelCamera, modelLight } =
+    buildTransforms();
   const useShadows = renderSettings.useShadows === true;
-
-  // 3) Build light-space transform (for shadow mapping).
-  const lightViewMat = Matrix4.LookAt(lightDir.scale(5), Vector3.Zero);
-  const lightProjMat = Matrix4.Ortho(shadowOrthoSize, 1, 1, 10);
-  const worldLightSpaceMat = lightProjMat.multiply(lightViewMat);
-
-  // 4) Build camera transform and final clip transform.
-  const viewMat = Matrix4.LookTo(camPos, cameraLookDir, Vector3.Up);
-  const projMat = Matrix4.Perspective(FOV, RENDER_ASPECT_RATIO);
-  const mvp = projMat.multiply(viewMat).multiply(modelMat);
-
-  const modelCamera = invModelMat.transformPoint(camPos).extend(1);
-  const modelLight = invModelMat.transformDirection(lightDir).extend(0);
 
   // 5) Select active material shader and update uniforms.
   const shader = shaders[renderSettings.material];
@@ -364,19 +353,20 @@ const draw = (dt: number) => {
     iblData,
     worldLightSpaceMat,
     shadowMap,
-    receiveShadows: renderSettings.useShadows,
+    receiveShadows: useShadows,
     useSpecular: renderSettings.useSpecular,
     disableTexture: renderSettings.disableTexture,
     textureFiltering: renderSettings.textureFiltering,
   };
-  shaders.depth.uniforms = { model, clipMat: mvp };
 
   // Optional shadow pass first
   if (useShadows) {
     shadowMap.clear(1000);
-    shaders.depth.uniforms.clipMat = worldLightSpaceMat.multiply(modelMat);
+    shaders.depth.uniforms = { model, clipMat: worldLightSpaceMat.multiply(modelMat) };
     renderMesh(shaders.depth, shadowMap, modelLight, "filled", shadowBuffer);
   }
+  // The camera's depth shader, for the wireframe modes and their depth prepass
+  shaders.depth.uniforms = { model, clipMat: mvp };
 
   // We need a depth prepass for wireframe culling
   if (renderSettings.renderMode === "depthWireframe") {
@@ -411,13 +401,8 @@ const drawWithWorkers = async (renderer: TiledWorkerRenderer, dt: number) => {
     iblData,
     envYaw,
     lightDir,
-    shadowOrthoSize,
-    modelPos,
-    modelRotation,
-    modelScale,
     camPos,
-    aspectRatio: RENDER_ASPECT_RATIO,
-    fov: FOV,
+    transforms: buildTransforms(),
     frameBuffer: targetBuffer,
     background: bgBuffer,
     shadowMapSize: SHADOW_MAP_SIZE,
@@ -499,9 +484,11 @@ canvas.oncontextmenu = (e) => e.preventDefault();
 
 window.addEventListener("keydown", (event) => {
   if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-    shadingSlider.value = String(
-      Math.min(11, Math.max(0, Number(shadingSlider.value) + (event.key === "ArrowUp" ? 1 : -1))),
-    );
+    if (event.key === "ArrowUp") {
+      shadingSlider.stepUp();
+    } else {
+      shadingSlider.stepDown();
+    }
     syncShadingButtons();
     applyCurrentShadingSelection();
     event.preventDefault();

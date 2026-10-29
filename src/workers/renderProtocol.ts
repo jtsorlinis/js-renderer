@@ -255,7 +255,7 @@ export const serializeScene = (
     roughnessFactor: material.roughnessFactor,
   },
   iblData,
-  envYaw: { sin: envYaw.sin, cos: envYaw.cos },
+  envYaw,
   lightDir: toTuple(lightDir),
 });
 

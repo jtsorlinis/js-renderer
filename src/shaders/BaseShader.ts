@@ -98,11 +98,6 @@ export abstract class BaseShader<TUniforms = unknown> {
     return new Vector3(r0 + (r1 - r0) * yBlend, g0 + (g1 - g0) * yBlend, b0 + (b1 - b0) * yBlend);
   };
 
-  sampleDepth = (depthTexture: DepthTexture, uv: Vector2 | Vector3 | Vector4) => {
-    const texel = this.toTexelIndex(uv, depthTexture.width, depthTexture.height);
-    return depthTexture.data[texel];
-  };
-
   sampleShadow = (depthTexture: DepthTexture, lightSpacePos: Vector3, bias: number) => {
     const data = depthTexture.data;
     const width = depthTexture.width;

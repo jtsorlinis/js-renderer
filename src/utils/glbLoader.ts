@@ -252,21 +252,18 @@ const getNodeMatrix = (node: GltfNode) => {
   const rotation = node.rotation ?? [0, 0, 0, 1];
   const scale = node.scale ?? [1, 1, 1];
 
-  return Matrix4.Translate(new Vector3(translation[0], translation[1], translation[2]))
+  return Matrix4.Translate(new Vector3(...translation))
     .multiply(rotationFromQuaternion(rotation))
-    .multiply(Matrix4.Scale(new Vector3(scale[0], scale[1], scale[2])));
+    .multiply(Matrix4.Scale(new Vector3(...scale)));
 };
 
 const normaliseDirection = (direction: Vector3) => {
   return direction.lengthSq() > 0.00000001 ? direction.normalize() : new Vector3(0, 0, 1);
 };
 
-const toRendererSpacePosition = (position: Vector3) => {
-  return new Vector3(position.x, position.y, -position.z);
-};
-
-const toRendererSpaceDirection = (direction: Vector3) => {
-  return new Vector3(direction.x, direction.y, -direction.z);
+// glTF's Z axis points the other way, for positions and directions alike
+const toRendererSpace = (v: Vector3) => {
+  return new Vector3(v.x, v.y, -v.z);
 };
 
 const readComponent = (
@@ -410,129 +407,90 @@ const assertSupportedTexCoord = (
   }
 };
 
-const convertGlbGeometry = (
-  gltf: Gltf,
-  binaryChunk: ArrayBuffer,
-  normalize = false,
-  scale = 1,
-): ConvertedGlb => {
+const convertGlbGeometry = (gltf: Gltf, binaryChunk: ArrayBuffer, scale: number): ConvertedGlb => {
   const primitiveInstances = collectPrimitiveInstances(gltf);
   if (primitiveInstances.length > 1) {
     throw new Error("Unsupported GLB asset: only a single primitive/material is supported");
   }
 
+  const [instance] = primitiveInstances;
+  const positionAccessorIndex = instance?.primitive.attributes.POSITION;
+  if (positionAccessorIndex === undefined) {
+    throw new Error("No triangle primitives were found in the GLB asset");
+  }
+  const { primitive, worldMatrix } = instance;
+
+  const material =
+    primitive.material !== undefined ? gltf.materials?.[primitive.material] : undefined;
+  const pbrMaterial = material?.pbrMetallicRoughness;
+  const baseColorTexture = pbrMaterial?.baseColorTexture;
+  const metallicRoughnessTexture = pbrMaterial?.metallicRoughnessTexture;
+  const occlusionTexture = material?.occlusionTexture;
+  const normalTexture = material?.normalTexture;
+  assertSupportedTexCoord(baseColorTexture, "base color texture");
+  assertSupportedTexCoord(normalTexture, "normal texture");
+  assertSupportedTexCoord(metallicRoughnessTexture, "metallic-roughness texture");
+  assertSupportedTexCoord(occlusionTexture, "occlusion texture");
+
+  const hasTexturedMaterial =
+    !!baseColorTexture || !!normalTexture || !!metallicRoughnessTexture || !!occlusionTexture;
+  if (hasTexturedMaterial && primitive.attributes.TEXCOORD_0 === undefined) {
+    throw new Error("Unsupported GLB asset: textured materials must provide TEXCOORD_0");
+  }
+
+  const uvAccessorIndex = primitive.attributes.TEXCOORD_0;
+
+  const positions = readAccessor(gltf, binaryChunk, positionAccessorIndex);
+  const sourceNormals =
+    primitive.attributes.NORMAL !== undefined
+      ? readAccessor(gltf, binaryChunk, primitive.attributes.NORMAL)
+      : undefined;
+  const sourceUvs =
+    uvAccessorIndex !== undefined ? readAccessor(gltf, binaryChunk, uvAccessorIndex) : undefined;
+
+  const positionCount = positions.length / 3;
+  const indices =
+    primitive.indices !== undefined
+      ? readAccessor(gltf, binaryChunk, primitive.indices)
+      : Array.from({ length: positionCount }, (_, index) => index);
+
+  if (indices.length % 3 !== 0) {
+    throw new Error("GLB primitive indices are not divisible by 3");
+  }
+
+  const normalMatrix = worldMatrix.invert().transpose();
   const vertices: Vector3[] = [];
   const meshNormals: Vector3[] = [];
   const meshUvs: Vector2[] = [];
-  let baseColorTextureIndex: number | undefined;
-  let normalTextureIndex: number | undefined;
-  let baseColorFactor: Vector3 | undefined;
-  let metallicFactor: number | undefined;
-  let metallicRoughnessTextureIndex: number | undefined;
-  let occlusionStrength: number | undefined;
-  let occlusionTextureIndex: number | undefined;
-  let roughnessFactor: number | undefined;
 
-  for (const { primitive, worldMatrix } of primitiveInstances) {
-    const positionAccessorIndex = primitive.attributes.POSITION;
-    if (positionAccessorIndex === undefined) {
-      continue;
+  for (const vertexIndex of indices) {
+    const positionOffset = vertexIndex * 3;
+    const localPosition = new Vector3(
+      positions[positionOffset],
+      positions[positionOffset + 1],
+      positions[positionOffset + 2],
+    );
+    vertices.push(toRendererSpace(worldMatrix.transformPoint(localPosition)));
+
+    if (sourceUvs) {
+      const uvOffset = vertexIndex * 2;
+      // glTF UV space uses an upper-left origin, while the renderer
+      // expects a lower-left V convention.
+      meshUvs.push(new Vector2(sourceUvs[uvOffset], 1 - sourceUvs[uvOffset + 1]));
     }
 
-    const material =
-      primitive.material !== undefined ? gltf.materials?.[primitive.material] : undefined;
-    const pbrMaterial = material?.pbrMetallicRoughness;
-    const baseColorTexture = pbrMaterial?.baseColorTexture;
-    const metallicRoughnessTexture = pbrMaterial?.metallicRoughnessTexture;
-    const occlusionTexture = material?.occlusionTexture;
-    const normalTexture = material?.normalTexture;
-    assertSupportedTexCoord(baseColorTexture, "base color texture");
-    assertSupportedTexCoord(normalTexture, "normal texture");
-    assertSupportedTexCoord(metallicRoughnessTexture, "metallic-roughness texture");
-    assertSupportedTexCoord(occlusionTexture, "occlusion texture");
-
-    const hasTexturedMaterial =
-      !!baseColorTexture || !!normalTexture || !!metallicRoughnessTexture || !!occlusionTexture;
-    if (hasTexturedMaterial && primitive.attributes.TEXCOORD_0 === undefined) {
-      throw new Error("Unsupported GLB asset: textured materials must provide TEXCOORD_0");
-    }
-
-    const uvAccessorIndex = primitive.attributes.TEXCOORD_0;
-
-    const positions = readAccessor(gltf, binaryChunk, positionAccessorIndex);
-    const sourceNormals =
-      primitive.attributes.NORMAL !== undefined
-        ? readAccessor(gltf, binaryChunk, primitive.attributes.NORMAL)
-        : undefined;
-    const sourceUvs =
-      uvAccessorIndex !== undefined ? readAccessor(gltf, binaryChunk, uvAccessorIndex) : undefined;
-
-    const positionCount = positions.length / 3;
-    const indices =
-      primitive.indices !== undefined
-        ? readAccessor(gltf, binaryChunk, primitive.indices)
-        : Array.from({ length: positionCount }, (_, index) => index);
-
-    if (indices.length % 3 !== 0) {
-      throw new Error("GLB primitive indices are not divisible by 3");
-    }
-
-    baseColorTextureIndex ??= baseColorTexture?.index;
-    normalTextureIndex ??= normalTexture?.index;
-    metallicRoughnessTextureIndex ??= metallicRoughnessTexture?.index;
-    occlusionTextureIndex ??= occlusionTexture?.index;
-    baseColorFactor ??=
-      pbrMaterial?.baseColorFactor && pbrMaterial.baseColorFactor.length >= 3
-        ? new Vector3(
-            pbrMaterial.baseColorFactor[0],
-            pbrMaterial.baseColorFactor[1],
-            pbrMaterial.baseColorFactor[2],
-          )
-        : Vector3.One;
-    metallicFactor ??= pbrMaterial?.metallicFactor ?? 1;
-    occlusionStrength ??= occlusionTexture?.strength ?? 1;
-    roughnessFactor ??= pbrMaterial?.roughnessFactor ?? 1;
-
-    const normalMatrix = worldMatrix.invert().transpose();
-
-    for (let triangleIndex = 0; triangleIndex < indices.length; triangleIndex += 3) {
-      const triangleVertexIndices = [
-        indices[triangleIndex],
-        indices[triangleIndex + 1],
-        indices[triangleIndex + 2],
-      ];
-
-      for (const vertexIndex of triangleVertexIndices) {
-        const positionOffset = vertexIndex * 3;
-        const localPosition = new Vector3(
-          positions[positionOffset],
-          positions[positionOffset + 1],
-          positions[positionOffset + 2],
-        );
-        const worldPosition = worldMatrix.transformPoint(localPosition);
-        vertices.push(toRendererSpacePosition(worldPosition));
-
-        if (sourceUvs) {
-          const uvOffset = vertexIndex * 2;
-          // glTF UV space uses an upper-left origin, while the renderer
-          // expects a lower-left V convention.
-          meshUvs.push(new Vector2(sourceUvs[uvOffset], 1 - sourceUvs[uvOffset + 1]));
-        }
-
-        if (sourceNormals) {
-          const normalOffset = vertexIndex * 3;
-          const worldNormal = normaliseDirection(
-            normalMatrix.transformDirection(
-              new Vector3(
-                sourceNormals[normalOffset],
-                sourceNormals[normalOffset + 1],
-                sourceNormals[normalOffset + 2],
-              ),
-            ),
-          );
-          meshNormals.push(toRendererSpaceDirection(worldNormal));
-        }
-      }
+    if (sourceNormals) {
+      const normalOffset = vertexIndex * 3;
+      const worldNormal = normaliseDirection(
+        normalMatrix.transformDirection(
+          new Vector3(
+            sourceNormals[normalOffset],
+            sourceNormals[normalOffset + 1],
+            sourceNormals[normalOffset + 2],
+          ),
+        ),
+      );
+      meshNormals.push(toRendererSpace(worldNormal));
     }
   }
 
@@ -540,36 +498,44 @@ const convertGlbGeometry = (
     throw new Error("No triangle primitives were found in the GLB asset");
   }
 
+  const baseColorFactor = pbrMaterial?.baseColorFactor;
   return {
     mesh: buildLoadedModel(
       {
         vertices,
-        normals: meshNormals.length ? meshNormals : undefined,
-        uvs: meshUvs.length ? meshUvs : undefined,
+        normals: sourceNormals ? meshNormals : undefined,
+        uvs: sourceUvs ? meshUvs : undefined,
       },
-      normalize,
       scale,
     ),
-    baseColorTextureIndex,
-    normalTextureIndex,
+    baseColorTextureIndex: baseColorTexture?.index,
+    normalTextureIndex: normalTexture?.index,
     pbrMaterial: {
-      baseColorFactor: baseColorFactor ?? Vector3.One,
-      metallicFactor: metallicFactor ?? 1,
-      metallicRoughnessTextureIndex,
-      occlusionStrength: occlusionStrength ?? 1,
-      occlusionTextureIndex,
-      roughnessFactor: roughnessFactor ?? 1,
+      baseColorFactor:
+        baseColorFactor && baseColorFactor.length >= 3
+          ? new Vector3(baseColorFactor[0], baseColorFactor[1], baseColorFactor[2])
+          : Vector3.One,
+      metallicFactor: pbrMaterial?.metallicFactor ?? 1,
+      metallicRoughnessTextureIndex: metallicRoughnessTexture?.index,
+      occlusionStrength: occlusionTexture?.strength ?? 1,
+      occlusionTextureIndex: occlusionTexture?.index,
+      roughnessFactor: pbrMaterial?.roughnessFactor ?? 1,
     },
   };
 };
 
-const loadTextureFromImage = async (
+const loadTexture = async (
   gltf: Gltf,
   binaryChunk: ArrayBuffer,
-  imageIndex: number,
+  imageIndex: number | undefined,
   assetUrl: string,
+  fallback: Texture,
   descriptor: TextureDescriptor,
 ) => {
+  if (imageIndex === undefined) {
+    return fallback;
+  }
+
   const image = requireValue(gltf.images?.[imageIndex], `Missing image ${imageIndex}`);
 
   if (image.bufferView !== undefined) {
@@ -603,39 +569,6 @@ const getTextureSourceIndex = (gltf: Gltf, textureIndex: number | undefined) => 
 
   const texture = requireValue(gltf.textures?.[textureIndex], `Missing texture ${textureIndex}`);
   return texture.extensions?.EXT_texture_webp?.source ?? texture.source;
-};
-
-const loadTextureFromSource = async (
-  gltf: Gltf,
-  binaryChunk: ArrayBuffer,
-  imageIndex: number | undefined,
-  assetUrl: string,
-  fallback: Texture,
-  descriptor: TextureDescriptor,
-) => {
-  if (imageIndex === undefined) {
-    return fallback;
-  }
-
-  return loadTextureFromImage(gltf, binaryChunk, imageIndex, assetUrl, descriptor);
-};
-
-const loadTextureFromSlot = async (
-  gltf: Gltf,
-  binaryChunk: ArrayBuffer,
-  textureIndex: number | undefined,
-  assetUrl: string,
-  fallback: Texture,
-  descriptor: TextureDescriptor,
-) => {
-  return loadTextureFromSource(
-    gltf,
-    binaryChunk,
-    getTextureSourceIndex(gltf, textureIndex),
-    assetUrl,
-    fallback,
-    descriptor,
-  );
 };
 
 const sampleTextureChannel = (
@@ -683,9 +616,17 @@ const applyBaseColorFactor = (texture: Texture, factor: Vector3) => {
   return new Texture(data, texture.width, texture.height);
 };
 
-export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => {
+const LINEAR_COLOR: TextureDescriptor = { type: "color", colorSpace: "linear" };
+
+// Loads a GLB, centred and fitted inside a sphere of radius scale
+export const loadGlbAsset = async (url: string, scale = 1) => {
   const { json, binaryChunk } = await readGlb(url);
-  const converted = convertGlbGeometry(json, binaryChunk, normalize, scale);
+  const converted = convertGlbGeometry(json, binaryChunk, scale);
+  const loadSource = (
+    imageIndex: number | undefined,
+    fallback: Texture,
+    descriptor: TextureDescriptor,
+  ) => loadTexture(json, binaryChunk, imageIndex, url, fallback, descriptor);
 
   const metallicRoughnessSourceIndex = getTextureSourceIndex(
     json,
@@ -698,33 +639,20 @@ export const loadGlbAsset = async (url: string, normalize = true, scale = 1) => 
   const ormTexturePromise =
     metallicRoughnessSourceIndex !== undefined &&
     metallicRoughnessSourceIndex === occlusionSourceIndex
-      ? loadTextureFromSource(json, binaryChunk, metallicRoughnessSourceIndex, url, Texture.White, {
-          type: "color",
-          colorSpace: "linear",
-        })
+      ? loadSource(metallicRoughnessSourceIndex, Texture.White, LINEAR_COLOR)
       : Promise.all([
-          loadTextureFromSource(json, binaryChunk, occlusionSourceIndex, url, Texture.White, {
-            type: "color",
-            colorSpace: "linear",
-          }),
-          loadTextureFromSource(
-            json,
-            binaryChunk,
-            metallicRoughnessSourceIndex,
-            url,
-            Texture.White,
-            { type: "color", colorSpace: "linear" },
-          ),
+          loadSource(occlusionSourceIndex, Texture.White, LINEAR_COLOR),
+          loadSource(metallicRoughnessSourceIndex, Texture.White, LINEAR_COLOR),
         ]).then(([occlusionTexture, metallicRoughnessTexture]) =>
           packOrmTexture(occlusionTexture, metallicRoughnessTexture),
         );
 
   const [colorTexture, normalTexture, ormTexture] = await Promise.all([
-    loadTextureFromSlot(json, binaryChunk, converted.baseColorTextureIndex, url, Texture.White, {
+    loadSource(getTextureSourceIndex(json, converted.baseColorTextureIndex), Texture.White, {
       type: "color",
       colorSpace: "srgb",
     }),
-    loadTextureFromSlot(json, binaryChunk, converted.normalTextureIndex, url, Texture.Normal, {
+    loadSource(getTextureSourceIndex(json, converted.normalTextureIndex), Texture.Normal, {
       type: "normal",
       colorSpace: "linear",
     }),
