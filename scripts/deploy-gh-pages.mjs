@@ -1,11 +1,10 @@
-import { execFileSync } from "node:child_process";
+import { execSync } from "node:child_process";
 import process from "node:process";
 import ghpages from "gh-pages";
 
 async function main() {
-  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-
-  execFileSync(npmCommand, ["run", "build"], {
+  // Run through the shell, as Node refuses to spawn npm.cmd directly on Windows
+  execSync("npm run build", {
     stdio: "inherit",
     env: {
       ...process.env,
