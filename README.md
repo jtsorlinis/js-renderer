@@ -1,6 +1,6 @@
 # TypeScript CPU Software Renderer
 
-<img width="1568" height="1235" alt="image" src="https://github.com/user-attachments/assets/13ea4401-7f90-4b54-b462-1a2e0daabe39" />
+<img width="1344" height="1008" alt="Demon model rendered by the software renderer" src="images/screenshot.webp" />
 
 
 
