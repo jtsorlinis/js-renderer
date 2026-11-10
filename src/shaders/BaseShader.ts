@@ -14,12 +14,12 @@ export abstract class BaseShader<TUniforms = unknown> {
   // -1 until pixelUvArea() works it out
   private trianglePixelUvArea = -1;
 
-  startTriangle =(pixelArea: number) => {
+  startTriangle = (pixelArea: number) => {
     this.pixelArea = pixelArea;
     this.trianglePixelUvArea = -1;
   };
 
-  v2f =<T>(varying: Array<T>, value: T) => {
+  v2f = <T>(varying: Array<T>, value: T) => {
     varying[this.nthVert] = value;
   };
 
@@ -73,7 +73,7 @@ export abstract class BaseShader<TUniforms = unknown> {
   };
 
   // UV-space area covered by one pixel of the current triangle, for choosing a mipmap
-  pixelUvArea =(uvs: Vector2[]) => {
+  pixelUvArea = (uvs: Vector2[]) => {
     if (this.trianglePixelUvArea < 0) {
       const a = uvs[0];
       const b = uvs[1];
@@ -84,7 +84,7 @@ export abstract class BaseShader<TUniforms = unknown> {
     return this.trianglePixelUvArea;
   };
 
-  sampleFiltered =(texture: Texture, uv: Vector2, pixelUvArea = 0): Vector3 => {
+  sampleFiltered = (texture: Texture, uv: Vector2, pixelUvArea = 0): Vector3 => {
     const mipmap = texture.mipmapFor(pixelUvArea);
     const data = mipmap.data;
     const width = mipmap.width;
