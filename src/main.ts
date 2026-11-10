@@ -1,7 +1,7 @@
 import "./style.css";
 import { Matrix4, Vector3, Vector4 } from "./maths";
 import { DepthTexture, Framebuffer, edgeFunction, line, triangle } from "./drawing";
-import { facesAway, getModelRadius } from "./utils/mesh";
+import { getModelRadius } from "./utils/mesh";
 import { ensureModelUrlOption, type ModelOption } from "./utils/modelLoader";
 import {
   buildEnvironmentIbl,
@@ -172,11 +172,11 @@ const modelScale = Vector3.One.scaleInPlace(1.15);
 
 const shaders = createShaders();
 
-const triVerts: Vector4[] = [];
+const triVerts = [new Vector4(), new Vector4(), new Vector4()];
 let activeRenderSettings = DEFAULT_RENDER_SELECTION;
 
 const updateModelStats = () => {
-  trisText.innerText = (model.vertices.length / 3).toLocaleString();
+  trisText.innerText = (model.indices.length / 3).toLocaleString();
   resolutionText.innerText = `${activeRenderSettings.resolution}p`;
 };
 
@@ -251,26 +251,25 @@ shadingSlider.addEventListener("input", () => {
 const renderMesh = (
   activeShader: BaseShader,
   depthBuffer: DepthTexture,
-  viewpoint: Vector4,
   renderMode: RenderMode = "filled",
   targetBuffer: Framebuffer = frameBuffer,
   perspectiveCorrect: boolean = true,
   snapVertices: boolean = false,
   pixelFn = targetBuffer.setPixel,
 ) => {
-  // Snapping can turn a nearly edge-on back face towards the camera, and triangle() draws those
-  const skipBackFaces = renderMode === "filled" && !snapVertices;
-  for (let i = 0; i < model.vertices.length; i += 3) {
-    if (skipBackFaces && facesAway(model, i, viewpoint)) continue;
+  const { indices } = model;
 
-    // Vertex stage for one triangle.
-    for (let j = 0; j < 3; j++) {
-      activeShader.vertexId = i + j;
-      activeShader.nthVert = j;
-      triVerts[j] = activeShader.vertex().perspectiveDivide();
-      if (snapVertices) {
-        targetBuffer.snapToPixelGrid(triVerts[j]);
-      }
+  // Vertex stage: shade every vertex once. Triangles that share a vertex share the result.
+  activeShader.shadeVertices(model.vertices.length);
+
+  const triangleCount = indices.length / 3;
+  for (let t = 0; t < triangleCount; t++) {
+    // Primitive assembly: gather the triangle's three shaded vertices.
+    activeShader.assembleTriangle(t, indices, triVerts);
+    if (snapVertices) {
+      targetBuffer.snapToPixelGrid(triVerts[0]);
+      targetBuffer.snapToPixelGrid(triVerts[1]);
+      targetBuffer.snapToPixelGrid(triVerts[2]);
     }
 
     if (renderMode !== "filled") {
@@ -312,10 +311,7 @@ const buildTransforms = (): FrameTransforms => {
   const projMat = Matrix4.Perspective(FOV, RENDER_ASPECT_RATIO);
   const mvp = projMat.multiply(viewMat).multiply(modelMat);
 
-  const modelCamera = invModelMat.transformPoint(camPos).extend(1);
-  const modelLight = invModelMat.transformDirection(lightDir).extend(0);
-
-  return { modelMat, normalMat, worldLightSpaceMat, mvp, modelCamera, modelLight };
+  return { modelMat, normalMat, worldLightSpaceMat, mvp };
 };
 
 const draw = (dt: number) => {
@@ -334,8 +330,7 @@ const draw = (dt: number) => {
   depthBuffer.clear(1000);
 
   // 2-4) Build the model, light and camera transforms.
-  const { modelMat, normalMat, worldLightSpaceMat, mvp, modelCamera, modelLight } =
-    buildTransforms();
+  const { modelMat, normalMat, worldLightSpaceMat, mvp } = buildTransforms();
   const useShadows = renderSettings.useShadows === true;
 
   // 5) Select active material shader and update uniforms.
@@ -363,14 +358,14 @@ const draw = (dt: number) => {
   if (useShadows) {
     shadowMap.clear(1000);
     shaders.depth.uniforms = { model, clipMat: worldLightSpaceMat.multiply(modelMat) };
-    renderMesh(shaders.depth, shadowMap, modelLight, "filled", shadowBuffer);
+    renderMesh(shaders.depth, shadowMap, "filled", shadowBuffer);
   }
   // The camera's depth shader, for the wireframe modes and their depth prepass
   shaders.depth.uniforms = { model, clipMat: mvp };
 
   // We need a depth prepass for wireframe culling
   if (renderSettings.renderMode === "depthWireframe") {
-    renderMesh(shaders.depth, depthBuffer, modelCamera);
+    renderMesh(shaders.depth, depthBuffer);
   }
 
   const pixelFn = frameBuffer[renderSettings.setPixelFn ?? "setPixel"];
@@ -379,7 +374,6 @@ const draw = (dt: number) => {
   renderMesh(
     shader,
     depthBuffer,
-    modelCamera,
     renderSettings.renderMode,
     frameBuffer,
     perspectiveCorrect,

@@ -22,8 +22,8 @@ const shininess = 32;
 const ambient = 0.1;
 
 export class GouraudShader extends BaseShader<Uniforms> {
-  vLighting = this.varying<Vector4>();
-  vUv = this.varying<Vector2>();
+  vLighting = this.varying(Vector4);
+  vUv = this.varying(Vector2);
 
   vertex = () => {
     const model = this.uniforms.model;

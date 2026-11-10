@@ -17,26 +17,21 @@ export interface Band {
   height: number;
 }
 
-interface SerializedTexture {
+// One entry per mipmap, starting with the texture itself
+type SerializedTexture = {
   data: Float32Array;
   width: number;
   height: number;
-}
-
-// One mesh attribute: each distinct vector once, plus which one every triangle corner uses.
-// Corners that share a vertex then share one object in the worker instead of each getting a copy.
-interface SharedVectors {
-  values: Float32Array;
-  index: Uint32Array;
-}
+}[];
 
 export interface SerializedScene {
   model: {
-    vertices: SharedVectors;
-    normals: SharedVectors;
-    faceNormals: SharedVectors;
-    uvs: SharedVectors;
-    tangents: SharedVectors;
+    vertices: Float32Array;
+    normals: Float32Array;
+    uvs: Float32Array;
+    tangents: Float32Array;
+    indices: Uint32Array;
+    faceNormals: Float32Array;
   };
   material: {
     colorTexture: SerializedTexture;
@@ -84,7 +79,7 @@ export interface RenderMessage {
   camPos: Vec3Tuple;
   // Seconds since the previous frame, for the vector fade
   dt: number;
-  // First vertex index of each triangle touching each band, packed band by band. Band b's
+  // The triangles touching each band, packed band by band. Band b's
   // triangles are triangles[bandStarts[b]] up to triangles[bandStarts[b + 1]].
   triangles: Uint32Array;
   bandStarts: Uint32Array;
@@ -144,61 +139,6 @@ const packVector4s = (values: Vector4[]) => {
   return data;
 };
 
-// Finds the distinct vectors in packed (size floats each) by comparing exact bit patterns, so
-// values arrive unchanged. Uses a small open-addressing hash table: a Map with string keys is ~20x
-// slower, which would stall the main thread for ~0.4s when switching to a 100k triangle model.
-const shareVectors = (packed: Float32Array, size: number): SharedVectors => {
-  const count = packed.length / size;
-  const bits = new Uint32Array(packed.buffer, packed.byteOffset, packed.length);
-  const tableSize = 2 ** Math.ceil(Math.log2(count * 2 + 1));
-  const table = new Int32Array(tableSize).fill(-1); // slot -> distinct vector id, -1 when empty
-  const firstCorner = new Uint32Array(count); // distinct vector id -> first corner using it
-  const index = new Uint32Array(count);
-  let distinct = 0;
-
-  for (let corner = 0; corner < count; corner++) {
-    const offset = corner * size;
-    let hash = 0x811c9dc5;
-    for (let c = 0; c < size; c++) {
-      hash = Math.imul(hash ^ bits[offset + c], 0x01000193);
-    }
-
-    let slot = hash & (tableSize - 1);
-    while (true) {
-      const id = table[slot];
-      if (id === -1) {
-        table[slot] = distinct;
-        firstCorner[distinct] = corner;
-        index[corner] = distinct++;
-        break;
-      }
-      const existing = firstCorner[id] * size;
-      let same = true;
-      for (let c = 0; c < size; c++) {
-        same &&= bits[existing + c] === bits[offset + c];
-      }
-      if (same) {
-        index[corner] = id;
-        break;
-      }
-      slot = (slot + 1) & (tableSize - 1);
-    }
-  }
-
-  const values = new Float32Array(distinct * size);
-  for (let id = 0; id < distinct; id++) {
-    const start = firstCorner[id] * size;
-    values.set(packed.subarray(start, start + size), id * size);
-  }
-  return { values, index };
-};
-
-// One entry per corner again, with corners that share a vector pointing at the same object
-const unshareVectors = <T>(shared: SharedVectors, unpack: (data: Float32Array) => T[]) => {
-  const distinct = unpack(shared.values);
-  return Array.from(shared.index, (id) => distinct[id]);
-};
-
 const unpackVector2s = (data: Float32Array) => {
   const values: Vector2[] = [];
   for (let i = 0; i < data.length; i += 2) {
@@ -223,14 +163,14 @@ const unpackVector4s = (data: Float32Array) => {
   return values;
 };
 
-const packTexture = ({ data, width, height }: Texture): SerializedTexture => ({
-  data,
-  width,
-  height,
-});
+const packTexture = (texture: Texture): SerializedTexture =>
+  texture.mipmaps.map(({ data, width, height }) => ({ data, width, height }));
 
-const unpackTexture = ({ data, width, height }: SerializedTexture) =>
-  new Texture(data, width, height);
+const unpackTexture = (serialized: SerializedTexture) => {
+  const mipmaps = serialized.map(({ data, width, height }) => new Texture(data, width, height));
+  mipmaps[0].mipmaps = mipmaps;
+  return mipmaps[0];
+};
 
 export const serializeScene = (
   model: Mesh,
@@ -240,11 +180,12 @@ export const serializeScene = (
   lightDir: Vector3,
 ): SerializedScene => ({
   model: {
-    vertices: shareVectors(packVector3s(model.vertices), 3),
-    normals: shareVectors(packVector3s(model.normals), 3),
-    faceNormals: shareVectors(packVector3s(model.faceNormals), 3),
-    uvs: shareVectors(packVector2s(model.uvs), 2),
-    tangents: shareVectors(packVector4s(model.tangents), 4),
+    vertices: packVector3s(model.vertices),
+    normals: packVector3s(model.normals),
+    uvs: packVector2s(model.uvs),
+    tangents: packVector4s(model.tangents),
+    indices: model.indices,
+    faceNormals: packVector3s(model.faceNormals),
   },
   material: {
     colorTexture: packTexture(material.colorTexture),
@@ -261,11 +202,12 @@ export const serializeScene = (
 
 export const deserializeScene = (scene: SerializedScene) => {
   const model: Mesh = {
-    vertices: unshareVectors(scene.model.vertices, unpackVector3s),
-    normals: unshareVectors(scene.model.normals, unpackVector3s),
-    faceNormals: unshareVectors(scene.model.faceNormals, unpackVector3s),
-    uvs: unshareVectors(scene.model.uvs, unpackVector2s),
-    tangents: unshareVectors(scene.model.tangents, unpackVector4s),
+    vertices: unpackVector3s(scene.model.vertices),
+    normals: unpackVector3s(scene.model.normals),
+    uvs: unpackVector2s(scene.model.uvs),
+    tangents: unpackVector4s(scene.model.tangents),
+    indices: scene.model.indices,
+    faceNormals: unpackVector3s(scene.model.faceNormals),
   };
   const material: Material = {
     colorTexture: unpackTexture(scene.material.colorTexture),

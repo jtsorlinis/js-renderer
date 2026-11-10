@@ -27,10 +27,10 @@ const ambientIntensity = 0.1;
 
 // Direct-light PBR stage shown before the renderer adds image-based lighting.
 export class PbrShader extends BaseShader<Uniforms> {
-  vUV = this.varying<Vector2>();
-  vWorldPos = this.varying<Vector3>();
-  vWorldNormal = this.varying<Vector3>();
-  vWorldTangent = this.varying<Vector4>();
+  vUV = this.varying(Vector2);
+  vWorldPos = this.varying(Vector3);
+  vWorldNormal = this.varying(Vector3);
+  vWorldTangent = this.varying(Vector4);
 
   vertex = () => {
     const model = this.uniforms.model;
@@ -50,6 +50,7 @@ export class PbrShader extends BaseShader<Uniforms> {
 
   fragment = () => {
     const uv = this.interpolateVec2(this.vUV);
+    const pixelUvArea = this.pixelUvArea(this.vUV);
     const material = this.uniforms.material;
     const worldPos = this.interpolateVec3(this.vWorldPos);
     const worldNormal = this.interpolateVec3(this.vWorldNormal).normalize();
@@ -69,7 +70,7 @@ export class PbrShader extends BaseShader<Uniforms> {
     const Bz = (worldNormal.x * T.y - worldNormal.y * T.x) * handedness;
     const B = new Vector3(Bx, By, Bz);
 
-    const normalTexel = this.sampleFiltered(material.normalTexture, uv);
+    const normalTexel = this.sampleFiltered(material.normalTexture, uv, pixelUvArea);
     const Nx = T.x * normalTexel.x + B.x * normalTexel.y + worldNormal.x * normalTexel.z;
     const Ny = T.y * normalTexel.x + B.y * normalTexel.y + worldNormal.y * normalTexel.z;
     const Nz = T.z * normalTexel.x + B.z * normalTexel.y + worldNormal.z * normalTexel.z;
@@ -77,8 +78,8 @@ export class PbrShader extends BaseShader<Uniforms> {
     const NScale = 1 / Math.sqrt(NLengthSq);
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
 
-    const baseColor = this.sampleFiltered(material.colorTexture, uv);
-    const orm = this.sampleFiltered(material.ormTexture, uv);
+    const baseColor = this.sampleFiltered(material.colorTexture, uv, pixelUvArea);
+    const orm = this.sampleFiltered(material.ormTexture, uv, pixelUvArea);
     const ambientOcclusion = 1 - material.occlusionStrength + material.occlusionStrength * orm.x;
     const roughness = Math.max(0.045, saturate(orm.y * material.roughnessFactor));
     const metallic = saturate(orm.z * material.metallicFactor);

@@ -31,7 +31,7 @@ Then open the local Vite URL, usually `http://localhost:5173`.
 - Perspective projection
 - Basic frustum and backface culling
 - Vertex attribute interpolation
-- Texture and Normal mapping (Excludes filtering to prioritize speed)
+- Texture and Normal mapping, with bilinear filtering and mipmaps
 - Shadow mapping
 - Physically based rendering (PBR)
 - Image based lighting (IBL)

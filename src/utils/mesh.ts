@@ -3,15 +3,20 @@ import { Vector2, Vector3, Vector4 } from "../maths";
 const EPSILON = 0.00000001;
 
 export type Mesh = {
+  // One entry per vertex
   vertices: Vector3[];
   normals: Vector3[];
-  faceNormals: Vector3[];
   uvs: Vector2[];
   tangents: Vector4[];
+  // Three vertex indices per triangle, so triangles can share vertices
+  indices: Uint32Array;
+  // One entry per triangle
+  faceNormals: Vector3[];
 };
 
 type MeshSource = {
   vertices: Vector3[];
+  indices: Uint32Array;
   normals?: Vector3[];
   uvs?: Vector2[];
 };
@@ -25,15 +30,14 @@ const getFallbackTangent = (normal: Vector3) => {
   return (tangent.lengthSq() < EPSILON ? new Vector3(1, 0, 0) : tangent).normalize();
 };
 
-const getFaceNormals = (vertices: Vector3[]) => {
+const getFaceNormals = (vertices: Vector3[], indices: Uint32Array) => {
   const faceNormals: Vector3[] = [];
 
-  for (let i = 0; i < vertices.length; i += 3) {
-    const normal = vertices[i + 2]
-      .subtract(vertices[i])
-      .cross(vertices[i + 1].subtract(vertices[i]))
-      .normalize();
-    faceNormals.push(normal, normal, normal);
+  for (let i = 0; i < indices.length; i += 3) {
+    const v0 = vertices[indices[i]];
+    const v1 = vertices[indices[i + 1]];
+    const v2 = vertices[indices[i + 2]];
+    faceNormals.push(v2.subtract(v0).cross(v1.subtract(v0)).normalize());
   }
 
   return faceNormals;
@@ -64,75 +68,78 @@ const normalizeVertices = (vertices: Vector3[], scale: number) => {
   return vertices.map((vertex) => vertex.subtract(translate).scale(fitScale).scale(scale));
 };
 
-const getTangents = (vertices: Vector3[], normals: Vector3[], uvs: Vector2[]) => {
-  const tangents: Vector4[] = [];
+// A vertex's tangent is the sum of the tangents of the triangles around it, made perpendicular to
+// its normal
+const getTangents = (
+  vertices: Vector3[],
+  normals: Vector3[],
+  uvs: Vector2[],
+  indices: Uint32Array,
+) => {
+  const tangentSums = vertices.map(() => new Vector3());
+  const bitangentSums = vertices.map(() => new Vector3());
 
-  for (let i = 0; i < vertices.length; i += 3) {
-    let faceTangent = getFallbackTangent(normals[i]);
-    let faceBitangent = normals[i].cross(faceTangent).normalize();
+  for (let i = 0; i < indices.length; i += 3) {
+    const i0 = indices[i];
+    const i1 = indices[i + 1];
+    const i2 = indices[i + 2];
+    const edge1 = vertices[i1].subtract(vertices[i0]);
+    const edge2 = vertices[i2].subtract(vertices[i0]);
+    const deltaUV1 = uvs[i1].subtract(uvs[i0]);
+    const deltaUV2 = uvs[i2].subtract(uvs[i0]);
+    const det = deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y;
+    if (Math.abs(det) <= 0.000001) continue;
 
-    if (uvs.length === vertices.length) {
-      const edge1 = vertices[i + 1].subtract(vertices[i]);
-      const edge2 = vertices[i + 2].subtract(vertices[i]);
-      const deltaUV1 = uvs[i + 1].subtract(uvs[i]);
-      const deltaUV2 = uvs[i + 2].subtract(uvs[i]);
-      const det = deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y;
-
-      if (Math.abs(det) > 0.000001) {
-        const invDet = 1 / det;
-        faceTangent = edge1.scale(deltaUV2.y).subtract(edge2.scale(deltaUV1.y)).scale(invDet);
-        faceBitangent = edge2.scale(deltaUV1.x).subtract(edge1.scale(deltaUV2.x)).scale(invDet);
-      }
-    }
-
-    for (let j = 0; j < 3; j++) {
-      const normal = normals[i + j];
-      let tangent = faceTangent.subtract(normal.scale(normal.dot(faceTangent)));
-      if (tangent.lengthSq() < EPSILON) {
-        tangent = getFallbackTangent(normal);
-      } else {
-        tangent = tangent.normalize();
-      }
-
-      const projectedBitangent = faceBitangent.subtract(normal.scale(normal.dot(faceBitangent)));
-      const handedness =
-        projectedBitangent.lengthSq() > EPSILON &&
-        normal.cross(tangent).normalize().dot(projectedBitangent) < 0
-          ? -1
-          : 1;
-      tangents.push(tangent.extend(handedness));
+    const invDet = 1 / det;
+    const tangent = edge1.scale(deltaUV2.y).subtract(edge2.scale(deltaUV1.y)).scale(invDet);
+    const bitangent = edge2.scale(deltaUV1.x).subtract(edge1.scale(deltaUV2.x)).scale(invDet);
+    for (const index of [i0, i1, i2]) {
+      tangentSums[index] = tangentSums[index].add(tangent);
+      bitangentSums[index] = bitangentSums[index].add(bitangent);
     }
   }
 
-  return tangents;
+  return vertices.map((_, i) => {
+    const normal = normals[i];
+    let tangent = tangentSums[i].subtract(normal.scale(normal.dot(tangentSums[i])));
+    tangent = tangent.lengthSq() < EPSILON ? getFallbackTangent(normal) : tangent.normalize();
+    const handedness = normal.cross(tangent).dot(bitangentSums[i]) < 0 ? -1 : 1;
+    return tangent.extend(handedness);
+  });
+};
+
+// Gives every triangle three vertices of its own
+const unshareVertices = (source: MeshSource): MeshSource => {
+  const { vertices, uvs, indices } = source;
+  return {
+    vertices: Array.from(indices, (index) => vertices[index]),
+    uvs: uvs && Array.from(indices, (index) => uvs[index]),
+    indices: Uint32Array.from(indices, (_, corner) => corner),
+  };
 };
 
 export const getModelRadius = (mesh: Mesh) => {
   return mesh.vertices.reduce((max, vertex) => Math.max(max, vertex.length()), 0);
 };
 
-export const facesAway = (mesh: Mesh, i: number, viewpoint: Vector4) => {
-  const n = mesh.faceNormals[i];
-  const v = mesh.vertices[i];
-  const facing =
-    n.x * (viewpoint.x - v.x * viewpoint.w) +
-    n.y * (viewpoint.y - v.y * viewpoint.w) +
-    n.z * (viewpoint.z - v.z * viewpoint.w);
-  return facing < 0;
-};
-
-// source holds three entries per triangle in each attribute
 export const buildLoadedModel = (source: MeshSource, scale: number): Mesh => {
-  const vertices = normalizeVertices(source.vertices, scale);
-  const faceNormals = getFaceNormals(vertices);
-  const normals = source.normals?.map((normal) => normal.normalized()) ?? faceNormals.slice();
-  const uvs = source.uvs ?? vertices.map(() => new Vector2(0, 0));
+  // A mesh without normals is shaded flat, and a vertex shared between triangles could only hold
+  // one of their face normals
+  const mesh = source.normals ? source : unshareVertices(source);
+  const { indices } = mesh;
+  const vertices = normalizeVertices(mesh.vertices, scale);
+  const faceNormals = getFaceNormals(vertices, indices);
+  const normals =
+    mesh.normals?.map((normal) => normal.normalized()) ??
+    vertices.map((_, vertex) => faceNormals[Math.floor(vertex / 3)]);
+  const uvs = mesh.uvs ?? vertices.map(() => new Vector2(0, 0));
 
   return {
     vertices,
     normals,
-    faceNormals,
     uvs,
-    tangents: getTangents(vertices, normals, uvs),
+    tangents: getTangents(vertices, normals, uvs, indices),
+    indices,
+    faceNormals,
   };
 };

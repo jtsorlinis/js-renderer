@@ -1,4 +1,4 @@
-import { Vector3, Matrix4 } from "../maths";
+import { Matrix4 } from "../maths";
 import { hash3 } from "../utils/hash";
 import type { Mesh } from "../utils/mesh";
 import { BaseShader } from "./BaseShader";
@@ -12,21 +12,13 @@ const minColor = 0.25;
 const totalColors = 16;
 
 export class UnlitShader extends BaseShader<Uniforms> {
-  color = new Vector3();
-
   vertex = () => {
-    const model = this.uniforms.model;
-
-    // Give each face a random color, seeded by its first vertex
-    if (this.nthVert === 0) {
-      this.color = hash3(this.vertexId % totalColors, minColor, 1);
-    }
-
     // Return clip-space position.
-    return this.uniforms.mvp.transformPoint4(model.vertices[this.vertexId]);
+    return this.uniforms.mvp.transformPoint4(this.uniforms.model.vertices[this.vertexId]);
   };
 
   fragment = () => {
-    return this.color;
+    // Give each face one of a few random colors. hash3 uses three seeds in a row.
+    return hash3((this.triangleId * 3) % totalColors, minColor, 1);
   };
 }

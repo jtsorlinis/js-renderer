@@ -36,11 +36,60 @@ export class Texture {
   data: Float32Array;
   width: number;
   height: number;
+  // This texture, followed by its mipmaps
+  mipmaps: Texture[] = [this];
 
   constructor(data: Float32Array, width: number = 1, height: number = 1) {
     this.data = data;
     this.width = width;
     this.height = height;
+  }
+
+  // Each mipmap is half the size of the one before, averaging 2x2 texels into one
+  buildMipmaps() {
+    let source: Texture = this;
+    while (source.width > 1 || source.height > 1) {
+      const width = Math.max(1, source.width >> 1);
+      const height = Math.max(1, source.height >> 1);
+      const data = new Float32Array(width * height * 3);
+
+      for (let y = 0; y < height; y++) {
+        const row0 = Math.min(y * 2, source.height - 1) * source.width;
+        const row1 = Math.min(y * 2 + 1, source.height - 1) * source.width;
+        for (let x = 0; x < width; x++) {
+          const x0 = Math.min(x * 2, source.width - 1);
+          const x1 = Math.min(x * 2 + 1, source.width - 1);
+          const texel00 = (row0 + x0) * 3;
+          const texel10 = (row0 + x1) * 3;
+          const texel01 = (row1 + x0) * 3;
+          const texel11 = (row1 + x1) * 3;
+          const texel = (x + y * width) * 3;
+          for (let channel = 0; channel < 3; channel++) {
+            data[texel + channel] =
+              (source.data[texel00 + channel] +
+                source.data[texel10 + channel] +
+                source.data[texel01 + channel] +
+                source.data[texel11 + channel]) *
+              0.25;
+          }
+        }
+      }
+
+      source = new Texture(data, width, height);
+      this.mipmaps.push(source);
+    }
+    return this;
+  }
+
+  // The mipmap with about one texel per pixel
+  mipmapFor(pixelUvArea: number) {
+    let texelsPerPixel = pixelUvArea * this.width * this.height;
+    let level = 0;
+    while (texelsPerPixel >= 2 && level < this.mipmaps.length - 1) {
+      texelsPerPixel *= 0.25;
+      level++;
+    }
+    return this.mipmaps[level];
   }
 
   static get White() {

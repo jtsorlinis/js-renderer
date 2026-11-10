@@ -1,4 +1,6 @@
 export class Vector2 {
+  static readonly size = 2;
+
   x: number;
   y: number;
 

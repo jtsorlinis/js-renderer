@@ -16,7 +16,7 @@ export const edgeFunction = (a: Vector4, b: Vector4, c: Vector4) => {
 
 // Only instantiate this once and reuse it
 const bcClip: Barycentric = { u: 0, v: 0, w: 0 };
-const edgeEpsilon = -1e-6;
+export const edgeEpsilon = -1e-6;
 
 // Draw a triangle in screen space (pixels)
 export const triangle = (
@@ -50,11 +50,14 @@ export const triangle = (
   const area = (p2x - p0x) * (p1y - p0y) - (p2y - p0y) * (p1x - p0x);
   if (area <= 0) return;
 
-  // Calculate bounding box
-  const minX = ~~Math.max(0, Math.min(p0x, p1x, p2x));
-  const minY = ~~Math.max(0, Math.min(p0y, p1y, p2y));
+  // Calculate bounding box. edgeEpsilon keeps the pixels that snapped vertices land on.
+  const minX = Math.ceil(Math.max(0, Math.min(p0x, p1x, p2x) + edgeEpsilon));
+  const minY = Math.ceil(Math.max(0, Math.min(p0y, p1y, p2y) + edgeEpsilon));
   const maxX = ~~Math.min(width - 1, Math.max(p0x, p1x, p2x));
   const maxY = ~~Math.min(buffer.height - 1, Math.max(p0y, p1y, p2y));
+
+  // Skip triangles that fall between pixels
+  if (minX > maxX || minY > maxY) return;
 
   // Calculate barycentric coordinates for first pixel
   const invArea = 1 / area;
@@ -77,6 +80,7 @@ export const triangle = (
 
   const fragment = shader.fragment;
   shader.bc = bcClip;
+  shader.startTriangle(area * 0.5);
 
   // Locals so the pixel loop avoids re-reading these fields across fragment() calls
   const depthData = depthBuffer.data;

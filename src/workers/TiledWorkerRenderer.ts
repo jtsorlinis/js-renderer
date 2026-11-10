@@ -1,10 +1,10 @@
-import { DepthTexture, Framebuffer, triangle } from "../drawing";
+import { DepthTexture, Framebuffer, edgeEpsilon, triangle } from "../drawing";
 import { Matrix4, Vector3, Vector4 } from "../maths";
 import type { Material } from "../materials/Material";
 import type { RenderSelection } from "../renderSettings";
 import { DepthShader } from "../shaders/Depth";
 import type { IblData } from "../shaders/shaderHelpers";
-import { facesAway, type Mesh } from "../utils/mesh";
+import type { Mesh } from "../utils/mesh";
 import {
   serializeScene,
   shareMemory,
@@ -32,9 +32,6 @@ export interface FrameTransforms {
   normalMat: Matrix4;
   worldLightSpaceMat: Matrix4;
   mvp: Matrix4;
-  // The camera and light in model space, for skipping back faces
-  modelCamera: Vector4;
-  modelLight: Vector4;
 }
 
 // Everything main.ts draw() reads, plus the render targets
@@ -66,7 +63,7 @@ export class TiledWorkerRenderer {
   private rowBand = new Uint16Array(0);
   private configured?: { model: Mesh; material: Material; frameBuffer: Framebuffer };
   private depthShader = new DepthShader();
-  private triVerts: Vector4[] = [];
+  private triVerts = [new Vector4(), new Vector4(), new Vector4()];
   // Shared with every worker: they take bands using nextBand, read each band's triangles and the
   // shadow map, and write their bands into pixels
   private nextBand = new Int32Array(new SharedArrayBuffer(4));
@@ -158,13 +155,12 @@ export class TiledWorkerRenderer {
       this.configure(frame);
     }
 
-    const { modelMat, normalMat, worldLightSpaceMat, mvp, modelCamera, modelLight } =
-      frame.transforms;
-    this.binTriangles(model, mvp, modelCamera, frameBuffer, settings);
+    const { modelMat, normalMat, worldLightSpaceMat, mvp } = frame.transforms;
+    this.binTriangles(model, mvp, frameBuffer, settings);
 
     // Shadow pass once on the main thread, into the shadow map the workers share
     if (settings.useShadows) {
-      this.renderShadowMap(model, worldLightSpaceMat.multiply(modelMat), modelLight);
+      this.renderShadowMap(model, worldLightSpaceMat.multiply(modelMat));
     }
 
     const matrices = {
@@ -198,26 +194,27 @@ export class TiledWorkerRenderer {
   }
 
   // Lists the triangles that land in each band, packed band by band into shared memory
-  private binTriangles(
-    model: Mesh,
-    mvp: Matrix4,
-    modelCamera: Vector4,
-    buffer: Framebuffer,
-    settings: RenderSelection,
-  ) {
+  private binTriangles(model: Mesh, mvp: Matrix4, buffer: Framebuffer, settings: RenderSelection) {
     const { width, height } = buffer;
+    const filled = (settings.renderMode ?? "filled") === "filled";
+    const cullBackfaces = settings.renderMode !== "wireframe";
+    const roundMin = filled ? Math.ceil : Math.floor;
+    const minEpsilon = filled ? edgeEpsilon : 0;
     const bins = this.bands.map(() => [] as number[]);
     const halfWidth = width * 0.5;
     const halfHeight = height * 0.5;
-    const filled = (settings.renderMode ?? "filled") === "filled";
-    const cullBackfaces = settings.renderMode !== "wireframe";
 
-    for (let i = 0; i < model.vertices.length; i += 3) {
-      // Same as main.ts renderMesh(), snapping can turn back faces towards the camera
-      if (filled && !settings.snapVertices && facesAway(model, i, modelCamera)) continue;
-      const v0 = mvp.transformPoint4(model.vertices[i]).perspectiveDivide();
-      const v1 = mvp.transformPoint4(model.vertices[i + 1]).perspectiveDivide();
-      const v2 = mvp.transformPoint4(model.vertices[i + 2]).perspectiveDivide();
+    // The depth shader only works out positions, which is all binning needs
+    const shader = this.depthShader;
+    shader.uniforms = { model, clipMat: mvp };
+    shader.shadeVertices(model.vertices.length);
+    const { indices } = model;
+    const { triVerts } = this;
+    const [v0, v1, v2] = triVerts;
+
+    const triangleCount = indices.length / 3;
+    for (let t = 0; t < triangleCount; t++) {
+      shader.assembleTriangle(t, indices, triVerts);
       // Bin where the workers will draw it
       if (settings.snapVertices) {
         buffer.snapToPixelGrid(v0);
@@ -253,15 +250,15 @@ export class TiledWorkerRenderer {
         if (area <= 0) continue;
       }
 
-      // Same bounding box triangle() computes
-      const minX = ~~Math.max(0, Math.min(p0x, p1x, p2x));
-      const minY = ~~Math.max(0, Math.min(p0y, p1y, p2y));
+      // Same bounding box triangle() computes. line() truncates, so wireframes round down.
+      const minX = roundMin(Math.max(0, Math.min(p0x, p1x, p2x) + minEpsilon));
+      const minY = roundMin(Math.max(0, Math.min(p0y, p1y, p2y) + minEpsilon));
       const maxX = ~~Math.min(width - 1, Math.max(p0x, p1x, p2x));
       const maxY = ~~Math.min(height - 1, Math.max(p0y, p1y, p2y));
       if (minX > maxX || minY > maxY) continue;
 
       for (let band = this.rowBand[minY]; band <= this.rowBand[maxY]; band++) {
-        bins[band].push(i);
+        bins[band].push(t);
       }
     }
 
@@ -280,19 +277,17 @@ export class TiledWorkerRenderer {
   }
 
   // Same as the shadow pass in main.ts draw()
-  private renderShadowMap(model: Mesh, clipMat: Matrix4, modelLight: Vector4) {
-    const { shadowMap, shadowBuffer } = this;
+  private renderShadowMap(model: Mesh, clipMat: Matrix4) {
+    const { shadowMap, shadowBuffer, triVerts } = this;
+    const { indices } = model;
     const shader = this.depthShader;
     shadowMap.clear(1000);
     shader.uniforms = { model, clipMat };
-    for (let i = 0; i < model.vertices.length; i += 3) {
-      if (facesAway(model, i, modelLight)) continue;
-      for (let j = 0; j < 3; j++) {
-        shader.vertexId = i + j;
-        shader.nthVert = j;
-        this.triVerts[j] = shader.vertex().perspectiveDivide();
-      }
-      triangle(this.triVerts, shader, shadowBuffer, shadowMap);
+    shader.shadeVertices(model.vertices.length);
+    const triangleCount = indices.length / 3;
+    for (let t = 0; t < triangleCount; t++) {
+      shader.assembleTriangle(t, indices, triVerts);
+      triangle(triVerts, shader, shadowBuffer, shadowMap);
     }
   }
 }

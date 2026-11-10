@@ -60,7 +60,11 @@ const targetFor = (band: Band) => {
   return target;
 };
 
-const triVerts: Vector4[] = [];
+const triVerts = [new Vector4(), new Vector4(), new Vector4()];
+// The pass that last shaded each vertex. A pass is one shader drawing one band, and it shades only
+// the vertices its triangles use.
+let shadedIn = new Int32Array(0);
+let pass = 0;
 const bandVerts = [new Vector4(), new Vector4(), new Vector4()];
 
 // Framebuffer.snapToPixelGrid() for the full frame, as a band's framebuffer only knows its
@@ -94,15 +98,24 @@ const renderBand = (
   const halfHeight = frameHeight * 0.5;
   const ndcScale = 2 / band.height;
 
+  const { indices } = scene.model;
+  pass++;
+
   for (let t = 0; t < triangles.length; t++) {
-    const i = triangles[t];
+    const triangleId = triangles[t];
+    const i = triangleId * 3;
     for (let j = 0; j < 3; j++) {
-      activeShader.vertexId = i + j;
-      activeShader.nthVert = j;
-      triVerts[j] = activeShader.vertex().perspectiveDivide();
-      if (snapVertices) {
-        snapToPixelGrid(triVerts[j]);
+      const vertexId = indices[i + j];
+      if (shadedIn[vertexId] !== pass) {
+        shadedIn[vertexId] = pass;
+        activeShader.shadeVertex(vertexId);
       }
+    }
+    activeShader.assembleTriangle(triangleId, indices, triVerts);
+    if (snapVertices) {
+      snapToPixelGrid(triVerts[0]);
+      snapToPixelGrid(triVerts[1]);
+      snapToPixelGrid(triVerts[2]);
     }
 
     if (renderMode === "depthWireframe") {
@@ -152,7 +165,14 @@ const render = (message: RenderMessage) => {
   const { model, material, iblData, envYaw, lightDir } = scene;
   const mvp = toMatrix(message.matrices.mvp);
 
+  const vertexCount = model.vertices.length;
+  if (shadedIn.length !== vertexCount) {
+    shadedIn = new Int32Array(vertexCount);
+  }
+
   const shader = shaders[settings.material];
+  shader.resize(vertexCount);
+  shaders.depth.resize(vertexCount);
   shader.uniforms = {
     model,
     modelMat: toMatrix(message.matrices.modelMat),

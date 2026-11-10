@@ -463,7 +463,7 @@ const convertGlbGeometry = (gltf: Gltf, binaryChunk: ArrayBuffer, scale: number)
   const meshNormals: Vector3[] = [];
   const meshUvs: Vector2[] = [];
 
-  for (const vertexIndex of indices) {
+  for (let vertexIndex = 0; vertexIndex < positionCount; vertexIndex++) {
     const positionOffset = vertexIndex * 3;
     const localPosition = new Vector3(
       positions[positionOffset],
@@ -494,7 +494,7 @@ const convertGlbGeometry = (gltf: Gltf, binaryChunk: ArrayBuffer, scale: number)
     }
   }
 
-  if (vertices.length === 0) {
+  if (indices.length === 0) {
     throw new Error("No triangle primitives were found in the GLB asset");
   }
 
@@ -503,6 +503,7 @@ const convertGlbGeometry = (gltf: Gltf, binaryChunk: ArrayBuffer, scale: number)
     mesh: buildLoadedModel(
       {
         vertices,
+        indices: Uint32Array.from(indices),
         normals: sourceNormals ? meshNormals : undefined,
         uvs: sourceUvs ? meshUvs : undefined,
       },
@@ -662,11 +663,14 @@ export const loadGlbAsset = async (url: string, scale = 1) => {
   return {
     mesh: converted.mesh,
     material: {
-      colorTexture: applyBaseColorFactor(colorTexture, converted.pbrMaterial.baseColorFactor),
-      normalTexture,
+      colorTexture: applyBaseColorFactor(
+        colorTexture,
+        converted.pbrMaterial.baseColorFactor,
+      ).buildMipmaps(),
+      normalTexture: normalTexture.buildMipmaps(),
       metallicFactor: converted.pbrMaterial.metallicFactor,
       occlusionStrength: converted.pbrMaterial.occlusionStrength,
-      ormTexture,
+      ormTexture: ormTexture.buildMipmaps(),
       roughnessFactor: converted.pbrMaterial.roughnessFactor,
     },
   };
