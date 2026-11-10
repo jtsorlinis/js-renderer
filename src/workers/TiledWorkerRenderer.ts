@@ -204,6 +204,7 @@ export class TiledWorkerRenderer {
     const { width, height } = buffer;
     const filled = renderMode === "filled";
     const cullBackfaces = renderMode !== "wireframe";
+    const roundMin = filled ? Math.ceil : Math.floor;
     const bins = this.bands.map(() => [] as number[]);
     const halfWidth = width * 0.5;
     const halfHeight = height * 0.5;
@@ -240,9 +241,9 @@ export class TiledWorkerRenderer {
         if (area <= 0) continue;
       }
 
-      // Same bounding box triangle() computes
-      const minX = ~~Math.max(0, Math.min(p0x, p1x, p2x));
-      const minY = ~~Math.max(0, Math.min(p0y, p1y, p2y));
+      // Same bounding box triangle() computes. line() truncates, so wireframes round down.
+      const minX = roundMin(Math.max(0, Math.min(p0x, p1x, p2x)));
+      const minY = roundMin(Math.max(0, Math.min(p0y, p1y, p2y)));
       const maxX = ~~Math.min(width - 1, Math.max(p0x, p1x, p2x));
       const maxY = ~~Math.min(height - 1, Math.max(p0y, p1y, p2y));
       if (minX > maxX || minY > maxY) continue;
