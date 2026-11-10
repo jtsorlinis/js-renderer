@@ -21,9 +21,9 @@ const ambient = 0.1;
 
 export class TexturedShader extends BaseShader<Uniforms> {
   // Varyings are interpolated per pixel in fragment().
-  vWorldNormal = this.varying<Vector3>();
-  vWorldPos = this.varying<Vector3>();
-  vUV = this.varying<Vector2>();
+  vWorldNormal = this.varying(Vector3);
+  vWorldPos = this.varying(Vector3);
+  vUV = this.varying(Vector2);
 
   vertex = () => {
     // Load source vertex data.

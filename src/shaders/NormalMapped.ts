@@ -27,10 +27,10 @@ const maxBias = 0.005;
 
 export class NormalMappedShader extends BaseShader<Uniforms> {
   // Per-vertex data passed from vertex -> fragment.
-  vUV = this.varying<Vector2>();
-  vWorldPos = this.varying<Vector3>();
-  vWorldNormal = this.varying<Vector3>();
-  vWorldTangent = this.varying<Vector4>();
+  vUV = this.varying(Vector2);
+  vWorldPos = this.varying(Vector3);
+  vWorldNormal = this.varying(Vector3);
+  vWorldTangent = this.varying(Vector4);
 
   vertex = () => {
     // Read the source vertex attributes from the active mesh.

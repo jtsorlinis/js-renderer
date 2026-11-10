@@ -19,7 +19,7 @@ const ambient = 0.1;
 const baseColor = new Vector3(0.5, 0.5, 0.5);
 
 export class GouraudShader extends BaseShader<Uniforms> {
-  vLighting = this.varying<Vector4>();
+  vLighting = this.varying(Vector4);
 
   vertex = () => {
     const model = this.uniforms.model;

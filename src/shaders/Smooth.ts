@@ -20,8 +20,8 @@ const baseColor = new Vector3(0.5, 0.5, 0.5);
 
 export class SmoothShader extends BaseShader<Uniforms> {
   // Per-vertex values that will be interpolated in fragment().
-  vWorldNormal = this.varying<Vector3>();
-  vWorldPos = this.varying<Vector3>();
+  vWorldNormal = this.varying(Vector3);
+  vWorldPos = this.varying(Vector3);
 
   vertex = () => {
     // Read source mesh data.

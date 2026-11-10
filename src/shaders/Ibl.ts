@@ -40,10 +40,10 @@ const environmentIntensity = 1;
 // This shader keeps a few math-heavy sections expanded inline on purpose for
 // performance in the software renderer hot path.
 export class IblShader extends BaseShader<Uniforms> {
-  vUV = this.varying<Vector2>();
-  vWorldPos = this.varying<Vector3>();
-  vWorldNormal = this.varying<Vector3>();
-  vWorldTangent = this.varying<Vector4>();
+  vUV = this.varying(Vector2);
+  vWorldPos = this.varying(Vector3);
+  vWorldNormal = this.varying(Vector3);
+  vWorldTangent = this.varying(Vector4);
 
   vertex = () => {
     const model = this.uniforms.model;

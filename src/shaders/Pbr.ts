@@ -28,10 +28,10 @@ const ambientIntensity = 0.1;
 
 // Direct-light PBR stage shown before the renderer adds image-based lighting.
 export class PbrShader extends BaseShader<Uniforms> {
-  vUV = this.varying<Vector2>();
-  vWorldPos = this.varying<Vector3>();
-  vWorldNormal = this.varying<Vector3>();
-  vWorldTangent = this.varying<Vector4>();
+  vUV = this.varying(Vector2);
+  vWorldPos = this.varying(Vector3);
+  vWorldNormal = this.varying(Vector3);
+  vWorldTangent = this.varying(Vector4);
 
   vertex = () => {
     const model = this.uniforms.model;

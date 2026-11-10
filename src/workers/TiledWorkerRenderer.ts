@@ -4,7 +4,7 @@ import type { Material } from "../materials/Material";
 import type { RenderMode, RenderSelectionPreset } from "../renderSettings";
 import { DepthShader } from "../shaders/Depth";
 import type { IblData } from "../shaders/shaderHelpers";
-import { facesAway, type Mesh } from "../utils/mesh";
+import type { Mesh } from "../utils/mesh";
 import {
   serializeScene,
   shareMemory,
@@ -29,9 +29,6 @@ export interface FrameTransforms {
   normalMat: Matrix4;
   worldLightSpaceMat: Matrix4;
   mvp: Matrix4;
-  // The camera and light in model space, for skipping back faces
-  modelCamera: Vector4;
-  modelLight: Vector4;
 }
 
 // Everything main.ts draw() reads, plus the render targets
@@ -64,7 +61,7 @@ export class TiledWorkerRenderer {
   private rowBand = new Uint16Array(0);
   private configured?: { model: Mesh; material: Material; frameBuffer: Framebuffer };
   private depthShader = new DepthShader();
-  private triVerts: Vector4[] = [];
+  private triVerts = [new Vector4(), new Vector4(), new Vector4()];
   // Shared with every worker: they take bands using nextBand, read each band's triangles and the
   // shadow map, and write their bands into pixels
   private nextBand = new Int32Array(new SharedArrayBuffer(4));
@@ -154,13 +151,12 @@ export class TiledWorkerRenderer {
       this.configure(frame);
     }
 
-    const { modelMat, normalMat, worldLightSpaceMat, mvp, modelCamera, modelLight } =
-      frame.transforms;
-    this.binTriangles(model, mvp, modelCamera, frameBuffer, settings.renderMode ?? "filled");
+    const { modelMat, normalMat, worldLightSpaceMat, mvp } = frame.transforms;
+    this.binTriangles(model, mvp, frameBuffer, settings.renderMode ?? "filled");
 
     // Shadow pass once on the main thread, into the shadow map the workers share
     if (settings.useShadows) {
-      this.renderShadowMap(model, worldLightSpaceMat.multiply(modelMat), modelLight);
+      this.renderShadowMap(model, worldLightSpaceMat.multiply(modelMat));
     }
 
     const matrices = {
@@ -194,13 +190,7 @@ export class TiledWorkerRenderer {
   }
 
   // Lists the triangles that land in each band, packed band by band into shared memory
-  private binTriangles(
-    model: Mesh,
-    mvp: Matrix4,
-    modelCamera: Vector4,
-    buffer: Framebuffer,
-    renderMode: RenderMode,
-  ) {
+  private binTriangles(model: Mesh, mvp: Matrix4, buffer: Framebuffer, renderMode: RenderMode) {
     const { width, height } = buffer;
     const filled = renderMode === "filled";
     const cullBackfaces = renderMode !== "wireframe";
@@ -209,23 +199,33 @@ export class TiledWorkerRenderer {
     const halfWidth = width * 0.5;
     const halfHeight = height * 0.5;
 
-    for (let i = 0; i < model.vertices.length; i += 3) {
-      if (filled && facesAway(model, i, modelCamera)) continue;
-      const v0 = mvp.transformPoint4(model.vertices[i]).perspectiveDivide();
-      const v1 = mvp.transformPoint4(model.vertices[i + 1]).perspectiveDivide();
-      const v2 = mvp.transformPoint4(model.vertices[i + 2]).perspectiveDivide();
+    // The depth shader only works out positions, which is all binning needs
+    const shader = this.depthShader;
+    shader.uniforms = { model, clipMat: mvp };
+    shader.shadeVertices(model.vertices.length);
+    const positions = shader.position.data;
+    const { indices } = model;
+
+    const triangleCount = indices.length / 3;
+    for (let t = 0; t < triangleCount; t++) {
+      const v0 = indices[t * 3] * 4;
+      const v1 = indices[t * 3 + 1] * 4;
+      const v2 = indices[t * 3 + 2] * 4;
+      const z0 = positions[v0 + 2];
+      const z1 = positions[v1 + 2];
+      const z2 = positions[v2 + 2];
 
       if (filled) {
-        if (v0.z < 0 || v1.z < 0 || v2.z < 0) continue;
-        if (v0.z > 1 || v1.z > 1 || v2.z > 1) continue;
+        if (z0 < 0 || z1 < 0 || z2 < 0) continue;
+        if (z0 > 1 || z1 > 1 || z2 > 1) continue;
       }
 
-      const p0x = (v0.x + 1) * halfWidth;
-      const p0y = (-v0.y + 1) * halfHeight;
-      const p1x = (v1.x + 1) * halfWidth;
-      const p1y = (-v1.y + 1) * halfHeight;
-      const p2x = (v2.x + 1) * halfWidth;
-      const p2y = (-v2.y + 1) * halfHeight;
+      const p0x = (positions[v0] + 1) * halfWidth;
+      const p0y = (-positions[v0 + 1] + 1) * halfHeight;
+      const p1x = (positions[v1] + 1) * halfWidth;
+      const p1y = (-positions[v1 + 1] + 1) * halfHeight;
+      const p2x = (positions[v2] + 1) * halfWidth;
+      const p2y = (-positions[v2 + 1] + 1) * halfHeight;
 
       if (
         (p0x < 0 && p1x < 0 && p2x < 0) ||
@@ -249,7 +249,7 @@ export class TiledWorkerRenderer {
       if (minX > maxX || minY > maxY) continue;
 
       for (let band = this.rowBand[minY]; band <= this.rowBand[maxY]; band++) {
-        bins[band].push(i);
+        bins[band].push(t);
       }
     }
 
@@ -268,19 +268,17 @@ export class TiledWorkerRenderer {
   }
 
   // Same as the shadow pass in main.ts draw()
-  private renderShadowMap(model: Mesh, clipMat: Matrix4, modelLight: Vector4) {
-    const { shadowMap, shadowBuffer } = this;
+  private renderShadowMap(model: Mesh, clipMat: Matrix4) {
+    const { shadowMap, shadowBuffer, triVerts } = this;
+    const { indices } = model;
     const shader = this.depthShader;
     shadowMap.clear(1000);
     shader.uniforms = { model, clipMat };
-    for (let i = 0; i < model.vertices.length; i += 3) {
-      if (facesAway(model, i, modelLight)) continue;
-      for (let j = 0; j < 3; j++) {
-        shader.vertexId = i + j;
-        shader.nthVert = j;
-        this.triVerts[j] = shader.vertex().perspectiveDivide();
-      }
-      triangle(this.triVerts, shader, shadowBuffer, shadowMap);
+    shader.shadeVertices(model.vertices.length);
+    const triangleCount = indices.length / 3;
+    for (let t = 0; t < triangleCount; t++) {
+      shader.assembleTriangle(t, indices, triVerts);
+      triangle(triVerts, shader, shadowBuffer, shadowMap);
     }
   }
 }

@@ -1,6 +1,15 @@
 import { DepthTexture, Texture } from "../drawing";
 import { clamp, Vector2, Vector3, Vector4 } from "../maths";
 
+type VectorClass = typeof Vector2 | typeof Vector3 | typeof Vector4;
+
+// What the vertex shader wrote for every vertex
+export type Varying<C extends VectorClass = VectorClass> = {
+  type: C;
+  size: number;
+  data: Float64Array;
+};
+
 export abstract class BaseShader<TUniforms = unknown> {
   declare uniforms: TUniforms;
 
@@ -8,55 +17,116 @@ export abstract class BaseShader<TUniforms = unknown> {
   abstract fragment: (() => Vector3 | undefined) | undefined;
 
   vertexId = 0;
-  nthVert = 0;
+  // The triangle being drawn and its three vertices
+  triangleId = 0;
+  v0 = 0;
+  v1 = 0;
+  v2 = 0;
   bc = { u: 0, v: 0, w: 0 };
   pixelArea = 1;
   // -1 until pixelUvArea() works it out
   private trianglePixelUvArea = -1;
+
+  private varyings: Varying[] = [];
 
   startTriangle = (pixelArea: number) => {
     this.pixelArea = pixelArea;
     this.trianglePixelUvArea = -1;
   };
 
-  v2f = <T>(varying: Array<T>, value: T) => {
-    varying[this.nthVert] = value;
+  varying = <C extends VectorClass>(type: C): Varying<C> => {
+    const varying = { type, size: type.size, data: new Float64Array(0) };
+    this.varyings.push(varying);
+    return varying;
   };
 
-  varying = <T>(): Array<T> => {
-    return Array<T>(3);
+  // What vertex() returned for every vertex, after the perspective divide
+  position = this.varying(Vector4);
+
+  v2f = <C extends VectorClass>(varying: Varying<C>, value: InstanceType<C>) => {
+    const data = varying.data;
+    const size = varying.size;
+    const offset = this.vertexId * size;
+    data[offset] = value.x;
+    data[offset + 1] = value.y;
+    if (size > 2) data[offset + 2] = (value as Vector3).z;
+    if (size > 3) data[offset + 3] = (value as Vector4).w;
   };
 
-  interpolateVec2 = (vals: Vector2[]) => {
+  // Makes room for every vertex's varyings
+  resize = (vertexCount: number) => {
+    if (this.position.data.length === vertexCount * 4) return;
+    for (const varying of this.varyings) {
+      varying.data = new Float64Array(vertexCount * varying.size);
+    }
+  };
+
+  shadeVertex = (vertexId: number) => {
+    this.vertexId = vertexId;
+    this.v2f(this.position, this.vertex().perspectiveDivide());
+  };
+
+  // Vertex stage: runs the vertex shader once for every vertex
+  shadeVertices = (vertexCount: number) => {
+    this.resize(vertexCount);
+    for (let vertexId = 0; vertexId < vertexCount; vertexId++) {
+      this.shadeVertex(vertexId);
+    }
+  };
+
+  // Points the shader at a triangle and copies its vertices' positions into verts
+  assembleTriangle = (triangleId: number, indices: Uint32Array, verts: Vector4[]) => {
+    this.triangleId = triangleId;
+    this.v0 = indices[triangleId * 3];
+    this.v1 = indices[triangleId * 3 + 1];
+    this.v2 = indices[triangleId * 3 + 2];
+    this.readPosition(this.v0, verts[0]);
+    this.readPosition(this.v1, verts[1]);
+    this.readPosition(this.v2, verts[2]);
+  };
+
+  private readPosition = (vertexId: number, out: Vector4) => {
+    const data = this.position.data;
+    const offset = vertexId * 4;
+    out.x = data[offset];
+    out.y = data[offset + 1];
+    out.z = data[offset + 2];
+    out.w = data[offset + 3];
+  };
+
+  interpolateVec2 = (varying: Varying<typeof Vector2>) => {
     const { u, v, w } = this.bc;
-    const a = vals[0];
-    const b = vals[1];
-    const c = vals[2];
-    return new Vector2(a.x * u + b.x * v + c.x * w, a.y * u + b.y * v + c.y * w);
+    const d = varying.data;
+    const a = this.v0 * 2;
+    const b = this.v1 * 2;
+    const c = this.v2 * 2;
+    return new Vector2(d[a] * u + d[b] * v + d[c] * w, d[a + 1] * u + d[b + 1] * v + d[c + 1] * w);
   };
 
-  interpolateVec3 = (vals: Vector3[]) => {
+  interpolateVec3 = (varying: Varying<typeof Vector3>) => {
     const { u, v, w } = this.bc;
-    const a = vals[0];
-    const b = vals[1];
-    const c = vals[2];
+    const d = varying.data;
+    const a = this.v0 * 3;
+    const b = this.v1 * 3;
+    const c = this.v2 * 3;
     return new Vector3(
-      a.x * u + b.x * v + c.x * w,
-      a.y * u + b.y * v + c.y * w,
-      a.z * u + b.z * v + c.z * w,
+      d[a] * u + d[b] * v + d[c] * w,
+      d[a + 1] * u + d[b + 1] * v + d[c + 1] * w,
+      d[a + 2] * u + d[b + 2] * v + d[c + 2] * w,
     );
   };
 
-  interpolateVec4 = (vals: Vector4[]) => {
+  interpolateVec4 = (varying: Varying<typeof Vector4>) => {
     const { u, v, w } = this.bc;
-    const a = vals[0];
-    const b = vals[1];
-    const c = vals[2];
+    const d = varying.data;
+    const a = this.v0 * 4;
+    const b = this.v1 * 4;
+    const c = this.v2 * 4;
     return new Vector4(
-      a.x * u + b.x * v + c.x * w,
-      a.y * u + b.y * v + c.y * w,
-      a.z * u + b.z * v + c.z * w,
-      a.w * u + b.w * v + c.w * w,
+      d[a] * u + d[b] * v + d[c] * w,
+      d[a + 1] * u + d[b + 1] * v + d[c + 1] * w,
+      d[a + 2] * u + d[b + 2] * v + d[c + 2] * w,
+      d[a + 3] * u + d[b + 3] * v + d[c + 3] * w,
     );
   };
 
@@ -73,12 +143,15 @@ export abstract class BaseShader<TUniforms = unknown> {
   };
 
   // UV-space area covered by one pixel of the current triangle, for choosing a mipmap
-  pixelUvArea = (uvs: Vector2[]) => {
+  pixelUvArea = (uvs: Varying<typeof Vector2>) => {
     if (this.trianglePixelUvArea < 0) {
-      const a = uvs[0];
-      const b = uvs[1];
-      const c = uvs[2];
-      const uvArea = Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) * 0.5;
+      const d = uvs.data;
+      const a = this.v0 * 2;
+      const b = this.v1 * 2;
+      const c = this.v2 * 2;
+      const uvArea =
+        Math.abs((d[b] - d[a]) * (d[c + 1] - d[a + 1]) - (d[b + 1] - d[a + 1]) * (d[c] - d[a])) *
+        0.5;
       this.trianglePixelUvArea = uvArea / this.pixelArea;
     }
     return this.trianglePixelUvArea;

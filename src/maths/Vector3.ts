@@ -1,6 +1,8 @@
 import { Vector4 } from ".";
 
 export class Vector3 {
+  static readonly size = 3;
+
   x: number;
   y: number;
   z: number;
