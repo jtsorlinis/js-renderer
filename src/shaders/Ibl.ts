@@ -65,6 +65,7 @@ export class IblShader extends BaseShader<Uniforms> {
     const material = this.uniforms.material;
     const ibl = this.uniforms.iblData;
     const uv = this.interpolateVec2(this.vUV);
+    const pixelUvArea = this.pixelUvArea(this.vUV);
     const worldPos = this.interpolateVec3(this.vWorldPos);
     const worldViewDir = this.uniforms.orthographic
       ? this.uniforms.worldViewDir
@@ -86,7 +87,7 @@ export class IblShader extends BaseShader<Uniforms> {
     const Bz = (worldNormal.x * T.y - worldNormal.y * T.x) * handedness;
     const B = new Vector3(Bx, By, Bz);
 
-    const normalTexel = this.sampleFiltered(material.normalTexture, uv);
+    const normalTexel = this.sampleFiltered(material.normalTexture, uv, pixelUvArea);
     const Nx = T.x * normalTexel.x + B.x * normalTexel.y + worldNormal.x * normalTexel.z;
     const Ny = T.y * normalTexel.x + B.y * normalTexel.y + worldNormal.y * normalTexel.z;
     const Nz = T.z * normalTexel.x + B.z * normalTexel.y + worldNormal.z * normalTexel.z;
@@ -94,8 +95,8 @@ export class IblShader extends BaseShader<Uniforms> {
     const NScale = 1 / Math.sqrt(NLengthSq);
     const normal = new Vector3(Nx * NScale, Ny * NScale, Nz * NScale);
 
-    const baseColor = this.sampleFiltered(material.colorTexture, uv);
-    const orm = this.sampleFiltered(material.ormTexture, uv);
+    const baseColor = this.sampleFiltered(material.colorTexture, uv, pixelUvArea);
+    const orm = this.sampleFiltered(material.ormTexture, uv, pixelUvArea);
     const ambientOcclusion = 1 - material.occlusionStrength + material.occlusionStrength * orm.x;
     const roughness = Math.max(0.045, saturate(orm.y * material.roughnessFactor));
     const metallic = saturate(orm.z * material.metallicFactor);

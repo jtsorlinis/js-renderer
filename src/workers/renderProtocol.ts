@@ -17,11 +17,12 @@ export interface Band {
   height: number;
 }
 
-interface SerializedTexture {
+// One entry per mipmap, starting with the texture itself
+type SerializedTexture = {
   data: Float32Array;
   width: number;
   height: number;
-}
+}[];
 
 // One mesh attribute: each distinct vector once, plus which one every triangle corner uses.
 // Corners that share a vertex then share one object in the worker instead of each getting a copy.
@@ -223,14 +224,14 @@ const unpackVector4s = (data: Float32Array) => {
   return values;
 };
 
-const packTexture = ({ data, width, height }: Texture): SerializedTexture => ({
-  data,
-  width,
-  height,
-});
+const packTexture = (texture: Texture): SerializedTexture =>
+  texture.mipmaps.map(({ data, width, height }) => ({ data, width, height }));
 
-const unpackTexture = ({ data, width, height }: SerializedTexture) =>
-  new Texture(data, width, height);
+const unpackTexture = (serialized: SerializedTexture) => {
+  const mipmaps = serialized.map(({ data, width, height }) => new Texture(data, width, height));
+  mipmaps[0].mipmaps = mipmaps;
+  return mipmaps[0];
+};
 
 export const serializeScene = (
   model: Mesh,

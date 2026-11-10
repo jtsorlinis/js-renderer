@@ -79,6 +79,7 @@ export const triangle = (
   const fragment = shader.fragment;
   const writePixel = tonemap ? buffer.setPixelTonemapped : buffer.setPixel;
   shader.bc = bcClip;
+  shader.startTriangle(area * 0.5);
 
   // Locals so the pixel loop avoids re-reading these fields across fragment() calls
   const depthData = depthBuffer.data;

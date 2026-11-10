@@ -662,11 +662,14 @@ export const loadGlbAsset = async (url: string, scale = 1) => {
   return {
     mesh: converted.mesh,
     material: {
-      colorTexture: applyBaseColorFactor(colorTexture, converted.pbrMaterial.baseColorFactor),
-      normalTexture,
+      colorTexture: applyBaseColorFactor(
+        colorTexture,
+        converted.pbrMaterial.baseColorFactor,
+      ).buildMipmaps(),
+      normalTexture: normalTexture.buildMipmaps(),
       metallicFactor: converted.pbrMaterial.metallicFactor,
       occlusionStrength: converted.pbrMaterial.occlusionStrength,
-      ormTexture,
+      ormTexture: ormTexture.buildMipmaps(),
       roughnessFactor: converted.pbrMaterial.roughnessFactor,
     },
   };
