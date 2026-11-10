@@ -49,10 +49,13 @@ export const triangle = (
   if (area <= 0) return;
 
   // Calculate bounding box
-  const minX = ~~Math.max(0, Math.min(p0x, p1x, p2x));
-  const minY = ~~Math.max(0, Math.min(p0y, p1y, p2y));
+  const minX = Math.ceil(Math.max(0, Math.min(p0x, p1x, p2x)));
+  const minY = Math.ceil(Math.max(0, Math.min(p0y, p1y, p2y)));
   const maxX = ~~Math.min(width - 1, Math.max(p0x, p1x, p2x));
   const maxY = ~~Math.min(buffer.height - 1, Math.max(p0y, p1y, p2y));
+
+  // Skip triangles that fall between pixels
+  if (minX > maxX || minY > maxY) return;
 
   // Calculate barycentric coordinates for first pixel
   const invArea = 1 / area;
