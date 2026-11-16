@@ -52,7 +52,6 @@ let hasDragged = false;
 const renderShadingOptions = () => {
   const maxShadingIndex = Math.max(0, SHADING_PRESETS.length - 1);
   shadingList.replaceChildren();
-  shadingList.style.setProperty("--shading-count", String(SHADING_PRESETS.length));
   shadingSlider.min = "0";
   shadingSlider.max = String(maxShadingIndex);
 
@@ -63,6 +62,7 @@ const renderShadingOptions = () => {
     button.className = "shading-option";
     button.dataset.shadingIndex = String(maxShadingIndex - index);
     button.dataset.shadingValue = preset.value;
+    button.dataset.year = String(preset.year);
     button.setAttribute("aria-pressed", "false");
     button.textContent = preset.label;
     item.appendChild(button);

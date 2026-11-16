@@ -196,7 +196,6 @@ canvas:active {
   margin: 0;
   padding: 0;
   list-style: none;
-  counter-reset: shading-step var(--shading-count, 10);
 }
 
 .shading-list::before {
@@ -212,7 +211,6 @@ canvas:active {
 .shading-list li {
   position: relative;
   padding-left: 25px;
-  counter-increment: shading-step -1;
 }
 
 /* Stage dot */
@@ -284,7 +282,7 @@ canvas:active {
 }
 
 .shading-option::after {
-  content: counter(shading-step);
+  content: attr(data-year);
   font-family: var(--mono);
   font-size: 12.5px;
   color: var(--text-muted);
