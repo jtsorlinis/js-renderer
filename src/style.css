@@ -555,8 +555,9 @@ kbd {
 }
 
 /* ── Short windows ──
-   Drop the shortcut list, then tighten the spacing, so the main controls fit without scrolling.
-   The heights are roughly what the sidebar needs with and without the list. */
+   Drop the shortcut list, tighten the spacing, drop the title, then shrink the shading steps and
+   thumbnails, so the main controls fit without scrolling. Each height is roughly what the sidebar
+   needs before that step; below the last one it scrolls. */
 
 @media (max-height: 1140px) {
   .sidebar-footer {
@@ -584,6 +585,36 @@ kbd {
 
   .toggle {
     padding: 9px 13px;
+  }
+}
+
+@media (max-height: 920px) {
+  .brand {
+    display: none;
+  }
+}
+
+/* Desktop only: on phones the shading steps are touch-sized chips */
+@media (max-height: 870px) and (min-width: 577px) {
+  .sidebar {
+    gap: 12px;
+    padding: 12px 18px;
+  }
+
+  .stat {
+    padding: 6px 13px;
+  }
+
+  .model-tile img {
+    aspect-ratio: 3 / 2;
+  }
+
+  .shading-list {
+    --step-h: 26px;
+  }
+
+  .toggle {
+    padding: 7px 13px;
   }
 }
 
